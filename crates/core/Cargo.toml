@@ -1,0 +1,16 @@
+[package]
+name = "gitcontroller-core"
+description = "GitController: git operations and repository state, without any user interface"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+dunce.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

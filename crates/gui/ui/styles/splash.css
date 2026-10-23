@@ -1,0 +1,23 @@
+/* Splash screen, in the style of Spektra and Waypoint: animated logo (the branch lines are drawn, then
+   the commits pop up one after the other), name, tagline, progress bar and current step. */
+
+.splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: var(--bg); color: var(--ink); font-family: var(--font); transition: opacity .4s ease, visibility .4s; }
+.splash.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash-card { display: flex; flex-direction: column; align-items: center; gap: 10px; transform: translateY(-4%); }
+.splash-logo { width: 84px; height: 84px; margin-bottom: 8px; filter: drop-shadow(0 10px 24px rgba(20, 30, 60, .18)); animation: splash-pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.splash-logo .l { stroke-dasharray: 1; stroke-dashoffset: 0; animation: splash-draw .6s .2s cubic-bezier(.5, 0, .3, 1) both; }
+.splash-logo .l2 { animation-delay: .45s; }
+.splash-logo circle { transform-box: fill-box; transform-origin: center; animation: splash-dot .3s cubic-bezier(.2, .9, .3, 1.4) both; }
+.splash-logo .d1 { animation-delay: .15s; } .splash-logo .d2 { animation-delay: .65s; } .splash-logo .d3 { animation-delay: .9s; }
+.splash-title { margin: 0; font-size: 40px; font-weight: 650; letter-spacing: -.02em; animation: splash-up .45s .15s ease both; }
+.splash-tag { margin: 0; font-size: 16px; color: var(--muted); animation: splash-up .45s .25s ease both; }
+:root[lang="fr"] .splash-tag [lang="en"], :root[lang="en"] .splash-tag [lang="fr"] { display: none; }
+.splash-bar { width: 220px; height: 4px; margin-top: 22px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; }
+.splash-bar span { display: block; height: 100%; width: 8%; border-radius: 2px; background: linear-gradient(90deg, #3B6BF0, #1FB59A, #F0A04B); background-size: 220px 100%; transition: width .3s ease; }
+.splash-status { min-height: 18px; font-size: 12.5px; color: var(--muted); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.splash-ver { position: absolute; bottom: 18px; font-size: 11.5px; color: var(--muted); opacity: .7; }
+@keyframes splash-pop { from { opacity: 0; transform: scale(.85); } }
+@keyframes splash-draw { from { stroke-dashoffset: 1; } }
+@keyframes splash-dot { from { transform: scale(0); } }
+@keyframes splash-up { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .splash, .splash * { animation: none !important; transition: none !important; } }

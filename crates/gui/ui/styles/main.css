@@ -1,0 +1,8 @@
+/* Entry point of the styles: one file per area of the interface. */
+@import url("tokens.css");
+@import url("base.css");
+@import url("layout.css");
+@import url("tabs.css");
+@import url("home.css");
+@import url("repo.css");
+@import url("splash.css");

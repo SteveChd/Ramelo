@@ -1,0 +1,39 @@
+/* Repository tabs: the overview first, then one tab per repository, which can be dragged to reorder. */
+
+.tabbar {
+  display: flex; align-items: flex-end; gap: 2px; padding: 6px 10px 0; flex: 0 0 auto;
+  background: var(--bg); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none;
+}
+.tabbar::-webkit-scrollbar { display: none; }
+.tab {
+  position: relative; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 12px;
+  min-width: 0; max-width: 240px; flex: 0 1 auto; border: 1px solid transparent; border-bottom: 0;
+  border-radius: 9px 9px 0 0; background: transparent; color: var(--muted); font-size: 13px; white-space: nowrap;
+}
+.tab:hover { background: var(--hover); color: var(--ink2); }
+.tab[aria-selected="true"] {
+  background: var(--panel); color: var(--ink); border-color: var(--border); font-weight: 600;
+  margin-bottom: -1px; height: 37px;
+}
+.tab .name { overflow: hidden; text-overflow: ellipsis; }
+.tab .state-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.tab .state-dot.dirty { background: var(--modified); }
+.tab .state-dot.conflict { background: var(--conflict); }
+.tab .state-dot.error { background: var(--err); }
+.tab .close {
+  width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; opacity: 0; flex: 0 0 auto;
+}
+.tab:hover .close, .tab[aria-selected="true"] .close { opacity: 1; }
+.tab .close:hover { background: var(--hover); color: var(--ink); }
+.tab.home { padding: 0 12px; flex: 0 0 auto; }
+.tab.dragging { opacity: .85; box-shadow: var(--shadow); z-index: 2; background: var(--panel); }
+.tabbar.reordering .tab { transition: transform .12s ease; }
+.tabbar.reordering .tab.dragging { transition: none; }
+.tabbar .add-tab { margin: 0 0 4px 4px; width: 28px; height: 28px; flex: 0 0 auto; }
+
+.avatar {
+  width: 18px; height: 18px; border-radius: 5px; flex: 0 0 auto; display: inline-grid; place-items: center;
+  color: #FFFFFF; font-size: 11px; font-weight: 700; text-transform: uppercase; line-height: 1;
+}
+.avatar.large { width: 40px; height: 40px; border-radius: 10px; font-size: 19px; }

@@ -1,0 +1,15 @@
+[package]
+name = "gitcontroller-storage"
+description = "GitController: the user's workspace (repositories, open tabs) and settings on disk"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

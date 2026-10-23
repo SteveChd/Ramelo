@@ -1,0 +1,22 @@
+[package]
+name = "gitcontroller"
+description = "GitController, desktop application (Tauri)"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+gitcontroller-core.workspace = true
+gitcontroller-storage.workspace = true
+open = "5"
+rfd = "0.15"
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2", features = [] }
+
+[dev-dependencies]
+tempfile.workspace = true

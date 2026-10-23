@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/storage", "crates/gui"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Steve Chadaud"]
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+gitcontroller-core = { path = "crates/core" }
+gitcontroller-storage = { path = "crates/storage" }
+dunce = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tempfile = "3"
+
+[profile.release]
+lto = "thin"

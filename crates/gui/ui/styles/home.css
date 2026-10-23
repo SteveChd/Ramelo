@@ -1,0 +1,52 @@
+/* Overview of all repositories: one card per repository, with what needs attention at a glance. */
+
+.home { flex: 1 1 auto; overflow: auto; padding: 24px 28px 32px; }
+.home-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.home-head h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.home-head .count { color: var(--muted); font-size: 13px; }
+.home-head input[type="search"] {
+  height: 32px; width: 220px; border: 1px solid var(--ctl); background: var(--panel); border-radius: var(--radius-sm);
+  padding: 0 10px; outline: none; user-select: text;
+}
+.home-head input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.card {
+  position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; text-align: left;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0;
+  transition: border-color .12s, box-shadow .12s;
+}
+.card:hover { border-color: var(--ctl); box-shadow: 0 4px 14px rgba(21, 23, 28, .07); }
+.card.attention { border-left: 3px solid var(--conflict); }
+.card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card-title { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.card-title .name { font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-title .path { font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.card-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.card:hover .card-actions, .card:focus-within .card-actions { opacity: 1; }
+.card-actions .icon-btn { width: 28px; height: 28px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.last-commit { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; min-width: 0; }
+.last-commit .summary { color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.last-commit .meta { flex: 0 0 auto; white-space: nowrap; }
+.card .error-text { font-size: 12.5px; color: var(--err); }
+.card-open { position: absolute; inset: 0; border: 0; background: transparent; border-radius: var(--radius); }
+.card-head, .badges, .last-commit, .error-text { position: relative; pointer-events: none; }
+.card-actions { pointer-events: auto; }
+
+.empty {
+  flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  text-align: center; padding: 40px;
+}
+.empty .logo { width: 64px; height: 64px; margin: 0 0 6px; }
+.empty h2 { margin: 0; font-size: 22px; font-weight: 650; }
+.empty p { margin: 0; max-width: 460px; color: var(--muted); }
+.empty .btn { margin-top: 8px; }
+.no-match { color: var(--muted); padding: 30px 0; text-align: center; }
+
+/* Folders dragged over the window */
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border: 3px dashed var(--accent);
+  color: var(--a-ink); font-size: 18px; font-weight: 600;
+}

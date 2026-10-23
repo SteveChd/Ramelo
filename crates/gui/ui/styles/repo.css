@@ -1,0 +1,35 @@
+/* One repository: its header (branch, upstream, last commit) and the files of the working copy. */
+
+.repo { flex: 1 1 auto; overflow: auto; padding: 22px 28px 32px; display: flex; flex-direction: column; gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+.repo-head { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.repo-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.repo-title h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-title .path { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-title .names { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.repo-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; }
+.repo-facts dt { color: var(--muted); }
+.repo-facts dd { margin: 0; color: var(--ink2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.op-banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px;
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
+}
+.op-banner svg { color: var(--warn); flex: 0 0 auto; }
+
+.changes { display: flex; flex-direction: column; min-height: 0; }
+.changes-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.changes-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.group-title { padding: 10px 16px 4px; }
+.file { display: flex; align-items: center; gap: 10px; padding: 4px 16px; font-size: 13px; min-width: 0; }
+.file:nth-child(even) { background: var(--row-alt); }
+.file .kind { width: 18px; font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: center; flex: 0 0 auto; }
+.file .path { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.file .from { color: var(--muted); }
+.kind.added { color: var(--added); } .kind.modified, .kind.typeChanged { color: var(--modified); }
+.kind.deleted { color: var(--deleted); } .kind.renamed, .kind.copied { color: var(--renamed); }
+.kind.untracked { color: var(--untracked); } .kind.conflicted { color: var(--conflict); }
+.clean-state { padding: 28px 16px; text-align: center; color: var(--muted); }
+.clean-state svg { color: var(--ok); display: block; margin: 0 auto 8px; }
+.truncated { padding: 8px 16px 12px; }
+.repo-error { padding: 18px; color: var(--err); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }

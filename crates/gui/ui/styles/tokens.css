@@ -1,0 +1,87 @@
+/* Design tokens: colours, typography, radii. Shared with Waypoint and Spektra to keep the same identity. */
+
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", ui-monospace, monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --accent: #2450D8;
+  --accent-hover: #1D44BC;
+  --on-accent: #FFFFFF;
+
+  --bg: #F2F3F5;
+  --panel: #FFFFFF;
+  --border: #E1E3E8;
+  --ctl: #D3D6DD;
+  --ink: #15171C;
+  --ink2: #3A3F4B;
+  --muted: #565C6B;
+  --soft: #F2F3F5;
+  --hover: rgba(21, 23, 28, 0.06);
+  --row-alt: #F7F8FA;
+  --sel: #F2F5FD;
+  --a-soft: #E8EEFC;
+  --a-ink: #173A9E;
+  --menu-bg: #FFFFFF;
+  --shadow: 0 12px 32px rgba(21, 23, 28, 0.16), 0 2px 6px rgba(21, 23, 28, 0.06);
+  --ok: #0D7A64;
+  --err: #B42318;
+  --warn: #B26A00;
+  --logo-bg: #15171C; --logo-ink: #FFFFFF;
+
+  /* Kinds of change */
+  --added: #0D7A64;
+  --modified: #B26A00;
+  --deleted: #B42318;
+  --renamed: #2450D8;
+  --untracked: #6B7282;
+  --conflict: #C11574;
+
+  /* Palette of the repository avatars */
+  --c-blue: #2450D8;
+  --c-teal: #18A08A;
+  --c-amber: #E08A1E;
+  --c-red: #D9485F;
+  --c-violet: #7A4FD0;
+  --c-slate: #5B6475;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --accent: #3B66E6;
+  --accent-hover: #4F76EC;
+  --bg: #0F1115;
+  --panel: #181B21;
+  --border: #2A2E37;
+  --ctl: #363B46;
+  --ink: #E8EAEE;
+  --ink2: #C9CED8;
+  --muted: #A3A9B6;
+  --soft: #22262E;
+  --hover: rgba(255, 255, 255, 0.07);
+  --row-alt: #1D2026;
+  --sel: #1D2540;
+  --a-soft: #1E2A4D;
+  --a-ink: #B3C4F8;
+  --menu-bg: #1F232A;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --ok: #2BB59A;
+  --err: #F97066;
+  --warn: #F0A04B;
+  --logo-bg: #E8EAEE; --logo-ink: #15171C;
+
+  --added: #2BB59A;
+  --modified: #F0A04B;
+  --deleted: #F97066;
+  --renamed: #7D9BF2;
+  --untracked: #8A93A6;
+  --conflict: #F06BB0;
+
+  --c-blue: #4F76EC;
+  --c-teal: #2BB59A;
+  --c-amber: #F0A04B;
+  --c-red: #F06A7E;
+  --c-violet: #9A75E6;
+  --c-slate: #8A93A6;
+  color-scheme: dark;
+}
