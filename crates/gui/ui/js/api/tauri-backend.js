@@ -22,6 +22,36 @@ export const selectRepository = (path) => invoke('select_repository', { path });
 export const reorderRepository = (path, index) => invoke('reorder_repository', { path, index });
 export const openFolder = (path) => invoke('open_folder', { path });
 
+// ---------- One repository ----------
+/** { rows: [{ oid, parents, author, email, time, summary, refs, graph }], width, hasMore }. */
+export const history = (path, limit) => invoke('history', { path, limit });
+/** { oid, parents, author, email, time, committer, commitTime, message, files: [FileDiff] }. */
+export const commitDetails = (path, oid) => invoke('commit_details', { path, oid });
+export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
+/** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */
+export const fileDiff = (path, file, staged, untracked) => invoke('file_diff', { path, file, staged, untracked });
+export const stage = (path, files) => invoke('stage', { path, files });
+export const stageAll = (path) => invoke('stage_all', { path });
+export const unstage = (path, files) => invoke('unstage', { path, files });
+export const unstageAll = (path) => invoke('unstage_all', { path });
+export const discard = (path, tracked, untracked) => invoke('discard', { path, tracked, untracked });
+/** `action`: 'stage' | 'unstage' | 'discard'; `header`: the hunk as shown, checked by the backend. */
+export const applyHunk = (path, file, untracked, index, header, action) => invoke('apply_hunk', { path, file, untracked, index, header, action });
+/** Returns { snapshot, oid }. */
+export const commit = (path, message, amend, stageAll) => invoke('commit', { path, message, amend, stageAll });
+export const lastMessage = (path) => invoke('last_message', { path });
+/** { local: [Branch], remote: [Branch], tags: [{ name, oid }] }. */
+export const branches = (path) => invoke('branches', { path });
+/** Returns { snapshot, carried: 'nothing' | 'reapplied' | 'conflicted' }. */
+export const switchBranch = (path, target, carryChanges) => invoke('switch_branch', { path, target, carryChanges });
+export const createBranch = (path, name, start, checkout) => invoke('create_branch', { path, name, start, checkout });
+export const deleteBranch = (path, name, force) => invoke('delete_branch', { path, name, force });
+export const fetch = (path) => invoke('fetch', { path });
+/** `mode`: 'auto' | 'rebase' | 'merge'. Returns { snapshot, outcome: { kind, commits } }. */
+export const pull = (path, mode) => invoke('pull', { path, mode });
+/** Returns { snapshot, outcome: { remote, branch, upstreamSet } }. */
+export const push = (path, force) => invoke('push', { path, force });
+
 // ---------- Window and settings ----------
 export const setLanguage = (language) => invoke('set_language', { language });
 /** Shows the window, created hidden, once the splash screen is drawn. */

@@ -1,0 +1,29 @@
+/* Diff of a file: header with the file's actions, then the hunks with old and new line numbers. */
+
+.diff { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.diff-head {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--border); flex: 0 0 auto;
+}
+.diff-head .path { font-family: var(--mono); font-size: 13px; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.diff-head .path .from { color: var(--muted); font-weight: 400; }
+.diff-head .side-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.diff-head .stats { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.diff-head .stats .add { color: var(--added); } .diff-head .stats .del { color: var(--deleted); }
+.diff-head .btn { height: 28px; font-size: 12.5px; }
+.diff-body { flex: 1 1 auto; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 20px; }
+.hunk-head {
+  display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; height: 30px; position: sticky; left: 0;
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel)); color: var(--muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.hunk-head .h { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hunk-head .btn { height: 22px; padding: 0 8px; font-size: 11.5px; font-family: var(--font); }
+.dline { display: grid; grid-template-columns: 52px 52px 18px 1fr; min-width: max-content; }
+.dline .no { text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; user-select: none; }
+.dline .sign { text-align: center; user-select: none; color: var(--muted); }
+.dline .code { white-space: pre; padding-right: 20px; user-select: text; tab-size: 4; }
+.dline.added { background: color-mix(in srgb, var(--added) 13%, transparent); }
+.dline.added .sign { color: var(--added); }
+.dline.deleted { background: color-mix(in srgb, var(--deleted) 12%, transparent); }
+.dline.deleted .sign { color: var(--deleted); }
+.dline.noNewline .code { color: var(--muted); font-style: italic; }
+.diff-note { padding: 30px; text-align: center; color: var(--muted); font-family: var(--font); font-size: 13px; }

@@ -117,6 +117,16 @@ export const store = {
     await run(() => backend.openFolder(path));
   },
 
+  /** A command of the repository view returned a new snapshot. */
+  applySnapshot(snapshot) {
+    apply(snapshot);
+  },
+
+  /** Shows a message to the user (`error`: a failure, shown longer). */
+  notify(message, error = false) {
+    emit(error ? 'error' : 'notice', message);
+  },
+
   setSearch(text) {
     state.ui.search = text;
     emit('ui');

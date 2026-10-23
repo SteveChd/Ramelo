@@ -6,8 +6,10 @@
 use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::io::Write;
+use std::process::{Command, Output, Stdio};
 
+use crate::error::classify;
 use crate::GitError;
 
 /// The git executable used for every operation.
@@ -43,12 +45,12 @@ impl Git {
         S: AsRef<OsStr>,
     {
         let args: Vec<S> = args.into_iter().collect();
-        let out = self.raw(dir, &args)?;
-        if out.status.success() {
-            Ok(out.stdout)
-        } else {
-            Err(GitError::Failed { command: describe(&args), message: failure_message(&out) })
-        }
+        checked(&args, self.raw(dir, &args)?)
+    }
+
+    /// Like [`Git::output`], with `input` sent to git's standard input (a patch, a commit message…).
+    pub fn output_with_input<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], input: &[u8]) -> Result<Vec<u8>, GitError> {
+        checked(args, self.run(dir, args, Some(input))?)
     }
 
     /// Like [`Git::output`], decoded as UTF-8 (invalid bytes are replaced).
@@ -62,6 +64,10 @@ impl Git {
 
     /// Runs git and returns the whole result, whatever the exit code.
     pub fn raw<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S]) -> Result<Output, GitError> {
+        self.run(dir, args, None)
+    }
+
+    fn run<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], input: Option<&[u8]>) -> Result<Output, GitError> {
         let mut command = Command::new(&self.program);
         command
             .current_dir(dir)
@@ -72,13 +78,37 @@ impl Git {
             // Reading the state must not take the index lock away from the user's other tools.
             .env("GIT_OPTIONAL_LOCKS", "0")
             .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
-            .args(args);
+            .args(args)
+            // Without a terminal, ssh and editors fail at once instead of waiting for an answer.
+            .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         hide_console(&mut command);
-        command.output().map_err(|source| match source.kind() {
+        let spawn_error = |source: std::io::Error| match source.kind() {
             ErrorKind::NotFound if dir.exists() => GitError::GitNotFound,
             ErrorKind::NotFound => GitError::PathMissing(dir.to_path_buf()),
             _ => GitError::Io { path: dir.to_path_buf(), source },
-        })
+        };
+        let mut child = command.spawn().map_err(spawn_error)?;
+        if let Some(input) = input {
+            let mut stdin = child.stdin.take().expect("stdin is piped");
+            // Written from another thread: a large input could otherwise fill the pipe while git
+            // waits for us to read its output.
+            let input = input.to_vec();
+            std::thread::spawn(move || {
+                let _ = stdin.write_all(&input);
+            });
+        }
+        child.wait_with_output().map_err(|source| GitError::Io { path: dir.to_path_buf(), source })
+    }
+}
+
+fn checked<S: AsRef<OsStr>>(args: &[S], out: Output) -> Result<Vec<u8>, GitError> {
+    if out.status.success() {
+        Ok(out.stdout)
+    } else {
+        let all = format!("{}\n{}", String::from_utf8_lossy(&out.stderr), String::from_utf8_lossy(&out.stdout));
+        Err(classify(describe(args), failure_message(&out), &all))
     }
 }
 
@@ -100,7 +130,10 @@ fn describe<S: AsRef<OsStr>>(args: &[S]) -> String {
 /// The most useful line of git's error output: « fatal: … » or « error: … » when there is one.
 fn failure_message(out: &Output) -> String {
     let stderr = String::from_utf8_lossy(&out.stderr);
-    let lines: Vec<&str> = stderr.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    // Some commands (`commit` with nothing to commit) only explain themselves on standard output.
+    let text = if stderr.trim().is_empty() { &stdout } else { &stderr };
+    let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
     let message = lines
         .iter()
         .find(|l| l.starts_with("fatal:") || l.starts_with("error:"))

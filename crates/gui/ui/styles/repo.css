@@ -1,35 +1,114 @@
-/* One repository: its header (branch, upstream, last commit) and the files of the working copy. */
+/* One repository: toolbar, branches on the left, graph or diff in the centre, working copy or commit
+   details on the right. */
 
-.repo { flex: 1 1 auto; overflow: auto; padding: 22px 28px 32px; display: flex; flex-direction: column; gap: 16px; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
-.repo-head { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-.repo-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.repo-title h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.repo-title .path { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.repo-title .names { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
-.repo-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; }
-.repo-facts dt { color: var(--muted); }
-.repo-facts dd { margin: 0; color: var(--ink2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.repo-toolbar {
+  display: flex; align-items: center; gap: 6px; padding: 8px 12px; flex: 0 0 auto;
+  background: var(--panel); border-bottom: 1px solid var(--border);
+}
+.repo-toolbar .vsep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.tool {
+  height: 34px; min-width: 54px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink2);
+  display: inline-flex; align-items: center; gap: 7px; font-size: 13px; position: relative;
+}
+.tool:hover { background: var(--hover); }
+.tool:disabled { opacity: .45; cursor: default; background: transparent; }
+.tool .count { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: var(--a-soft); color: var(--a-ink); line-height: 17px; }
+.tool.running svg { animation: spin .9s linear infinite; }
+.repo-toolbar .current {
+  display: flex; align-items: center; gap: 8px; min-width: 0; margin-right: 8px; font-weight: 650; font-size: 14px;
+}
+.repo-toolbar .current .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-toolbar .current .upstream { font-weight: 400; color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 .op-banner {
-  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px;
-  background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: 13px; flex: 0 0 auto;
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
 }
 .op-banner svg { color: var(--warn); flex: 0 0 auto; }
 
-.changes { display: flex; flex-direction: column; min-height: 0; }
-.changes-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-.changes-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
-.group-title { padding: 10px 16px 4px; }
-.file { display: flex; align-items: center; gap: 10px; padding: 4px 16px; font-size: 13px; min-width: 0; }
-.file:nth-child(even) { background: var(--row-alt); }
-.file .kind { width: 18px; font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: center; flex: 0 0 auto; }
-.file .path { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
-.file .from { color: var(--muted); }
+.repo-main { flex: 1 1 auto; display: grid; grid-template-columns: 230px minmax(0, 1fr) 380px; min-height: 0; }
+.repo-main > * { min-height: 0; min-width: 0; }
+.center { display: flex; flex-direction: column; background: var(--panel); }
+.side { border-left: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+
+/* ---------- Branches ---------- */
+.sidebar { border-right: 1px solid var(--border); background: var(--bg); overflow: auto; padding: 8px 0 16px; }
+.sb-section { margin-bottom: 6px; }
+.sb-head {
+  display: flex; align-items: center; gap: 6px; width: 100%; height: 30px; padding: 0 8px 0 12px; border: 0; background: transparent;
+  font-size: 11.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: left;
+}
+.sb-head .chev { transition: transform .12s; flex: 0 0 auto; }
+.sb-head[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.sb-head .n { font-weight: 500; letter-spacing: 0; }
+.sb-title { display: flex; align-items: center; padding-right: 8px; }
+.icon-btn.small { width: 24px; height: 24px; border-radius: 6px; }
+.sb-group { padding: 4px 12px 2px 26px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.sb-item {
+  display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 6px 0 24px; font-size: 13px; color: var(--ink2);
+  cursor: default; position: relative;
+}
+.sb-item.nested { padding-left: 38px; }
+.sb-item:hover { background: var(--hover); }
+.sb-item.head { color: var(--ink); font-weight: 650; }
+.sb-item.head::before { content: ""; position: absolute; left: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.sb-item .lbl { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-item .track { font-size: 11px; color: var(--muted); white-space: nowrap; display: inline-flex; gap: 4px; }
+.sb-item .track .up { color: var(--ok); } .sb-item .track .down { color: var(--accent); }
+.sb-item .gone { font-size: 11px; color: var(--err); }
+.sb-item .acts { display: none; gap: 0; }
+.sb-item:hover .acts { display: inline-flex; }
+.sb-item:hover .track { display: none; }
+.sb-item .acts .icon-btn { width: 24px; height: 24px; border-radius: 6px; }
+.sb-empty { padding: 2px 12px 6px 26px; font-size: 12px; color: var(--muted); }
+
+/* ---------- Right panel: working copy ---------- */
+.side-scroll { flex: 1 1 auto; overflow: auto; }
+.side-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+.side-head h3 { margin: 0; font-size: 14px; font-weight: 650; flex: 1 1 auto; }
+.fgroup-head { display: flex; align-items: center; gap: 6px; padding: 10px 14px 4px; }
+.fgroup-head .section-title { flex: 1 1 auto; }
+.fgroup-head .btn { height: 24px; padding: 0 8px; font-size: 12px; }
+.frow {
+  display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 14px; font-size: 13px; cursor: default; min-width: 0;
+}
+.frow:hover { background: var(--hover); }
+.frow.open { background: var(--sel); }
+.frow .kind { width: 16px; font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: center; flex: 0 0 auto; }
+.frow .name { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frow .dir { flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.frow .stats { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+.frow .stats .add { color: var(--added); } .frow .stats .del { color: var(--deleted); }
+.frow .acts { display: none; }
+.frow:hover .acts { display: inline-flex; }
+.frow .acts .icon-btn { width: 24px; height: 24px; border-radius: 6px; }
 .kind.added { color: var(--added); } .kind.modified, .kind.typeChanged { color: var(--modified); }
 .kind.deleted { color: var(--deleted); } .kind.renamed, .kind.copied { color: var(--renamed); }
 .kind.untracked { color: var(--untracked); } .kind.conflicted { color: var(--conflict); }
-.clean-state { padding: 28px 16px; text-align: center; color: var(--muted); }
-.clean-state svg { color: var(--ok); display: block; margin: 0 auto 8px; }
-.truncated { padding: 8px 16px 12px; }
-.repo-error { padding: 18px; color: var(--err); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.side .clean-state { padding: 26px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.side .clean-state svg { color: var(--ok); display: block; margin: 0 auto 8px; }
+.side .truncated { padding: 6px 14px; }
+
+.commit-box { border-top: 1px solid var(--border); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.commit-box .summary-wrap { position: relative; }
+.commit-box .summary-wrap input { padding-right: 40px; font-weight: 600; }
+.commit-box .counter { position: absolute; right: 10px; top: 9px; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.commit-box .counter.long { color: var(--warn); }
+.commit-box textarea { height: 72px; padding: 8px 10px; resize: vertical; line-height: 1.45; font: inherit; }
+.commit-box .row { display: flex; align-items: center; gap: 8px; }
+.commit-box .row .btn.primary { flex: 1 1 auto; justify-content: center; height: 36px; }
+
+/* ---------- Right panel: commit details ---------- */
+.details { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.details .msg-summary { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.35; user-select: text; }
+.details .msg-body { margin: 0; white-space: pre-wrap; font-size: 13px; color: var(--ink2); line-height: 1.5; user-select: text; font-family: inherit; }
+.details dl { display: grid; grid-template-columns: max-content 1fr; gap: 5px 12px; margin: 0; font-size: 12.5px; }
+.details dt { color: var(--muted); }
+.details dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.details .oid { font-family: var(--mono); }
+.details .link { border: 0; background: none; padding: 0; color: var(--accent); font-family: var(--mono); font-size: 12.5px; }
+.details .link:hover { text-decoration: underline; }
+.details .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.details .actions .btn { height: 28px; font-size: 12.5px; }
+.loading { padding: 20px 14px; color: var(--muted); font-size: 13px; }

@@ -8,7 +8,7 @@ import { currentTheme, toggleTheme } from './theme.js';
 
 const MENUS = [
   { label: 'menu.file', items: ['repo.add', '-', 'repo.openFolder', 'repo.remove'] },
-  { label: 'menu.repository', items: ['repo.refresh', 'repo.refreshAll'] },
+  { label: 'menu.repository', items: ['repo.fetch', 'repo.pull', 'repo.push', '-', 'repo.newBranch', 'repo.stageAll', '-', 'repo.refresh', 'repo.refreshAll'] },
   { label: 'menu.view', items: ['view.home', 'view.nextTab', 'view.prevTab', '-', 'view.theme'] },
 ];
 

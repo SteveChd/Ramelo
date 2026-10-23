@@ -3,6 +3,7 @@
 
 import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
+import { repoStore } from '../state/repo-store.js';
 import { store } from '../state/store.js';
 
 const hasActive = () => store.activeRepo !== null;
@@ -32,6 +33,12 @@ const ACTIONS = {
   'view.nextTab': { key: 'Ctrl+Tab', enabled: hasRepos, run: () => cycleTab(1) },
   'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasRepos, run: () => cycleTab(-1) },
   'view.theme': { run: () => toggleTheme() },
+  'repo.fetch': { key: 'Ctrl+Shift+F', enabled: () => Boolean(store.activeRepo?.summary?.remotes.length), run: () => repoStore.fetch() },
+  'repo.pull': { key: 'Ctrl+Shift+L', enabled: () => Boolean(store.activeRepo?.summary?.upstream), run: () => repoStore.pull() },
+  'repo.push': { key: 'Ctrl+Shift+P', enabled: () => Boolean(store.activeRepo?.summary?.head.branch), run: () => repoStore.push() },
+  'repo.newBranch': { key: 'Ctrl+B', enabled: hasActive, run: () => repoStore.createBranch() },
+  'repo.stageAll': { key: 'Ctrl+Shift+S', enabled: hasActive, run: () => repoStore.stageAll() },
+  'repo.closeDiff': { key: 'Escape', hidden: true, enabled: () => Boolean(repoStore.state.diff), run: () => repoStore.closeDiff() },
 };
 
 // Ctrl+2 … Ctrl+9: the repository tabs, as in a browser.

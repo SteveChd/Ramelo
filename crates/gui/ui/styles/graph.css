@@ -1,0 +1,37 @@
+/* Commit graph: one row per commit, its lane drawn in SVG, then references, message, author, date. */
+
+.graph { flex: 1 1 auto; overflow: auto; position: relative; }
+.graph-head, .grow {
+  display: grid; grid-template-columns: var(--graph-w) minmax(0, 1fr) 150px 110px 72px; align-items: center;
+}
+.graph-head {
+  position: sticky; top: 0; z-index: 2; height: 30px; background: var(--panel); border-bottom: 1px solid var(--border);
+  font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.graph-head > span { padding: 0 10px; }
+.grow { height: 28px; font-size: 13px; cursor: default; }
+.grow:hover { background: var(--hover); }
+.grow.selected { background: var(--sel); box-shadow: inset 3px 0 0 var(--accent); }
+.grow svg { display: block; overflow: visible; }
+.grow .msg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 10px 0 4px; }
+.grow .msg .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.grow .author, .grow .date, .grow .sha { padding: 0 10px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grow .sha { font-family: var(--mono); font-size: 11.5px; }
+.grow.wip .text { color: var(--muted); font-style: italic; }
+.grow.merge .text { color: var(--muted); }
+
+.ref {
+  height: 20px; padding: 0 7px; border-radius: 5px; font-size: 11.5px; font-weight: 600; flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 4px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid color-mix(in srgb, var(--lane) 45%, transparent); background: color-mix(in srgb, var(--lane) 14%, var(--panel)); color: var(--ink);
+}
+.ref.head { background: var(--lane); color: #FFFFFF; border-color: transparent; }
+.ref.tag { border-style: dashed; background: transparent; color: var(--ink2); }
+.ref.remote { color: var(--ink2); font-weight: 500; }
+.ref svg { flex: 0 0 auto; }
+.load-more { display: flex; justify-content: center; padding: 12px; }
+.graph-empty { padding: 40px; text-align: center; color: var(--muted); }
+
+/* Colours of the lines of history, cycled. */
+:root { --g0: #3B6BF0; --g1: #18A08A; --g2: #E08A1E; --g3: #D9485F; --g4: #7A4FD0; --g5: #0B9BC2; --g6: #C2559D; --g7: #6E8F1E; }
+:root[data-theme="dark"] { --g0: #6A8EF5; --g1: #2BB59A; --g2: #F0A04B; --g3: #F06A7E; --g4: #9A75E6; --g5: #3CC0E0; --g6: #E07BBE; --g7: #9CC24A; }

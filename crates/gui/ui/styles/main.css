@@ -5,4 +5,7 @@
 @import url("tabs.css");
 @import url("home.css");
 @import url("repo.css");
+@import url("graph.css");
+@import url("diff.css");
+@import url("dialog.css");
 @import url("splash.css");

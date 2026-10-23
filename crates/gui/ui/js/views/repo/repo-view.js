@@ -1,85 +1,103 @@
-// One repository: branch and upstream, operation in progress, last commit, and the files of the
-// working copy grouped by what has to be done with them.
+// One repository, in the style of a desktop git client: toolbar on top, branches on the left, the
+// commit graph (or the diff of a file) in the centre, and on the right the working copy with the
+// commit box, or the details of the selected commit.
+//
+// The layout is built once per repository; each part is then drawn again only when what it shows
+// changes, so that scrolling and typing are never interrupted.
 
-import { repoBadges } from '../../components/badges.js';
-import { avatar } from '../../components/tabbar.js';
-import { describeError } from '../../app/errors.js';
-import { t, tn } from '../../i18n/i18n.js';
+import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
-import { fullDate, relativeTime } from '../../lib/time.js';
+import { describeError } from '../../app/errors.js';
+import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
+import { renderDetailsPanel } from './details-panel.js';
+import { renderDiff } from './diff-view.js';
+import { renderGraph, updateGraphSelection } from './graph.js';
+import { renderSidebar } from './sidebar.js';
+import { renderToolbar } from './toolbar.js';
+import { renderWipPanel, updateWipRunning } from './wip-panel.js';
 
-/** Letter shown for each kind of change, as in `git status --short`. */
-const LETTERS = {
-  modified: 'M', typeChanged: 'T', added: 'A', deleted: 'D', renamed: 'R', copied: 'C', untracked: '?', conflicted: '!',
-};
+let view = null;
 
-const GROUPS = [
-  { key: 'conflicts', test: (f) => f.index === 'conflicted', kind: (f) => f.index },
-  { key: 'staged', test: (f) => !['unmodified', 'untracked', 'ignored', 'conflicted'].includes(f.index), kind: (f) => f.index },
-  { key: 'unstaged', test: (f) => ['modified', 'typeChanged', 'deleted'].includes(f.worktree), kind: (f) => f.worktree },
-  { key: 'untracked', test: (f) => f.worktree === 'untracked', kind: (f) => f.worktree },
-];
-
-function fileRow(file, kind) {
-  return h('div', { class: 'file' },
-    h('span', { class: `kind ${kind}`, title: t(`change.${kind}`) }, LETTERS[kind] ?? '·'),
-    h('span', { class: 'path', title: file.path },
-      file.origPath && h('span', { class: 'from' }, `${file.origPath} → `),
-      file.path));
+function build(container, repo) {
+  const parts = {
+    toolbar: h('div', { class: 'repo-toolbar' }),
+    banner: h('div', { class: 'op-banner', hidden: true }),
+    sidebar: h('aside', { class: 'sidebar', 'aria-label': t('branch.aria') }),
+    center: h('section', { class: 'center' }),
+    graph: h('div', { class: 'graph' }),
+    side: h('aside', { class: 'side' }),
+  };
+  const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, h('div', { class: 'repo-main' }, parts.sidebar, parts.center, parts.side));
+  mount(container, root);
+  view = { path: repo.path, root, ...parts };
 }
 
-function changesPanel(s) {
-  const head = h('div', { class: 'changes-head' },
-    h('h3', {}, t('repo.workingCopy')),
-    h('span', { class: 'hint' }, s.fileCount ? tn('badge.changes', s.fileCount) : ''));
-  if (!s.fileCount) {
-    return h('section', { class: 'panel changes' }, head,
-      h('div', { class: 'clean-state' }, icon('check', 28), t('repo.clean')));
+function renderBanner(repo) {
+  const operation = repo.summary?.operation;
+  view.banner.hidden = !operation;
+  if (operation) mount(view.banner, icon('warning', 18), t(`repo.inProgress.${operation}`));
+}
+
+function renderCenter(repo) {
+  if (repoStore.state.diff) {
+    renderDiff(view.center);
+    return;
   }
-  const groups = GROUPS.map((group) => {
-    const files = s.files.filter(group.test);
-    if (!files.length) return null;
-    return [
-      h('div', { class: 'group-title section-title' }, `${t(`repo.groups.${group.key}`)} · ${files.length}`),
-      h('div', {}, files.map((f) => fileRow(f, group.kind(f)))),
-    ];
-  });
-  return h('section', { class: 'panel changes' }, head, groups,
-    s.files.length < s.fileCount && h('div', { class: 'truncated hint' }, t('repo.truncated', { shown: s.files.length, total: s.fileCount })));
+  // The graph keeps its element (and its scroll position) when the diff closes.
+  if (view.center.firstChild !== view.graph) mount(view.center, view.graph);
+  renderGraph(view.graph, repo);
 }
 
-function facts(s) {
-  const rows = [
-    [t('repo.upstream'), s.upstream ?? t('repo.none')],
-    [t('repo.remotes'), s.remotes.length ? s.remotes.join(', ') : t('repo.none')],
-    [t('repo.lastCommit'), s.lastCommit
-      ? h('span', { title: fullDate(s.lastCommit.time) },
-        h('span', { class: 'mono' }, s.lastCommit.oid.slice(0, 7)), ` ${s.lastCommit.summary} · ${s.lastCommit.author} · ${relativeTime(s.lastCommit.time)}`)
-      : t('repo.noCommit')],
-  ];
-  return h('dl', { class: 'repo-facts' }, rows.map(([term, value]) => [h('dt', {}, term), h('dd', {}, value)]));
+function renderSide(repo) {
+  if (repoStore.state.selection === 'wip') renderWipPanel(view.side, repo);
+  else renderDetailsPanel(view.side);
+}
+
+function renderError(container, repo) {
+  view = null;
+  mount(container, h('div', { class: 'empty' },
+    icon('warning', 40),
+    h('h2', {}, repo.name),
+    h('p', {}, describeError(repo.error)),
+    h('button', { type: 'button', class: 'btn', onclick: () => store.remove(repo.path) }, icon('close', 15), t('action.repo.remove'))));
 }
 
 export function renderRepo(container, repo) {
-  const s = repo.summary;
-  const header = h('section', { class: 'panel repo-head' },
-    h('div', { class: 'repo-title' },
-      avatar(repo.name, 'avatar large'),
-      h('div', { class: 'names' }, h('h2', {}, repo.name), h('span', { class: 'path', title: repo.path }, repo.path)),
-      h('button', { type: 'button', class: 'btn', onclick: () => store.openFolder(repo.path) }, icon('folder', 15), t('action.repo.openFolder')),
-      h('button', { type: 'button', class: 'btn', onclick: () => store.refresh(repo.path) }, icon('refresh', 15), t('action.repo.refresh'))),
-    h('div', { class: 'badges' }, repoBadges(repo)),
-    s?.operation && h('div', { class: 'op-banner' }, icon('warning', 18), t(`repo.inProgress.${s.operation}`)),
-    s && facts(s),
-  );
   if (repo.error) {
-    mount(container, h('div', { class: 'repo' }, header,
-      h('section', { class: 'panel repo-error' },
-        h('div', {}, describeError(repo.error)),
-        h('button', { type: 'button', class: 'btn', onclick: () => store.remove(repo.path) }, icon('close', 15), t('action.repo.remove')))));
+    renderError(container, repo);
     return;
   }
-  mount(container, h('div', { class: 'repo' }, header, s && changesPanel(s)));
+  const fresh = !view || view.path !== repo.path || !container.contains(view.root);
+  if (fresh) build(container, repo);
+  if (fresh && repoStore.state.path !== repo.path) repoStore.open(repo.path);
+  else repoStore.workspaceChanged();
+  renderToolbar(view.toolbar, repo);
+  renderBanner(repo);
+  renderSidebar(view.sidebar);
+  renderCenter(repo);
+  renderSide(repo);
 }
+
+repoStore.subscribe((topic) => {
+  const repo = store.activeRepo;
+  if (!view || !repo || repo.path !== view.path) return;
+  if (topic === 'history') renderCenter(repo);
+  if (topic === 'refs') renderSidebar(view.sidebar);
+  if (topic === 'selection') {
+    renderSide(repo);
+    if (repoStore.state.diff) renderCenter(repo);
+    else updateGraphSelection(view.graph);
+  }
+  if (topic === 'details') renderSide(repo);
+  if (topic === 'diff') {
+    renderCenter(repo);
+    renderSide(repo);
+  }
+  if (topic === 'running') {
+    renderToolbar(view.toolbar, repo);
+    updateWipRunning(repo);
+  }
+  if (topic === 'draft') renderSide(repo);
+});
