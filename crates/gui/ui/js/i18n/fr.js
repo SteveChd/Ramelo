@@ -26,7 +26,8 @@ export default {
 
   'tabs.overview': 'Vue d\'ensemble',
   'tabs.overviewHint': 'Tous tes dépôts d\'un coup d\'œil',
-  'tabs.close': 'Retirer de l\'espace de travail (le dossier est conservé)',
+  'tabs.close': 'Fermer l\'onglet (le dépôt reste dans la vue d\'ensemble)',
+  'action.repo.closeTab': 'Fermer l\'onglet',
 
   'home.title': 'Dépôts',
   'home.emptyTitle': 'Ajoute ton premier dépôt',

@@ -105,12 +105,22 @@ pub fn remove_repository(state: State<'_, AppState>, path: String) -> CommandRes
     Ok(state.snapshot())
 }
 
-/// Shows a repository (`None`: the overview of all repositories). Its state is read again, so that a
-/// tab always opens on fresh information.
+/// Closes the tab of a repository; it stays in the overview.
+#[tauri::command]
+pub fn close_repository(state: State<'_, AppState>, path: String) -> CommandResult<Snapshot> {
+    state.edit_workspace(|workspace| workspace.close(Path::new(&path)))?;
+    Ok(state.snapshot())
+}
+
+/// Shows a repository (`None`: the overview of all repositories), opening its tab again if it was
+/// closed. Its state is read again, so that a tab always opens on fresh information.
 #[tauri::command]
 pub async fn select_repository(state: State<'_, AppState>, path: Option<String>) -> CommandResult<Snapshot> {
     let path = path.map(PathBuf::from);
     state.edit_workspace(|workspace| {
+        if let Some(p) = &path {
+            workspace.open(p);
+        }
         workspace.active = path.clone().filter(|p| workspace.contains(p));
     })?;
     if let Some(path) = path {

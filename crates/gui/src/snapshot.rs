@@ -31,6 +31,8 @@ pub struct RepoView {
     pub name: String,
     /// Colour chosen by the user; `None`: the interface derives one from the name.
     pub color: Option<String>,
+    /// The tab is closed: the repository is only shown in the overview.
+    pub closed: bool,
     /// `None` until the repository was read, or when it could not be.
     pub summary: Option<SummaryView>,
     pub error: Option<CommandError>,
@@ -88,6 +90,7 @@ impl Snapshot {
                     path: entry.path.display().to_string(),
                     name: entry.path.file_name().map_or_else(|| entry.path.display().to_string(), |n| n.to_string_lossy().into_owned()),
                     color: entry.color.clone(),
+                    closed: entry.closed,
                     summary: state.and_then(|s| s.as_ref().ok()).map(SummaryView::from),
                     error: state.and_then(|s| s.as_ref().err()).cloned(),
                 }

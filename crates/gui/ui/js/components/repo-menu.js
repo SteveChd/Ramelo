@@ -51,6 +51,7 @@ export function openRepoMenu(at, repo) {
     { label: t('action.repo.openFolder'), icon: 'folder', run: () => store.openFolder(repo.path) },
     { label: t('action.repo.refresh'), icon: 'refresh', run: () => store.refresh(repo.path) },
     '-',
-    { label: t('action.repo.remove'), icon: 'close', run: () => store.remove(repo.path) },
+    !repo.closed && { label: t('action.repo.closeTab'), icon: 'close', run: () => store.close(repo.path) },
+    { label: t('action.repo.remove'), icon: 'remove', run: () => store.remove(repo.path) },
   ]);
 }

@@ -13,7 +13,7 @@ let added = 0;
 
 function snapshot() {
   return structuredClone({
-    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, summary: r.summary ?? null, error: r.error ?? null })),
+    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), summary: r.summary ?? null, error: r.error ?? null })),
     active,
   });
 }
@@ -39,6 +39,7 @@ export async function pickFolder() {
 export async function addRepositories(paths) {
   await delay();
   const fresh = paths.filter((p) => !repositories.some((r) => r.path === p));
+  for (const repo of repositories) if (paths.includes(repo.path)) repo.closed = false;
   for (const path of fresh) {
     repositories.push({
       path,
@@ -59,8 +60,21 @@ export async function removeRepository(path) {
   return snapshot();
 }
 
+export async function closeRepository(path) {
+  const index = repositories.findIndex((r) => r.path === path);
+  if (index < 0) return snapshot();
+  repositories[index].closed = true;
+  if (active === path) {
+    const open = (r) => !r.closed;
+    active = (repositories.slice(index + 1).find(open) ?? repositories.slice(0, index).reverse().find(open))?.path ?? null;
+  }
+  return snapshot();
+}
+
 export async function selectRepository(path) {
-  active = repositories.some((r) => r.path === path) ? path : null;
+  const repo = repositories.find((r) => r.path === path);
+  if (repo) repo.closed = false;
+  active = repo ? path : null;
   return snapshot();
 }
 

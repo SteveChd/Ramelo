@@ -54,7 +54,10 @@ async function run(call) {
 }
 
 export const store = {
+  /** Every repository of the workspace, shown in the overview. */
   get repositories() { return state.repositories; },
+  /** The repositories that have a tab open. */
+  get tabs() { return state.repositories.filter((r) => !r.closed); },
   get active() { return state.active; },
   get ui() { return state.ui; },
 
@@ -101,6 +104,23 @@ export const store = {
     if (added.length > 1) emit('notice', tn('notice.added', added.length));
     else if (added.length === 0 && existing > 1) emit('notice', tn('notice.alreadyThere', existing));
     else if (added.length === 0) emit('notice', t('notice.alreadyOpen'));
+  },
+
+  /** Closes the tab of a repository; it stays in the overview. */
+  async close(path) {
+    const snapshot = await run(() => backend.closeRepository(path));
+    if (snapshot) apply(snapshot);
+  },
+
+  /**
+   * Moves a tab to position `index` among the other open tabs; the workspace also holds closed
+   * repositories, so the position is turned into one in the whole list.
+   */
+  async moveTab(path, index) {
+    const others = store.tabs.filter((r) => r.path !== path);
+    const all = state.repositories.filter((r) => r.path !== path);
+    const target = index < others.length ? all.indexOf(others[index]) : all.indexOf(others[others.length - 1]) + 1;
+    await store.reorder(path, Math.max(0, target));
   },
 
   async remove(path) {

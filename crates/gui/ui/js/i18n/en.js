@@ -26,7 +26,8 @@ export default {
 
   'tabs.overview': 'Overview',
   'tabs.overviewHint': 'All your repositories at a glance',
-  'tabs.close': 'Remove from workspace (the folder is kept)',
+  'tabs.close': 'Close the tab (the repository stays in the overview)',
+  'action.repo.closeTab': 'Close the tab',
 
   'home.title': 'Repositories',
   'home.emptyTitle': 'Add your first repository',

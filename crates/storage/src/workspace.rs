@@ -17,6 +17,9 @@ pub struct RepoEntry {
     /// Colour chosen by the user (« #rrggbb »); `None` lets the interface pick one from the name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    /// The tab was closed: the repository stays in the overview, from where it can be opened again.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub closed: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,7 +37,7 @@ impl Workspace {
             .ok()
             .and_then(|text| serde_json::from_str(text.strip_prefix('\u{feff}').unwrap_or(&text)).ok())
             .unwrap_or_default();
-        if workspace.active.as_ref().is_some_and(|a| !workspace.contains(a)) {
+        if workspace.active.as_ref().is_some_and(|a| !workspace.is_open(a)) {
             workspace.active = None;
         }
         workspace
@@ -50,24 +53,54 @@ impl Workspace {
         self.repositories.iter().any(|r| r.path == path)
     }
 
-    /// Adds a repository at the end of the tabs; returns false if it was already there.
+    /// The repository is in the workspace and has a tab.
+    pub fn is_open(&self, path: &Path) -> bool {
+        self.repositories.iter().any(|r| r.path == path && !r.closed)
+    }
+
+    /// Adds a repository at the end of the tabs; returns false if it was already there (its tab is
+    /// opened again if it was closed).
     pub fn add(&mut self, path: PathBuf) -> bool {
         if self.contains(&path) {
+            self.open(&path);
             return false;
         }
-        self.repositories.push(RepoEntry { path, color: None });
+        self.repositories.push(RepoEntry { path, color: None, closed: false });
         true
+    }
+
+    /// Gives a repository its tab back.
+    pub fn open(&mut self, path: &Path) {
+        if let Some(entry) = self.repositories.iter_mut().find(|r| r.path == path) {
+            entry.closed = false;
+        }
+    }
+
+    /// Closes the tab of a repository; it stays in the workspace and the overview. When it was the
+    /// active one, the neighbouring tab becomes active, as in a browser.
+    pub fn close(&mut self, path: &Path) {
+        let Some(index) = self.repositories.iter().position(|r| r.path == path) else { return };
+        self.repositories[index].closed = true;
+        if self.active.as_deref() == Some(path) {
+            self.active = self.open_neighbour(index);
+        }
+    }
+
+    /// The open tab after `index`, or else the one before it.
+    fn open_neighbour(&self, index: usize) -> Option<PathBuf> {
+        let after = self.repositories.iter().skip(index + 1).find(|r| !r.closed);
+        let before = self.repositories.iter().take(index).rev().find(|r| !r.closed);
+        after.or(before).map(|r| r.path.clone())
     }
 
     /// Removes a repository from the workspace (the folder on disk is not touched). When it was the
     /// active one, its neighbour becomes active, as when closing a browser tab.
     pub fn remove(&mut self, path: &Path) {
         let Some(index) = self.repositories.iter().position(|r| r.path == path) else { return };
-        self.repositories.remove(index);
         if self.active.as_deref() == Some(path) {
-            let neighbour = self.repositories.get(index).or_else(|| index.checked_sub(1).and_then(|i| self.repositories.get(i)));
-            self.active = neighbour.map(|r| r.path.clone());
+            self.active = self.open_neighbour(index);
         }
+        self.repositories.remove(index);
     }
 
     /// Sets the colour of a repository (`None`: back to the automatic one).
@@ -148,6 +181,36 @@ mod tests {
         assert_eq!(Workspace::load(dir.path()).repositories[1].color.as_deref(), Some("#12ab34"));
         w.set_color(Path::new("/b"), None);
         assert_eq!(w.repositories[1].color, None);
+    }
+
+    #[test]
+    fn closes_a_tab_without_forgetting_the_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut w = workspace(&["/a", "/b", "/c"]);
+        w.active = Some("/b".into());
+        w.close(Path::new("/b"));
+        assert_eq!(names(&w), ["/a", "/b", "/c"]);
+        assert_eq!(w.active.as_deref(), Some(Path::new("/c")));
+        w.close(Path::new("/c"));
+        assert_eq!(w.active.as_deref(), Some(Path::new("/a")));
+        w.save(dir.path()).unwrap();
+        let loaded = Workspace::load(dir.path());
+        assert!(!loaded.is_open(Path::new("/b")) && loaded.contains(Path::new("/b")));
+        // Adding it again, or opening it, gives it its tab back.
+        assert!(!w.add("/b".into()));
+        assert!(w.is_open(Path::new("/b")));
+        w.close(Path::new("/a"));
+        w.close(Path::new("/b"));
+        assert_eq!(w.active, None);
+        w.open(Path::new("/c"));
+        assert!(w.is_open(Path::new("/c")));
+    }
+
+    #[test]
+    fn does_not_start_on_a_closed_tab() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join(FILE_NAME), r#"{"repositories":[{"path":"/a","closed":true}],"active":"/a"}"#).unwrap();
+        assert_eq!(Workspace::load(dir.path()).active, None);
     }
 
     #[test]

@@ -10,10 +10,11 @@ import { store } from '../state/store.js';
 
 const hasActive = () => store.activeRepo !== null;
 const hasRepos = () => store.repositories.length > 0;
+const hasTabs = () => store.tabs.length > 0;
 
 /** Moves to the next (`step` 1) or previous (-1) tab; the overview is the first tab. */
 function cycleTab(step) {
-  const tabs = [null, ...store.repositories.map((r) => r.path)];
+  const tabs = [null, ...store.tabs.map((r) => r.path)];
   const index = tabs.indexOf(store.active);
   store.select(tabs[(index + step + tabs.length) % tabs.length]);
 }
@@ -21,7 +22,7 @@ function cycleTab(step) {
 /** Tab number `n` (1: the overview, 2: the first repository…). */
 function goToTab(n) {
   if (n === 1) return store.select(null);
-  const repo = store.repositories[n - 2];
+  const repo = store.tabs[n - 2];
   if (repo) store.select(repo.path);
 }
 
@@ -30,10 +31,11 @@ const ACTIONS = {
   'repo.refresh': { key: 'F5', enabled: hasRepos, run: () => store.refresh(store.activeRepo?.path ?? null) },
   'repo.refreshAll': { key: 'Ctrl+F5', enabled: hasRepos, run: () => store.refresh(null) },
   'repo.openFolder': { key: 'Ctrl+Shift+E', enabled: hasActive, run: () => store.openFolder(store.active) },
-  'repo.remove': { key: 'Ctrl+W', enabled: hasActive, run: () => store.remove(store.active) },
+  'repo.closeTab': { key: 'Ctrl+W', enabled: hasActive, run: () => store.close(store.active) },
+  'repo.remove': { enabled: hasActive, run: () => store.remove(store.active) },
   'view.home': { key: 'Ctrl+1', run: () => goToTab(1) },
-  'view.nextTab': { key: 'Ctrl+Tab', enabled: hasRepos, run: () => cycleTab(1) },
-  'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasRepos, run: () => cycleTab(-1) },
+  'view.nextTab': { key: 'Ctrl+Tab', enabled: hasTabs, run: () => cycleTab(1) },
+  'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasTabs, run: () => cycleTab(-1) },
   'view.theme': { run: () => toggleTheme() },
   'view.toggleLeft': { key: 'Alt+1', enabled: hasActive, run: () => layout.toggle('leftCollapsed') },
   'view.toggleRight': { key: 'Alt+2', enabled: hasActive, run: () => layout.toggle('rightCollapsed') },

@@ -17,6 +17,7 @@ export const {
   pickFolder,
   addRepositories,
   removeRepository,
+  closeRepository,
   selectRepository,
   reorderRepository,
   setRepositoryColor,

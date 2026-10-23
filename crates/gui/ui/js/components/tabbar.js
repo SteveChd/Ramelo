@@ -1,5 +1,6 @@
 // Tabs: the overview of all repositories, then one tab per repository. A tab is dragged to change the
-// order; the middle button closes it, as in a browser.
+// order; the middle button closes it, as in a browser. A closed tab's repository stays in the
+// overview, from where it is opened again.
 
 import { t } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
@@ -38,7 +39,7 @@ function repoTab(repo) {
     style: { '--repo': repoColor(repo) },
     oncontextmenu: (event) => openRepoMenu(event, repo),
     onkeydown: (event) => { if (event.key === 'Enter' || event.key === ' ') store.select(repo.path); },
-    onauxclick: (event) => { if (event.button === 1) store.remove(repo.path); },
+    onauxclick: (event) => { if (event.button === 1) store.close(repo.path); },
   },
   avatar(repo),
   h('span', { class: 'name' }, repo.name),
@@ -48,7 +49,7 @@ function repoTab(repo) {
     class: 'close',
     title: t('tabs.close'),
     onpointerdown: (event) => event.stopPropagation(),
-    onclick: (event) => { event.stopPropagation(); store.remove(repo.path); },
+    onclick: (event) => { event.stopPropagation(); store.close(repo.path); },
   }, icon('close', 13, 2.2)));
   installDrag(tab, repo);
   return tab;
@@ -96,7 +97,7 @@ function installDrag(tab, repo) {
         return;
       }
       bar.classList.remove('reordering');
-      if (target !== from) store.reorder(repo.path, target);
+      if (target !== from) store.moveTab(repo.path, target);
       else renderTabbar(bar);
     };
     window.addEventListener('pointermove', move);
@@ -107,7 +108,7 @@ function installDrag(tab, repo) {
 export function renderTabbar(container) {
   mount(container,
     homeTab(),
-    store.repositories.map(repoTab),
+    store.tabs.map(repoTab),
     h('button', { type: 'button', class: 'icon-btn add-tab', title: t('action.repo.add'), onclick: () => store.add() }, icon('plus', 16)),
   );
   container.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });

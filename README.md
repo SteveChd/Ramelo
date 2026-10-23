@@ -15,7 +15,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   a repository is searched for the repositories it contains (a folder of projects, a git-repo
   workspace…).
 - One tab per repository, plus an overview tab. Tabs can be dragged to reorder, closed with the
-  middle button, and are remembered between sessions.
+  middle button or Ctrl+W, and are remembered between sessions. A closed tab's repository stays in
+  the overview, where a click opens it again; removing it from the workspace is a separate command.
 - The overview shows every repository at a glance: branch, commits to push or pull, changes,
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
   (name, path, branch, upstream, last commit; several words all have to match, case and accents are

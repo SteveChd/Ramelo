@@ -57,7 +57,7 @@ function card(repo) {
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh', 16)),
-        h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.remove'), onclick: () => store.remove(repo.path) }, icon('close', 16)))),
+        h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.remove'), onclick: () => store.remove(repo.path) }, icon('remove', 16)))),
     h('div', { class: 'badges' }, repoBadges(repo)),
     repo.error && h('div', { class: 'error-text' }, describeError(repo.error)),
     s?.lastCommit && h('div', { class: 'last-commit', title: `${s.lastCommit.summary}\n${s.lastCommit.author} · ${fullDate(s.lastCommit.time)}` },
