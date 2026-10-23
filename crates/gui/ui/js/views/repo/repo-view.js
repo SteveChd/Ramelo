@@ -14,11 +14,13 @@ import { shortcut } from '../../app/actions.js';
 import { splitter } from '../../components/splitter.js';
 import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
+import { search } from '../../state/search.js';
 import { store } from '../../state/store.js';
 import { renderDetailsPanel } from './details-panel.js';
 import { renderDiff } from './diff-view.js';
 import { diffKey } from './files.js';
 import { revealCommit, renderGraph, updateGraphSelection } from './graph.js';
+import { renderSearchBar } from './search-bar.js';
 import { renderSidebar } from './sidebar.js';
 import { renderToolbar } from './toolbar.js';
 import { renderWipPanel, updateWipRunning } from './wip-panel.js';
@@ -45,6 +47,7 @@ function build(container, repo) {
   const parts = {
     toolbar: h('div', { class: 'repo-toolbar' }),
     banner: h('div', { class: 'op-banner', hidden: true }),
+    search: h('div', { class: 'search-host', hidden: true }),
     sidebar: h('div', { class: 'panel-body sidebar' }),
     graph: h('div', { class: 'graph' }),
     diff: h('div', { class: 'diff-panel', hidden: true }),
@@ -57,7 +60,7 @@ function build(container, repo) {
   parts.splitLeft = splitter({ name: 'left', axis: 'x', sign: 1, fold: 'leftCollapsed', title: t('panel.resize') });
   parts.splitRight = splitter({ name: 'right', axis: 'x', sign: -1, fold: 'rightCollapsed', title: t('panel.resize') });
   parts.splitDiff = splitter({ name: 'diff', axis: 'y', sign: -1, fold: 'diffCollapsed', title: t('panel.resize') });
-  parts.center = h('section', { class: 'center' }, parts.graph, parts.splitDiff, parts.diff);
+  parts.center = h('section', { class: 'center' }, parts.search, parts.graph, parts.splitDiff, parts.diff);
   parts.main = h('div', { class: 'repo-main' }, parts.left, parts.splitLeft, parts.stripLeft, parts.center, parts.stripRight, parts.splitRight, parts.right);
   const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, parts.main);
   mount(container, root);
@@ -138,11 +141,14 @@ export function renderRepo(container, repo) {
     return;
   }
   const fresh = !view || view.path !== repo.path || !container.contains(view.root);
+  // Each repository starts with its own, empty search.
+  if (fresh && view?.path !== repo.path) search.reset();
   if (fresh) build(container, repo);
   if (fresh && repoStore.state.path !== repo.path) repoStore.open(repo.path);
   else repoStore.workspaceChanged();
   renderToolbar(view.toolbar, repo);
   renderBanner(repo);
+  renderSearchBar(view.search);
   renderSidebar(view.sidebar);
   renderGraphPart(repo);
   renderDiffPart();
@@ -185,4 +191,17 @@ repoStore.subscribe((topic) => {
     updateWipRunning(repo);
   }
   if (topic === 'draft') renderSide(repo);
+});
+
+/** What the graph shows of a search: drawn again only when that changes, not at each key typed. */
+const searchShown = (s) => `${search.active}${s.onlyMatches}${s.result?.oids.length}${s.query ? JSON.stringify(s.query) : ''}`;
+let lastSearch = searchShown(search.state);
+
+search.subscribe((s) => {
+  const repo = store.activeRepo;
+  if (!view || !repo || repo.path !== view.path) return;
+  renderSearchBar(view.search);
+  const shown = searchShown(s);
+  if (shown !== lastSearch) renderGraphPart(repo);
+  lastSearch = shown;
 });

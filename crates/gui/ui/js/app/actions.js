@@ -5,6 +5,7 @@ import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
 import { layout } from '../state/layout.js';
 import { repoStore } from '../state/repo-store.js';
+import { search } from '../state/search.js';
 import { store } from '../state/store.js';
 
 const hasActive = () => store.activeRepo !== null;
@@ -43,6 +44,14 @@ const ACTIONS = {
   'repo.push': { key: 'Ctrl+Shift+P', enabled: () => Boolean(store.activeRepo?.summary?.head.branch), run: () => repoStore.push() },
   'repo.newBranch': { key: 'Ctrl+B', enabled: hasActive, run: () => repoStore.createBranch() },
   'repo.stageAll': { key: 'Ctrl+Shift+S', enabled: hasActive, run: () => repoStore.stageAll() },
+  // In a repository: its commits; on the overview: the repositories.
+  'repo.search': {
+    key: 'Ctrl+F',
+    enabled: () => !store.activeRepo?.error,
+    run: () => (store.activeRepo ? search.open() : document.querySelector('.home-head input[type="search"]')?.select()),
+  },
+  'repo.searchNext': { key: 'F3', hidden: true, enabled: () => search.active, run: () => search.next() },
+  'repo.searchPrev': { key: 'Shift+F3', hidden: true, enabled: () => search.active, run: () => search.prev() },
   'repo.closeDiff': { key: 'Escape', hidden: true, enabled: () => Boolean(repoStore.state.diff), run: () => repoStore.closeDiff() },
 };
 

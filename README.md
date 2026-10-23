@@ -18,11 +18,16 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   middle button, and are remembered between sessions.
 - The overview shows every repository at a glance: branch, commits to push or pull, changes,
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
-  and filtered (changes, to sync, needs attention).
+  (name, path, branch, upstream, last commit; several words all have to match, case and accents are
+  ignored) and filtered (changes, to sync, needs attention).
 - The repository tab shows the history of every branch, remote branch and tag as a commit graph,
   with a working-copy row on top. Selecting a commit shows its message, author and files; selecting
   a file shows its diff in a panel below the graph, which can be folded or enlarged to the whole
   centre.
+- Commits are searched with Ctrl+F through the whole history, every branch and tag included, not
+  only the commits drawn: by message, author, commit id, changed file or changed code, with case
+  matching and regular expressions. Matches are highlighted and the other commits fade, or only the
+  matches are listed; Enter, F3 and Shift+F3 move from one to the next.
 - Images (PNG, JPEG, GIF, WebP, SVG…) are shown before and after, side by side, in place of a
   binary diff. Markdown and HTML files switch between their diff and a formatted preview; HTML is
   rendered in a sandboxed frame where scripts never run.
@@ -56,7 +61,7 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 | Folder | Role |
 | --- | --- |
-| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, staging and commits, branches, fetch / pull / push, repository discovery on disk. No dependency on the interface or the storage. |
+| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, repository discovery on disk. No dependency on the interface or the storage. |
 | `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order and the active one, written atomically. |
 | `crates/gui` | Tauri 2 application: commands called by the interface (`src/commands`). |
 | `crates/gui/ui` | Interface in HTML, CSS and JavaScript (ES modules, no framework, no bundler). |

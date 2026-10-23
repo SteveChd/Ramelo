@@ -47,6 +47,8 @@ pub enum GitError {
     DetachedHead,
     #[error("the operation stopped on conflicts")]
     Conflicts,
+    #[error("« {0} » is not a valid regular expression")]
+    InvalidPattern(String),
 }
 
 impl GitError {
@@ -63,6 +65,7 @@ impl GitError {
             Self::IdentityMissing => "identity_missing",
             Self::LocalChanges(_) => "local_changes",
             Self::Diverged => "diverged",
+            Self::InvalidPattern(_) => "invalid_pattern",
             Self::PushRejected(_) => "push_rejected",
             Self::AuthFailed(_) => "auth_failed",
             Self::BranchNotMerged(_) => "branch_not_merged",
@@ -80,7 +83,7 @@ impl GitError {
         match self {
             Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts => None,
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
-            Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) => Some(name.clone()),
+            Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
             Self::DetachedHead => None,
             Self::PathMissing(path) | Self::NotARepository(path) | Self::NoRepositoryFound(path) => {
                 Some(path.display().to_string())

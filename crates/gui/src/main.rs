@@ -34,6 +34,7 @@ fn main() {
             commands::repo::commit_details,
             commands::repo::commit_file_diff,
             commands::repo::file_diff,
+            commands::repo::search_commits,
             commands::repo::file_versions,
             commands::repo::stage,
             commands::repo::stage_all,

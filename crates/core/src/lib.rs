@@ -13,6 +13,7 @@ mod log;
 mod remote;
 mod repo;
 mod scan;
+mod search;
 mod status;
 mod worktree;
 
@@ -26,6 +27,7 @@ pub use log::{log, Commit, RefKind, RefLabel};
 pub use remote::{fetch, pull, push, PullMode, PullOutcome, PushOutcome};
 pub use repo::{open, summary, CommitInfo, Operation, RepoLocation, RepoSummary};
 pub use scan::{scan, ScanLimits};
+pub use search::{search, SearchQuery, SearchResult, SearchScope};
 pub use status::{parse_status, ChangeKind, FileChange, Head, RepoStatus};
 pub use worktree::{apply_hunk, commit, discard, last_message, stage, stage_all, unstage, unstage_all, HunkAction};
 

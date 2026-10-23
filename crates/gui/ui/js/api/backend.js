@@ -22,6 +22,7 @@ export const {
   setRepositoryColor,
   openFolder,
   history,
+  searchCommits,
   commitDetails,
   commitFileDiff,
   fileDiff,

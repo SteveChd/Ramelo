@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use base64::Engine;
-use gitcontroller_core::{self as core, refs, Carried, Content, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
+use gitcontroller_core::{self as core, refs, Carried, Content, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -46,6 +46,12 @@ pub async fn history(state: State<'_, AppState>, path: String, limit: usize) -> 
     let (graph, width) = core::layout(&commits);
     let rows = commits.into_iter().zip(graph).map(|(commit, graph)| HistoryRow { commit, graph }).collect();
     Ok(History { rows, width, has_more })
+}
+
+/// Commits of the whole history that match `query`, newest first (at most `limit`).
+#[tauri::command]
+pub async fn search_commits(state: State<'_, AppState>, path: String, query: SearchQuery, limit: usize) -> CommandResult<SearchResult> {
+    Ok(core::search(&state.git, &PathBuf::from(path), &query, limit)?)
 }
 
 #[tauri::command]

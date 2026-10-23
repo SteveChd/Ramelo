@@ -28,6 +28,11 @@ export const openFolder = (path) => invoke('open_folder', { path });
 /** { rows: [{ oid, parents, author, email, time, summary, refs, graph }], width, hasMore }. */
 export const history = (path, limit) => invoke('history', { path, limit });
 /** { oid, parents, author, email, time, committer, commitTime, message, files: [FileDiff] }. */
+/**
+ * Commits of the whole history matching `query` { text, scope: 'all' | 'message' | 'author' | 'sha'
+ * | 'file' | 'code', matchCase, regex }. Returns { oids (newest first), truncated }.
+ */
+export const searchCommits = (path, query, limit) => invoke('search_commits', { path, query, limit });
 export const commitDetails = (path, oid) => invoke('commit_details', { path, oid });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
 /** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */

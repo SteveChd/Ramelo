@@ -111,6 +111,11 @@ export async function history(path, limit) {
   return repo.history(path, limit);
 }
 
+export async function searchCommits(path, query, limit) {
+  await delay(120);
+  return repo.searchCommits(path, query, limit);
+}
+
 export async function commitDetails(path, oid) {
   await delay(60);
   return repo.commitDetails(path, oid);

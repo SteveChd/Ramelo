@@ -18,11 +18,19 @@ const FILTERS = {
   attention: (repo) => ['conflict', 'error'].includes(repoState(repo)),
 };
 
+/** Lower case and without accents, so that « deploiement » finds « Déploiement ». */
+const fold = (text) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * A repository matches when each word typed is found in its name, path, branch, upstream, or last
+ * commit (message or author), in any order.
+ */
 function matchesSearch(repo, text) {
-  const needle = text.trim().toLowerCase();
-  if (!needle) return true;
-  const branch = repo.summary?.head.branch ?? '';
-  return [repo.name, repo.path, branch].some((value) => value.toLowerCase().includes(needle));
+  const words = fold(text).split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const s = repo.summary;
+  const haystack = fold([repo.name, repo.path, s?.head.branch, s?.upstream, s?.lastCommit?.summary, s?.lastCommit?.author].filter(Boolean).join('\n'));
+  return words.every((word) => haystack.includes(word));
 }
 
 function emptyState() {

@@ -47,3 +47,42 @@
 /* A commit brought into view after a switch of branch flashes once. */
 .grow.flash { animation: flash 1.2s ease-out; }
 @keyframes flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }
+
+/* Search bar above the graph (Ctrl+F). */
+.search-host[hidden] { display: none; }
+.center.diff-max .search-host { display: none; }
+.search-bar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--soft);
+}
+.search-bar .query {
+  flex: 1 1 260px; min-width: 140px; max-width: 460px; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 8px;
+  border: 1px solid var(--ctl); border-radius: var(--radius-sm); background: var(--panel); color: var(--muted);
+}
+.search-bar .query:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.search-bar input { -webkit-appearance: none; appearance: none; padding: 0; flex: 1 1 auto; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: var(--ink); user-select: text; }
+.search-bar select {
+  height: 30px; border: 1px solid var(--ctl); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); padding: 0 6px;
+}
+.search-bar .opt {
+  height: 30px; min-width: 32px; padding: 0 7px; border: 1px solid var(--ctl); border-radius: var(--radius-sm); background: var(--panel);
+  color: var(--muted); font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+}
+.search-bar .opt.wide { font-family: var(--font); font-weight: 500; white-space: nowrap; }
+.search-bar .opt:hover:not(:disabled) { color: var(--ink); border-color: var(--muted); }
+.search-bar .opt[aria-pressed="true"] { background: var(--a-soft); color: var(--a-ink); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.search-bar .opt:disabled { opacity: .4; }
+.search-bar .count { min-width: 64px; padding: 0 4px; font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.search-bar .count.none { color: var(--warn); }
+.search-bar .count.error { color: var(--err); white-space: normal; }
+.search-bar .icon-btn { width: 28px; height: 28px; }
+
+/* Commits found: the others fade, or are not listed at all with « Matches only ». */
+.grow.dim .msg, .grow.dim .author, .grow.dim .date, .grow.dim .sha { opacity: .42; }
+.grow.match { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--warn) 70%, transparent); }
+.grow.match.selected { box-shadow: inset 3px 0 0 var(--accent); }
+.grow mark { background: color-mix(in srgb, #F5C542 55%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+.graph.only-matches .grow:not(.match) { display: none; }
+.graph.only-matches .grow svg { visibility: hidden; }
+/* Without the lines of history, the graph column is not needed. */
+.graph.only-matches .graph-head, .graph.only-matches .grow { grid-template-columns: 8px minmax(0, 1fr) 150px 110px 72px; }
+.graph.only-matches .graph-head > span:first-child { visibility: hidden; padding: 0; }

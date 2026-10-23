@@ -179,3 +179,28 @@ export function fileVersions(file) {
   if (/\.html?$/.test(file)) return { before: null, after: version(utf8(HTML)) };
   return { before: version(utf8('before\n')), after: version(utf8('after\n')) };
 }
+
+// ---------- Search ----------
+
+export function searchCommits(path, { text, scope, matchCase, regex }, limit) {
+  const commits = history(path, 100000).rows;
+  let test;
+  if (regex) {
+    let re;
+    try { re = new RegExp(text, matchCase ? '' : 'i'); } catch { throw { code: 'invalid_pattern', subject: text, message: 'invalid regex' }; }
+    test = (value) => re.test(value);
+  } else {
+    const wanted = matchCase ? text : text.toLowerCase();
+    test = (value) => (matchCase ? value : value.toLowerCase()).includes(wanted);
+  }
+  const byScope = {
+    all: (c) => test(c.summary) || test(c.author) || c.oid.startsWith(text.toLowerCase()),
+    message: (c) => test(c.summary),
+    author: (c) => test(c.author) || test(c.email),
+    sha: (c) => c.oid.startsWith(text.toLowerCase()),
+    file: (c, i) => i % 7 === 0 && test('crates/export/src/gantt.rs'),
+    code: (c, i) => i % 5 === 0,
+  };
+  const oids = commits.filter((c, i) => byScope[scope](c, i)).map((c) => c.oid);
+  return { oids: oids.slice(0, limit), truncated: oids.length > limit };
+}

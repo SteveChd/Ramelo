@@ -206,6 +206,38 @@ fn reads_a_file_in_the_working_copy_the_index_and_commits() {
 }
 
 #[test]
+fn searches_the_whole_history() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "readme.md", "hello\n", "Add the readme");
+    git(&root, &["switch", "-q", "-c", "side"]);
+    fs::create_dir_all(root.join("src/login")).unwrap();
+    commit_file(&root, "src/login/form.rs", "fn check_password() {}\n", "Validate the (password)");
+    git(&root, &["switch", "-q", "main"]);
+    git(&root, &["-c", "user.name=Alice Martin", "commit", "-q", "--allow-empty", "-m", "Empty commit by Alice"]);
+
+    let find = |text: &str, scope, match_case, regex| {
+        let q = SearchQuery { text: text.into(), scope, match_case, regex };
+        let found = search(&g, &root, &q, 100).unwrap().oids;
+        found.iter().map(|oid| git(&root, &["log", "-1", "--format=%s", oid]).trim().to_owned()).collect::<Vec<_>>()
+    };
+    // The side branch is searched too, and the text is not a regular expression unless asked.
+    assert_eq!(find("(PASSWORD)", SearchScope::Message, false, false), ["Validate the (password)"]);
+    assert!(find("(PASSWORD)", SearchScope::Message, true, false).is_empty());
+    assert_eq!(find("^add", SearchScope::Message, false, true), ["Add the readme"]);
+    assert_eq!(find("alice", SearchScope::Author, false, false), ["Empty commit by Alice"]);
+    assert_eq!(find("LOGIN", SearchScope::File, false, false), ["Validate the (password)"]);
+    assert_eq!(find("check_password", SearchScope::Code, false, false), ["Validate the (password)"]);
+    let readme = git(&root, &["log", "-1", "--format=%h", "main~1"]).trim().to_owned();
+    assert_eq!(find(&readme, SearchScope::All, false, false), ["Add the readme"]);
+    // Newest first, each commit once.
+    assert_eq!(find("a", SearchScope::All, false, false).len(), 3);
+    let bad = SearchQuery { text: "(".into(), scope: SearchScope::Message, match_case: false, regex: true };
+    assert!(matches!(search(&g, &root, &bad, 10), Err(GitError::InvalidPattern(_))));
+}
+
+#[test]
 fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     let dir = tempfile::tempdir().unwrap();
     let remote = dir.path().join("remote.git");

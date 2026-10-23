@@ -5,7 +5,7 @@
 .home-head h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
 .home-head .count { color: var(--muted); font-size: 13px; }
 .home-head input[type="search"] {
-  height: 32px; width: 220px; border: 1px solid var(--ctl); background: var(--panel); border-radius: var(--radius-sm);
+  height: 32px; width: 300px; border: 1px solid var(--ctl); background: var(--panel); border-radius: var(--radius-sm);
   padding: 0 10px; outline: none; user-select: text;
 }
 .home-head input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }

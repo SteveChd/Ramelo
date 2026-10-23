@@ -154,24 +154,33 @@ async function loadVersions() {
 /** Beyond this many commits, a commit to reveal is not looked for further down the history. */
 const REVEAL_LIMIT = 20000;
 
+/** Reads more history until `oid` is in it (or the limit is reached); true when it is. */
+async function loadUntil(oid) {
+  const has = () => state.history?.rows.some((r) => r.oid === oid);
+  while (!has() && state.history?.hasMore && state.limit < REVEAL_LIMIT) {
+    state.limit *= 2;
+    await loadHistory();
+  }
+  return has();
+}
+
+/** Brings a commit into the middle of the graph, reading more history first when needed. */
+async function reveal(oid, { select = true } = {}) {
+  if (!(await loadUntil(oid))) return false;
+  if (select) repoStore.selectCommit(oid);
+  state.reveal = oid;
+  emit('reveal');
+  return true;
+}
+
 /**
  * After a switch of branch, the graph shows where HEAD now is: its commit is brought into view and,
  * when there is nothing to commit, selected. An old branch can be beyond the commits read so far:
  * more are read until it shows.
  */
-async function revealHead() {
+function revealHead() {
   const summary = repo()?.summary;
-  const head = summary?.head.oid;
-  if (!head) return;
-  const has = () => state.history?.rows.some((r) => r.oid === head);
-  while (!has() && state.history?.hasMore && state.limit < REVEAL_LIMIT) {
-    state.limit *= 2;
-    await loadHistory();
-  }
-  if (!has()) return;
-  if (summary.fileCount === 0) repoStore.selectCommit(head);
-  state.reveal = head;
-  emit('reveal');
+  if (summary?.head.oid) reveal(summary.head.oid, { select: summary.fileCount === 0 });
 }
 
 function draft() {
@@ -207,6 +216,18 @@ export const repoStore = {
       loadRefs();
     }
     reloadDiff();
+  },
+
+  /** Selects a commit and brings it into view (a search result, a parent…). */
+  reveal(oid, options) {
+    return reveal(oid, options);
+  },
+
+  /** Reads history until the oldest of `oids` is in it, as far as the reveal limit allows. */
+  async loadUntil(oids) {
+    for (const oid of [...oids].reverse()) {
+      if (await loadUntil(oid)) return;
+    }
   },
 
   async loadMore() {

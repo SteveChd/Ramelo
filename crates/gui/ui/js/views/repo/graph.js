@@ -7,6 +7,7 @@ import { icon } from '../../lib/icons.js';
 import { fullDate, relativeTime } from '../../lib/time.js';
 import { openContextMenu } from '../../components/context-menu.js';
 import { repoStore } from '../../state/repo-store.js';
+import { search } from '../../state/search.js';
 import { store } from '../../state/store.js';
 
 const ROW = 28;
@@ -93,22 +94,51 @@ async function copy(text) {
   }
 }
 
-function commitRow(row, width, headOid, selected) {
+/**
+ * What the search found in the message and the author, wrapped in <mark>; null when the search does
+ * not look there (commit id, files, code: the whole row is the match).
+ */
+function highlighter() {
+  const q = search.active ? search.state.query : null;
+  if (!q || !['all', 'message', 'author'].includes(q.scope)) return null;
+  let re;
+  try {
+    re = new RegExp(q.regex ? q.text : q.text.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&'), q.matchCase ? 'g' : 'gi');
+  } catch {
+    return null;
+  }
+  return (text, where) => {
+    if (q.scope !== 'all' && q.scope !== where) return text;
+    const parts = [];
+    let last = 0;
+    for (const m of text.matchAll(re)) {
+      if (!m[0]) continue;
+      parts.push(text.slice(last, m.index), h('mark', {}, m[0]));
+      last = m.index + m[0].length;
+    }
+    if (!parts.length) return text;
+    parts.push(text.slice(last));
+    return parts;
+  };
+}
+
+function commitRow(row, width, headOid, selected, mark) {
+  const found = search.active ? (search.matches(row.oid) ? ' match' : ' dim') : '';
   return h('div', {
-    class: `grow${selected ? ' selected' : ''}${row.parents.length > 1 ? ' merge' : ''}`,
+    class: `grow${selected ? ' selected' : ''}${row.parents.length > 1 ? ' merge' : ''}${found}`,
     dataset: { oid: row.oid },
     onclick: () => repoStore.selectCommit(row.oid),
     oncontextmenu: (event) => commitMenu(event, row, headOid),
   },
   laneSvg(row, width, row.oid === headOid),
-  h('div', { class: 'msg' }, refLabels(row), h('span', { class: 'text', title: row.summary }, row.summary),
+  h('div', { class: 'msg' }, refLabels(row), h('span', { class: 'text', title: row.summary }, mark ? mark(row.summary, 'message') : row.summary),
     h('button', {
       type: 'button',
       class: 'row-act',
       title: t('graph.branchHere'),
       onclick: (event) => { event.stopPropagation(); repoStore.createBranch(row.oid); },
     }, icon('newBranch', 14, 2))),
-  h('span', { class: 'author', title: row.email }, row.author),
+  h('span', { class: 'author', title: row.email }, mark ? mark(row.author, 'author') : row.author),
   h('span', { class: 'date', title: fullDate(row.time) }, relativeTime(row.time)),
   h('span', { class: 'sha' }, row.oid.slice(0, 7)));
 }
@@ -142,13 +172,17 @@ export function renderGraph(container, repo) {
   const scroll = lastHistory === history ? container.scrollTop : 0;
   const dirty = summary && summary.fileCount > 0;
 
+  const mark = highlighter();
+
   container.style.setProperty('--graph-w', `${Math.max(width, 56)}px`);
+  container.classList.toggle('only-matches', search.active && search.state.onlyMatches);
   mount(container,
     h('div', { class: 'graph-head' },
       h('span', {}, t('graph.graph')), h('span', {}, t('graph.message')), h('span', {}, t('graph.author')), h('span', {}, t('graph.date')), h('span', {}, t('graph.sha'))),
     dirty && wipRow(summary, Math.max(width, 56), headLane, selection === 'wip'),
     history.rows.length === 0 && !dirty && h('div', { class: 'graph-empty' }, t('graph.empty')),
-    history.rows.map((row) => commitRow(row, Math.max(width, 56), headOid, selection === row.oid)),
+    search.active && search.state.onlyMatches && search.state.result.oids.length === 0 && h('div', { class: 'graph-empty' }, t('search.none')),
+    history.rows.map((row) => commitRow(row, Math.max(width, 56), headOid, selection === row.oid, mark)),
     history.hasMore && h('div', { class: 'load-more' },
       h('button', { type: 'button', class: 'btn', onclick: () => repoStore.loadMore() }, t('graph.loadMore'))),
   );
