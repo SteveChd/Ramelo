@@ -5,7 +5,7 @@ import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { fullDate } from '../../lib/time.js';
 import { repoStore } from '../../state/repo-store.js';
-import { fileRow } from './files.js';
+import { diffKey, fileRow } from './files.js';
 
 export function renderDetailsPanel(container) {
   const { details, diff } = repoStore.state;
@@ -36,7 +36,8 @@ export function renderDetailsPanel(container) {
     details.files.map((f) => fileRow({
       path: f.path,
       kind: f.status,
-      open: diff?.kind === 'commit' && diff.file === f.path,
+      key: diffKey({ kind: 'commit', oid: details.oid, file: f.path }),
+      open: diffKey(diff) === diffKey({ kind: 'commit', oid: details.oid, file: f.path }),
       onclick: () => repoStore.openCommitDiff(f.path),
       extra: h('span', { class: 'stats' },
         f.binary ? t('diff.binaryShort') : [h('span', { class: 'add' }, `+${f.additions}`), ' ', h('span', { class: 'del' }, `−${f.deletions}`)]),

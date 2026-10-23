@@ -32,6 +32,8 @@ const state = {
   diff: null,
   /** Long command in progress ('fetch', 'pull', 'push', 'commit'…), for the busy buttons. */
   running: null,
+  /** Commit to bring into view in the graph (see `revealHead`). */
+  reveal: null,
   /** What the history was read for: when HEAD or the branches move, it is read again. */
   loadedFor: null,
 };
@@ -43,7 +45,7 @@ let applying = false;
 const drafts = new Map();
 
 /**
- * `topic`: 'history', 'refs', 'selection', 'details', 'diff', 'running' or 'draft'.
+ * `topic`: 'history', 'refs', 'selection', 'details', 'diff', 'running', 'draft' or 'reveal'.
  */
 function emit(topic) {
   for (const listener of listeners) listener(topic, state);
@@ -147,6 +149,29 @@ async function loadVersions() {
   if (diffKey(state.diff) !== key) return;
   state.diff = { ...state.diff, versions: versions ?? { before: null, after: null, failed: true } };
   emit('diff');
+}
+
+/** Beyond this many commits, a commit to reveal is not looked for further down the history. */
+const REVEAL_LIMIT = 20000;
+
+/**
+ * After a switch of branch, the graph shows where HEAD now is: its commit is brought into view and,
+ * when there is nothing to commit, selected. An old branch can be beyond the commits read so far:
+ * more are read until it shows.
+ */
+async function revealHead() {
+  const summary = repo()?.summary;
+  const head = summary?.head.oid;
+  if (!head) return;
+  const has = () => state.history?.rows.some((r) => r.oid === head);
+  while (!has() && state.history?.hasMore && state.limit < REVEAL_LIMIT) {
+    state.limit *= 2;
+    await loadHistory();
+  }
+  if (!has()) return;
+  if (summary.fileCount === 0) repoStore.selectCommit(head);
+  state.reveal = head;
+  emit('reveal');
 }
 
 function draft() {
@@ -356,6 +381,7 @@ export const repoStore = {
     state.diff = null;
     emit('selection');
     await afterChange(result.snapshot);
+    revealHead();
   },
 
   /**
@@ -388,6 +414,7 @@ export const repoStore = {
       emit('selection');
     }
     await afterChange(result.snapshot);
+    if (answer.checks.checkout) revealHead();
   },
 
   async deleteBranch(name) {

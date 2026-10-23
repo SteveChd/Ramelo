@@ -199,7 +199,12 @@ export async function switchBranch(path, target) {
   await delay(150);
   const r = find(path);
   if (r?.summary?.unstaged) throw { code: 'local_changes', subject: target, message: 'local changes would be overwritten' };
-  if (r?.summary) r.summary.head.branch = target.replace(/^origin\//, '');
+  if (r?.summary) {
+    const refs = repo.branches(path);
+    const tip = [...refs.local, ...refs.remote].find((b) => b.name === target)?.oid;
+    r.summary.head.branch = tip ? target.replace(/^origin\//, '') : null;
+    r.summary.head.oid = tip ?? target;
+  }
   return { snapshot: snapshot(), carried: 'nothing' };
 }
 

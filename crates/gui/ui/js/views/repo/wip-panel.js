@@ -6,7 +6,7 @@ import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
-import { fileRow } from './files.js';
+import { diffKey, fileRow } from './files.js';
 
 /** Length git tools recommend for the first line of a message. */
 const SUMMARY_LIMIT = 72;
@@ -19,9 +19,10 @@ function openDiff(file, staged) {
   return () => repoStore.openWorktreeDiff(file.path, staged, file.worktree === 'untracked');
 }
 
+const keyOf = (file, staged) => diffKey({ kind: 'worktree', staged, file: file.path });
+
 function isOpen(file, staged) {
-  const diff = repoStore.state.diff;
-  return diff?.kind === 'worktree' && diff.file === file.path && diff.staged === staged;
+  return diffKey(repoStore.state.diff) === keyOf(file, staged);
 }
 
 function action(iconName, title, run) {
@@ -122,13 +123,13 @@ export function renderWipPanel(container, repo) {
     ? h('div', { class: 'clean-state' }, icon('check', 28), t('repo.clean'))
     : [
       group(t('repo.groups.conflicts'), conflicts, null, (f) => fileRow({
-        path: f.path, kind: 'conflicted', open: isOpen(f, false), onclick: openDiff(f, false),
+        path: f.path, kind: 'conflicted', key: keyOf(f, false), open: isOpen(f, false), onclick: openDiff(f, false),
         actions: [action('check', t('wip.markResolved'), () => repoStore.stage([f.path]))],
       })),
       group(t('wip.unstaged'), unstaged,
         h('button', { type: 'button', class: 'btn', onclick: () => repoStore.stageAll() }, t('wip.stageAll')),
         (f) => fileRow({
-          path: f.path, kind: f.worktree, open: isOpen(f, false), onclick: openDiff(f, false),
+          path: f.path, kind: f.worktree, key: keyOf(f, false), open: isOpen(f, false), onclick: openDiff(f, false),
           actions: [
             action('remove', t('wip.discard'), () => repoStore.discard([f])),
             action('plus', t('wip.stage'), () => repoStore.stage([f.path])),
@@ -137,7 +138,7 @@ export function renderWipPanel(container, repo) {
       group(t('wip.staged'), staged,
         h('button', { type: 'button', class: 'btn', onclick: () => repoStore.unstageAll() }, t('wip.unstageAll')),
         (f) => fileRow({
-          path: f.path, kind: f.index, open: isOpen(f, true), onclick: openDiff(f, true),
+          path: f.path, kind: f.index, key: keyOf(f, true), open: isOpen(f, true), onclick: openDiff(f, true),
           actions: [action('minus', t('wip.unstage'), () => repoStore.unstage([f.path]))],
         })),
       s.files.length < s.fileCount && h('div', { class: 'truncated hint' }, t('repo.truncated', { shown: s.files.length, total: s.fileCount })),

@@ -164,3 +164,13 @@ export function updateGraphSelection(container) {
   target?.classList.add('selected');
   target?.scrollIntoView({ block: 'nearest' });
 }
+
+/** Brings a commit into the middle of the view, after a switch of branch. */
+export function revealCommit(container, oid) {
+  const row = oid && container.querySelector(`.grow[data-oid="${oid}"]`);
+  if (!row) return;
+  const top = row.offsetTop - container.clientHeight / 2 + row.offsetHeight / 2;
+  container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  row.classList.add('flash');
+  setTimeout(() => row.classList.remove('flash'), 1200);
+}

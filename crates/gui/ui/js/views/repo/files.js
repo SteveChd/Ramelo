@@ -13,10 +13,19 @@ export function splitPath(path) {
   return cut < 0 ? { name: path, dir: '' } : { name: path.slice(cut + 1), dir: path.slice(0, cut) };
 }
 
-/** `kind`: key of LETTERS; `extra`: stats or other content before the actions. */
-export function fileRow({ path, kind, open = false, onclick, actions = [], extra = null }) {
+/** Identifies the diff a file row opens, to mark the open one without drawing the list again. */
+export function diffKey(diff) {
+  if (!diff) return null;
+  return diff.kind === 'commit' ? `commit:${diff.oid}:${diff.file}` : `worktree:${Boolean(diff.staged)}:${diff.file}`;
+}
+
+/**
+ * `kind`: key of LETTERS; `key`: the `diffKey` of the diff the row opens; `extra`: stats or other
+ * content before the actions.
+ */
+export function fileRow({ path, kind, key, open = false, onclick, actions = [], extra = null }) {
   const { name, dir } = splitPath(path);
-  return h('div', { class: `frow${open ? ' open' : ''}`, title: path, onclick },
+  return h('div', { class: `frow${open ? ' open' : ''}`, title: path, dataset: { key }, onclick },
     h('span', { class: `kind ${kind}`, title: t(`change.${kind}`) }, LETTERS[kind] ?? '·'),
     h('span', { class: 'name' }, name),
     h('span', { class: 'dir' }, h('bdi', {}, dir)),

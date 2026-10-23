@@ -43,3 +43,7 @@
 }
 .grow:hover .row-act { display: inline-flex; }
 .grow .row-act:hover { background: var(--panel); color: var(--accent); box-shadow: 0 0 0 1px var(--border); }
+
+/* A commit brought into view after a switch of branch flashes once. */
+.grow.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { background: color-mix(in srgb, var(--accent) 28%, transparent); } to { background: transparent; } }

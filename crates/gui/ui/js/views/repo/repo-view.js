@@ -17,7 +17,8 @@ import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
 import { renderDetailsPanel } from './details-panel.js';
 import { renderDiff } from './diff-view.js';
-import { renderGraph, updateGraphSelection } from './graph.js';
+import { diffKey } from './files.js';
+import { revealCommit, renderGraph, updateGraphSelection } from './graph.js';
 import { renderSidebar } from './sidebar.js';
 import { renderToolbar } from './toolbar.js';
 import { renderWipPanel, updateWipRunning } from './wip-panel.js';
@@ -105,9 +106,21 @@ function renderDiffPart() {
   if (diff) renderDiff(view.diff);
 }
 
+/** Draws the right panel; its list keeps its scroll position while the same thing is shown. */
 function renderSide(repo) {
-  if (repoStore.state.selection === 'wip') renderWipPanel(view.side, repo);
+  const selection = repoStore.state.selection;
+  const scroll = view.sideFor === selection ? view.side.querySelector('.side-scroll')?.scrollTop ?? 0 : 0;
+  if (selection === 'wip') renderWipPanel(view.side, repo);
   else renderDetailsPanel(view.side);
+  view.sideFor = selection;
+  const list = view.side.querySelector('.side-scroll');
+  if (list) list.scrollTop = scroll;
+}
+
+/** Opening another file only moves the highlight in the lists. */
+function markOpenFile() {
+  const key = diffKey(repoStore.state.diff);
+  for (const row of view.side.querySelectorAll('.frow[data-key]')) row.classList.toggle('open', row.dataset.key === key);
 }
 
 function renderError(container, repo) {
@@ -164,8 +177,9 @@ repoStore.subscribe((topic) => {
   if (topic === 'details') renderSide(repo);
   if (topic === 'diff') {
     renderDiffPart();
-    renderSide(repo);
+    markOpenFile();
   }
+  if (topic === 'reveal') revealCommit(view.graph, repoStore.state.reveal);
   if (topic === 'running') {
     renderToolbar(view.toolbar, repo);
     updateWipRunning(repo);
