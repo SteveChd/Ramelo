@@ -259,8 +259,6 @@ export default {
   'action.view.toggleRight': 'Show or hide the working copy panel',
   'action.view.toggleDiff': 'Fold or unfold the diff',
   'action.view.maximizeDiff': 'Enlarge or restore the diff',
-  'panel.branches': 'Branches',
-  'panel.details': 'Working copy',
   'panel.resize': 'Drag to resize, double-click to fold',
   'color.title': 'Colour',
   'color.custom': 'Other…',
@@ -281,4 +279,8 @@ export default {
   'branch.created': 'Branch {name} created',
   'branch.createdCarried': 'Branch {name} created, with your changes',
   'errors.invalid_color': 'This colour is not valid.',
+  'panel.show.left': 'Show the branches',
+  'panel.hide.left': 'Hide the branches',
+  'panel.show.right': 'Show the working copy and details',
+  'panel.hide.right': 'Hide the working copy and details',
 };

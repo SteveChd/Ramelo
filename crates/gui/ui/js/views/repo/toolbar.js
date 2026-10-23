@@ -3,10 +3,8 @@
 
 import { t, tn } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
-import { shortcut } from '../../app/actions.js';
 import { openRepoMenu } from '../../components/repo-menu.js';
 import { icon } from '../../lib/icons.js';
-import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
 
@@ -19,18 +17,6 @@ function tool(name, iconName, label, { count = 0, title, disabled = false, oncli
     disabled: disabled || Boolean(repoStore.state.running),
     onclick,
   }, icon(running ? 'refresh' : iconName, 17), label, count > 0 && h('span', { class: 'count' }, count));
-}
-
-/** Shows or hides a side panel; pressed while the panel is shown. */
-function panelToggle(key, iconName, action) {
-  const key2 = shortcut(action);
-  return h('button', {
-    type: 'button',
-    class: 'icon-btn toggle',
-    'aria-pressed': String(!layout.state[key]),
-    title: key2 ? `${t(`action.${action}`)} (${key2})` : t(`action.${action}`),
-    onclick: () => layout.toggle(key),
-  }, icon(iconName));
 }
 
 export function renderToolbar(container, repo) {
@@ -65,8 +51,5 @@ export function renderToolbar(container, repo) {
     h('button', { type: 'button', class: 'icon-btn', title: t('color.change'), onclick: (event) => openRepoMenu(event.currentTarget, repo) }, icon('palette')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh')),
-    h('div', { class: 'vsep' }),
-    panelToggle('leftCollapsed', 'panelLeft', 'view.toggleLeft'),
-    panelToggle('rightCollapsed', 'panelRight', 'view.toggleRight'),
   );
 }

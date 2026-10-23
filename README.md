@@ -24,8 +24,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   a file shows its diff in a panel below the graph, which can be folded or enlarged to the whole
   centre.
 - The side panels (branches, working copy or commit details) and the diff panel are resized with
-  their splitters and folded with a double click, the toolbar buttons or Alt+1 to Alt+4; the layout
-  is remembered.
+  their splitters and folded with the strip along their edge, a double click on the splitter or
+  Alt+1 to Alt+4; the layout is remembered.
 - A branch can be created from any commit of the graph (right click, or the button shown on hover):
   local changes are stashed, the new branch is checked out and the changes are applied again.
 - Each repository can be given a colour (right click on its tab or its card, or the palette button),

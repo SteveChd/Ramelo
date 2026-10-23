@@ -10,6 +10,7 @@ import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { describeError } from '../../app/errors.js';
+import { shortcut } from '../../app/actions.js';
 import { splitter } from '../../components/splitter.js';
 import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
@@ -23,10 +24,20 @@ import { renderWipPanel, updateWipRunning } from './wip-panel.js';
 
 let view = null;
 
-/** Strip shown in place of a folded side panel; a click unfolds it. */
-function rail(key, iconName, label) {
-  return h('button', { type: 'button', class: 'rail', title: label, onclick: () => layout.set({ [key]: false }) },
-    icon(iconName, 16), h('span', { class: 'rail-label' }, label));
+/**
+ * Narrow strip along a side panel, always shown: its arrow points where the panel goes when
+ * clicked (into the edge to fold it, out of it to unfold it).
+ */
+function strip(side) {
+  return h('button', { type: 'button', class: `strip ${side}`, onclick: () => layout.toggle(`${side}Collapsed`) }, icon('chevron', 14, 2.4));
+}
+
+function updateStrip(el, side, action) {
+  const folded = layout.state[`${side}Collapsed`];
+  const key = shortcut(action);
+  el.classList.toggle('folded', folded);
+  el.title = `${t(folded ? `panel.show.${side}` : `panel.hide.${side}`)}${key ? ` (${key})` : ''}`;
+  el.setAttribute('aria-expanded', String(!folded));
 }
 
 function build(container, repo) {
@@ -38,13 +49,15 @@ function build(container, repo) {
     diff: h('div', { class: 'diff-panel', hidden: true }),
     side: h('div', { class: 'panel-body side' }),
   };
-  parts.left = h('aside', { class: 'panel left', 'aria-label': t('branch.aria') }, rail('leftCollapsed', 'branch', t('panel.branches')), parts.sidebar);
-  parts.right = h('aside', { class: 'panel right' }, rail('rightCollapsed', 'commit', t('panel.details')), parts.side);
+  parts.left = h('aside', { class: 'panel left', 'aria-label': t('branch.aria') }, parts.sidebar);
+  parts.right = h('aside', { class: 'panel right' }, parts.side);
+  parts.stripLeft = strip('left');
+  parts.stripRight = strip('right');
   parts.splitLeft = splitter({ name: 'left', axis: 'x', sign: 1, fold: 'leftCollapsed', title: t('panel.resize') });
   parts.splitRight = splitter({ name: 'right', axis: 'x', sign: -1, fold: 'rightCollapsed', title: t('panel.resize') });
   parts.splitDiff = splitter({ name: 'diff', axis: 'y', sign: -1, fold: 'diffCollapsed', title: t('panel.resize') });
   parts.center = h('section', { class: 'center' }, parts.graph, parts.splitDiff, parts.diff);
-  parts.main = h('div', { class: 'repo-main' }, parts.left, parts.splitLeft, parts.center, parts.splitRight, parts.right);
+  parts.main = h('div', { class: 'repo-main' }, parts.left, parts.splitLeft, parts.stripLeft, parts.center, parts.stripRight, parts.splitRight, parts.right);
   const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, parts.main);
   mount(container, root);
   view = { path: repo.path, root, diffKey: null, ...parts };
@@ -63,6 +76,8 @@ function applyLayout() {
   view.right.classList.toggle('collapsed', l.rightCollapsed);
   view.splitLeft.hidden = l.leftCollapsed;
   view.splitRight.hidden = l.rightCollapsed;
+  updateStrip(view.stripLeft, 'left', 'view.toggleLeft');
+  updateStrip(view.stripRight, 'right', 'view.toggleRight');
   view.diff.hidden = !hasDiff;
   view.diff.classList.toggle('collapsed', hasDiff && l.diffCollapsed);
   const maximized = hasDiff && l.diffMaximized && !l.diffCollapsed;

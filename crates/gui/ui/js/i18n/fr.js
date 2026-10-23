@@ -259,8 +259,6 @@ export default {
   'action.view.toggleRight': 'Afficher ou masquer le panneau de la copie de travail',
   'action.view.toggleDiff': 'Replier ou déplier le diff',
   'action.view.maximizeDiff': 'Agrandir ou réduire le diff',
-  'panel.branches': 'Branches',
-  'panel.details': 'Copie de travail',
   'panel.resize': 'Glisser pour redimensionner, double-cliquer pour replier',
   'color.title': 'Couleur',
   'color.custom': 'Autre…',
@@ -281,4 +279,8 @@ export default {
   'branch.created': 'Branche {name} créée',
   'branch.createdCarried': 'Branche {name} créée, avec tes modifications',
   'errors.invalid_color': 'Cette couleur n\'est pas valide.',
+  'panel.show.left': 'Afficher les branches',
+  'panel.hide.left': 'Masquer les branches',
+  'panel.show.right': 'Afficher la copie de travail et les détails',
+  'panel.hide.right': 'Masquer la copie de travail et les détails',
 };

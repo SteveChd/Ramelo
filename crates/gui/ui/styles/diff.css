@@ -32,3 +32,4 @@
 .dline.deleted .sign { color: var(--deleted); }
 .dline.noNewline .code { color: var(--muted); font-style: italic; }
 .diff-note { padding: 30px; text-align: center; color: var(--muted); font-family: var(--font); font-size: 13px; }
+.diff-head .fold { color: var(--accent); }
