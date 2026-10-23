@@ -28,6 +28,7 @@ fn main() {
             commands::workspace::remove_repository,
             commands::workspace::select_repository,
             commands::workspace::reorder_repository,
+            commands::workspace::set_repository_color,
             commands::workspace::open_folder,
             commands::repo::history,
             commands::repo::commit_details,

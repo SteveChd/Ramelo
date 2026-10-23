@@ -3,15 +3,16 @@
 
 import { t } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
-import { avatarColor, icon } from '../lib/icons.js';
+import { icon, repoColor } from '../lib/icons.js';
 import { store } from '../state/store.js';
 import { repoState } from './badges.js';
+import { openRepoMenu } from './repo-menu.js';
 
 /** Distance the pointer must travel before a click becomes a drag. */
 const DRAG_THRESHOLD = 5;
 
-export function avatar(name, className = 'avatar') {
-  return h('span', { class: className, style: { background: avatarColor(name) }, 'aria-hidden': 'true' }, [...name][0] ?? '?');
+export function avatar(repo, className = 'avatar') {
+  return h('span', { class: className, style: { background: repoColor(repo) }, 'aria-hidden': 'true' }, [...repo.name][0] ?? '?');
 }
 
 function homeTab() {
@@ -34,10 +35,12 @@ function repoTab(repo) {
     'aria-selected': String(store.active === repo.path),
     title: repo.path,
     dataset: { path: repo.path },
+    style: { '--repo': repoColor(repo) },
+    oncontextmenu: (event) => openRepoMenu(event, repo),
     onkeydown: (event) => { if (event.key === 'Enter' || event.key === ' ') store.select(repo.path); },
     onauxclick: (event) => { if (event.button === 1) store.remove(repo.path); },
   },
-  avatar(repo.name),
+  avatar(repo),
   h('span', { class: 'name' }, repo.name),
   ['dirty', 'conflict', 'error'].includes(state) && h('span', { class: `state-dot ${state}` }),
   h('button', {

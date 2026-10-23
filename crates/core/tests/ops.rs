@@ -156,6 +156,33 @@ fn switches_branches_carrying_local_changes() {
 }
 
 #[test]
+fn creates_a_branch_at_an_older_commit_carrying_local_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    let lines: Vec<String> = (1..=12).map(|i| format!("line {i}\n")).collect();
+    commit_file(&root, "a", &lines.concat(), "base");
+    let base = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    commit_file(&root, "a", &format!("changed\n{}", lines[1..].concat()), "change the top");
+
+    // The file differs between HEAD and the start: a plain « switch --create » would refuse.
+    fs::write(root.join("a"), format!("changed\n{}last\n", lines[1..].concat())).unwrap();
+    assert_eq!(refs::create(&g, &root, "from-base", Some(&base), true).unwrap(), Carried::Reapplied);
+    let s = status(&root);
+    assert_eq!(s.head.branch.as_deref(), Some("from-base"));
+    assert_eq!(s.head.oid.as_deref(), Some(base.as_str()));
+    let content = fs::read_to_string(root.join("a")).unwrap();
+    assert!(content.starts_with("line 1\n") && content.ends_with("last\n"));
+    assert_eq!(git(&root, &["stash", "list"]), "");
+
+    // A clean working copy switches directly, and without checkout HEAD stays put.
+    git(&root, &["reset", "-q", "--hard"]);
+    assert_eq!(refs::create(&g, &root, "clean", Some("main"), true).unwrap(), Carried::Nothing);
+    assert_eq!(refs::create(&g, &root, "aside", None, false).unwrap(), Carried::Nothing);
+    assert_eq!(status(&root).head.branch.as_deref(), Some("clean"));
+}
+
+#[test]
 fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     let dir = tempfile::tempdir().unwrap();
     let remote = dir.path().join("remote.git");

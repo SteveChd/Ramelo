@@ -3,6 +3,7 @@
 
 import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
+import { layout } from '../state/layout.js';
 import { repoStore } from '../state/repo-store.js';
 import { store } from '../state/store.js';
 
@@ -33,6 +34,10 @@ const ACTIONS = {
   'view.nextTab': { key: 'Ctrl+Tab', enabled: hasRepos, run: () => cycleTab(1) },
   'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasRepos, run: () => cycleTab(-1) },
   'view.theme': { run: () => toggleTheme() },
+  'view.toggleLeft': { key: 'Alt+1', enabled: hasActive, run: () => layout.toggle('leftCollapsed') },
+  'view.toggleRight': { key: 'Alt+2', enabled: hasActive, run: () => layout.toggle('rightCollapsed') },
+  'view.toggleDiff': { key: 'Alt+3', enabled: () => Boolean(repoStore.state.diff), run: () => layout.toggle('diffCollapsed') },
+  'view.maximizeDiff': { key: 'Alt+4', enabled: () => Boolean(repoStore.state.diff), run: () => layout.set({ diffMaximized: !layout.state.diffMaximized, diffCollapsed: false }) },
   'repo.fetch': { key: 'Ctrl+Shift+F', enabled: () => Boolean(store.activeRepo?.summary?.remotes.length), run: () => repoStore.fetch() },
   'repo.pull': { key: 'Ctrl+Shift+L', enabled: () => Boolean(store.activeRepo?.summary?.upstream), run: () => repoStore.pull() },
   'repo.push': { key: 'Ctrl+Shift+P', enabled: () => Boolean(store.activeRepo?.summary?.head.branch), run: () => repoStore.push() },

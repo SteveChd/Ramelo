@@ -5,7 +5,9 @@ import { t, tn } from '../../i18n/i18n.js';
 import { h, mount, s } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { fullDate, relativeTime } from '../../lib/time.js';
+import { openContextMenu } from '../../components/context-menu.js';
 import { repoStore } from '../../state/repo-store.js';
+import { store } from '../../state/store.js';
 
 const ROW = 28;
 const LANE = 16;
@@ -67,14 +69,45 @@ function refLabels(row) {
   });
 }
 
+/** Right click on a commit: branch from it, switch to it or to one of its branches, copy its id. */
+function commitMenu(event, row, headOid) {
+  repoStore.selectCommit(row.oid);
+  const current = store.activeRepo?.summary?.head.branch;
+  const branches = row.refs.filter((r) => r.kind === 'branch' && r.name !== current);
+  openContextMenu(event, [
+    { label: t('graph.branchHere'), icon: 'newBranch', run: () => repoStore.createBranch(row.oid) },
+    branches.map((b) => ({ label: t('graph.switchTo', { name: b.name }), icon: 'swap', run: () => repoStore.switchTo(b.name) })),
+    { label: t('graph.checkoutCommit'), icon: 'commit', disabled: row.oid === headOid && !current, run: () => repoStore.switchTo(row.oid) },
+    '-',
+    { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
+    { label: t('graph.copySummary'), run: () => copy(row.summary) },
+  ].flat());
+}
+
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    store.notify(t('notice.copied'));
+  } catch {
+    store.notify(t('notice.copyFailed'), true);
+  }
+}
+
 function commitRow(row, width, headOid, selected) {
   return h('div', {
     class: `grow${selected ? ' selected' : ''}${row.parents.length > 1 ? ' merge' : ''}`,
     dataset: { oid: row.oid },
     onclick: () => repoStore.selectCommit(row.oid),
+    oncontextmenu: (event) => commitMenu(event, row, headOid),
   },
   laneSvg(row, width, row.oid === headOid),
-  h('div', { class: 'msg' }, refLabels(row), h('span', { class: 'text', title: row.summary }, row.summary)),
+  h('div', { class: 'msg' }, refLabels(row), h('span', { class: 'text', title: row.summary }, row.summary),
+    h('button', {
+      type: 'button',
+      class: 'row-act',
+      title: t('graph.branchHere'),
+      onclick: (event) => { event.stopPropagation(); repoStore.createBranch(row.oid); },
+    }, icon('newBranch', 14, 2))),
   h('span', { class: 'author', title: row.email }, row.author),
   h('span', { class: 'date', title: fullDate(row.time) }, relativeTime(row.time)),
   h('span', { class: 'sha' }, row.oid.slice(0, 7)));

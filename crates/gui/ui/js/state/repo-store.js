@@ -324,21 +324,36 @@ export const repoStore = {
     await afterChange(result.snapshot);
   },
 
-  /** Asks for a name and creates a branch at `start` (HEAD when null), switching to it by default. */
+  /**
+   * Asks for a name and creates a branch at `start` (an oid; HEAD when null), switching to it by
+   * default. Local changes are put aside and brought back on the new branch, whatever its commit.
+   */
   async createBranch(start = null) {
+    const commit = start && state.history?.rows.find((r) => r.oid === start);
+    const dirty = (repo()?.summary?.fileCount ?? 0) > 0;
     const answer = await prompt({
       title: t('branch.newTitle'),
-      message: start ? t('branch.newFrom', { oid: start.slice(0, 7) }) : null,
+      message: start ? t('branch.newFrom', { oid: start.slice(0, 7), summary: commit?.summary ?? '' }) : null,
       label: t('branch.name'),
       placeholder: 'feature/my-change',
       confirmLabel: t('branch.create'),
-      checks: [{ key: 'checkout', label: t('branch.checkout'), checked: true }],
+      checks: [{ key: 'checkout', label: dirty ? t('branch.checkoutCarry') : t('branch.checkout'), checked: true }],
       // Spaces are the most common slip: they become dashes.
       validate: (value) => (value.trim() ? null : t('branch.nameMissing')),
     });
     if (!answer) return;
     const name = answer.value.trim().replace(/\s+/g, '-');
-    await afterChange(await run(() => backend.createBranch(state.path, name, start, answer.checks.checkout)));
+    const result = await run(() => backend.createBranch(state.path, name, start, answer.checks.checkout), 'branch');
+    if (!result) return;
+    if (result.carried === 'conflicted') store.notify(t('switch.conflicted'), true);
+    else if (result.carried === 'reapplied') store.notify(t('branch.createdCarried', { name }));
+    else store.notify(t('branch.created', { name }));
+    if (answer.checks.checkout) {
+      state.selection = 'wip';
+      state.diff = null;
+      emit('selection');
+    }
+    await afterChange(result.snapshot);
   },
 
   async deleteBranch(name) {

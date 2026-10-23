@@ -113,6 +113,12 @@ export const store = {
     if (snapshot) apply(snapshot);
   },
 
+  /** `color`: « #rrggbb », or null for the colour derived from the name. */
+  async setColor(path, color) {
+    const snapshot = await run(() => backend.setRepositoryColor(path, color));
+    if (snapshot) apply(snapshot);
+  },
+
   async openFolder(path) {
     await run(() => backend.openFolder(path));
   },

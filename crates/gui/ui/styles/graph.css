@@ -35,3 +35,11 @@
 /* Colours of the lines of history, cycled. */
 :root { --g0: #3B6BF0; --g1: #18A08A; --g2: #E08A1E; --g3: #D9485F; --g4: #7A4FD0; --g5: #0B9BC2; --g6: #C2559D; --g7: #6E8F1E; }
 :root[data-theme="dark"] { --g0: #6A8EF5; --g1: #2BB59A; --g2: #F0A04B; --g3: #F06A7E; --g4: #9A75E6; --g5: #3CC0E0; --g6: #E07BBE; --g7: #9CC24A; }
+
+/* Branch from a commit, shown on hover at the end of its message. */
+.grow .row-act {
+  margin-left: auto; flex: 0 0 auto; width: 24px; height: 22px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--muted); display: none; align-items: center; justify-content: center;
+}
+.grow:hover .row-act { display: inline-flex; }
+.grow .row-act:hover { background: var(--panel); color: var(--accent); box-shadow: 0 0 0 1px var(--border); }

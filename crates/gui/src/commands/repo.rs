@@ -186,11 +186,14 @@ pub async fn switch_branch(state: State<'_, AppState>, path: String, target: Str
     Ok(SwitchResult { carried: result?, snapshot })
 }
 
+/// Creates a branch at `start` (HEAD when `None`); with `checkout`, switches to it and brings the
+/// local changes along.
 #[tauri::command]
-pub async fn create_branch(state: State<'_, AppState>, path: String, name: String, start: Option<String>, checkout: bool) -> CommandResult<Snapshot> {
+pub async fn create_branch(state: State<'_, AppState>, path: String, name: String, start: Option<String>, checkout: bool) -> CommandResult<SwitchResult> {
     let root = PathBuf::from(path);
-    refs::create(&state.git, &root, name.trim(), start.as_deref(), checkout)?;
-    Ok(changed(&state, root))
+    let result = refs::create(&state.git, &root, name.trim(), start.as_deref(), checkout);
+    let snapshot = changed(&state, root);
+    Ok(SwitchResult { carried: result?, snapshot })
 }
 
 #[tauri::command]

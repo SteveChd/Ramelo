@@ -2,7 +2,7 @@
 // user's answer (null when cancelled with Escape, the close button or a click outside).
 
 import { t } from '../i18n/i18n.js';
-import { h } from '../lib/dom.js';
+import { h, mount } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 
 function open(build) {
@@ -45,7 +45,7 @@ function head(title, close) {
  */
 export function choose({ title, message, choices }) {
   return open((box, close) => {
-    box.append(
+    mount(box,
       head(title, close),
       message && h('p', { class: 'dialog-text' }, message),
       h('div', { class: 'choices' }, choices.map((choice) => h('button', {
@@ -61,7 +61,7 @@ export function choose({ title, message, choices }) {
 /** Yes / no question; `danger` colours the confirm button for what cannot be undone. */
 export function confirm({ title, message, confirmLabel, danger = false }) {
   return open((box, close) => {
-    box.append(
+    mount(box,
       head(title, close),
       h('p', { class: 'dialog-text' }, message),
       h('div', { class: 'dialog-foot' },
@@ -88,7 +88,7 @@ export function prompt({ title, message, label, value = '', placeholder = '', co
     };
     input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); });
     input.addEventListener('input', () => { error.textContent = ''; });
-    box.append(
+    mount(box,
       head(title, close),
       message && h('p', { class: 'dialog-text' }, message),
       h('label', { class: 'field' }, h('span', { class: 'label' }, label), input),

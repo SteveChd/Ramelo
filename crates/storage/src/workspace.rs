@@ -14,6 +14,9 @@ const FILE_NAME: &str = "workspace.json";
 pub struct RepoEntry {
     /// Top-level folder of the repository's working tree.
     pub path: PathBuf,
+    /// Colour chosen by the user (« #rrggbb »); `None` lets the interface pick one from the name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,7 +55,7 @@ impl Workspace {
         if self.contains(&path) {
             return false;
         }
-        self.repositories.push(RepoEntry { path });
+        self.repositories.push(RepoEntry { path, color: None });
         true
     }
 
@@ -64,6 +67,13 @@ impl Workspace {
         if self.active.as_deref() == Some(path) {
             let neighbour = self.repositories.get(index).or_else(|| index.checked_sub(1).and_then(|i| self.repositories.get(i)));
             self.active = neighbour.map(|r| r.path.clone());
+        }
+    }
+
+    /// Sets the colour of a repository (`None`: back to the automatic one).
+    pub fn set_color(&mut self, path: &Path, color: Option<String>) {
+        if let Some(entry) = self.repositories.iter_mut().find(|r| r.path == path) {
+            entry.color = color;
         }
     }
 
@@ -124,6 +134,20 @@ mod tests {
         w.remove(Path::new("/a"));
         assert_eq!(w.active, None);
         assert!(w.repositories.is_empty());
+    }
+
+    #[test]
+    fn keeps_the_colour_of_a_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut w = workspace(&["/a", "/b"]);
+        w.set_color(Path::new("/b"), Some("#12ab34".into()));
+        w.save(dir.path()).unwrap();
+        let text = fs::read_to_string(dir.path().join(FILE_NAME)).unwrap();
+        // No colour: nothing written, so older files and newer ones read the same.
+        assert_eq!(text.matches("color").count(), 1);
+        assert_eq!(Workspace::load(dir.path()).repositories[1].color.as_deref(), Some("#12ab34"));
+        w.set_color(Path::new("/b"), None);
+        assert_eq!(w.repositories[1].color, None);
     }
 
     #[test]

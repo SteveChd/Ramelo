@@ -25,6 +25,10 @@
 .mi:disabled { opacity: .45; cursor: default; background: transparent; }
 .mi .lbl { flex: 1 1 auto; white-space: nowrap; }
 .mi .key { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.menu.context { position: fixed; top: 0; left: 0; min-width: 230px; z-index: 80; }
+.mi .ico-space { width: 15px; flex: 0 0 auto; }
+.mi svg { flex: 0 0 auto; color: var(--muted); }
+.mi.danger { color: var(--err); }
 .menu .sep { height: 1px; margin: 5px 8px; background: var(--border); }
 .menubar .lang-switch { margin-right: 6px; }
 

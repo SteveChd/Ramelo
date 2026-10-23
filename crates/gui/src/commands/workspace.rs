@@ -127,6 +127,20 @@ pub fn reorder_repository(state: State<'_, AppState>, path: String, index: usize
     Ok(state.snapshot())
 }
 
+/// Sets the colour of a repository: « #rrggbb », or `None` for the automatic one.
+#[tauri::command]
+pub fn set_repository_color(state: State<'_, AppState>, path: String, color: Option<String>) -> CommandResult<Snapshot> {
+    let color = color.map(|c| c.to_ascii_lowercase());
+    if let Some(c) = &color {
+        let valid = c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|ch| ch.is_ascii_hexdigit());
+        if !valid {
+            return Err(CommandError::new("invalid_color", Some(c.clone()), "a colour is written #rrggbb"));
+        }
+    }
+    state.edit_workspace(|workspace| workspace.set_color(Path::new(&path), color))?;
+    Ok(state.snapshot())
+}
+
 /// Opens the folder in the system file manager.
 #[tauri::command]
 pub fn open_folder(path: String) -> CommandResult<()> {

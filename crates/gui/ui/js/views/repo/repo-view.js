@@ -1,14 +1,17 @@
 // One repository, in the style of a desktop git client: toolbar on top, branches on the left, the
-// commit graph (or the diff of a file) in the centre, and on the right the working copy with the
-// commit box, or the details of the selected commit.
+// commit graph in the centre with the diff of a file below it, and on the right the working copy with
+// the commit box, or the details of the selected commit.
 //
-// The layout is built once per repository; each part is then drawn again only when what it shows
-// changes, so that scrolling and typing are never interrupted.
+// The side panels and the diff panel can be resized with their splitters and folded; the diff can
+// also take the whole centre. The layout is built once per repository; each part is then drawn
+// again only when what it shows changes, so that scrolling and typing are never interrupted.
 
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { describeError } from '../../app/errors.js';
+import { splitter } from '../../components/splitter.js';
+import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
 import { renderDetailsPanel } from './details-panel.js';
@@ -20,18 +23,51 @@ import { renderWipPanel, updateWipRunning } from './wip-panel.js';
 
 let view = null;
 
+/** Strip shown in place of a folded side panel; a click unfolds it. */
+function rail(key, iconName, label) {
+  return h('button', { type: 'button', class: 'rail', title: label, onclick: () => layout.set({ [key]: false }) },
+    icon(iconName, 16), h('span', { class: 'rail-label' }, label));
+}
+
 function build(container, repo) {
   const parts = {
     toolbar: h('div', { class: 'repo-toolbar' }),
     banner: h('div', { class: 'op-banner', hidden: true }),
-    sidebar: h('aside', { class: 'sidebar', 'aria-label': t('branch.aria') }),
-    center: h('section', { class: 'center' }),
+    sidebar: h('div', { class: 'panel-body sidebar' }),
     graph: h('div', { class: 'graph' }),
-    side: h('aside', { class: 'side' }),
+    diff: h('div', { class: 'diff-panel', hidden: true }),
+    side: h('div', { class: 'panel-body side' }),
   };
-  const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, h('div', { class: 'repo-main' }, parts.sidebar, parts.center, parts.side));
+  parts.left = h('aside', { class: 'panel left', 'aria-label': t('branch.aria') }, rail('leftCollapsed', 'branch', t('panel.branches')), parts.sidebar);
+  parts.right = h('aside', { class: 'panel right' }, rail('rightCollapsed', 'commit', t('panel.details')), parts.side);
+  parts.splitLeft = splitter({ name: 'left', axis: 'x', sign: 1, fold: 'leftCollapsed', title: t('panel.resize') });
+  parts.splitRight = splitter({ name: 'right', axis: 'x', sign: -1, fold: 'rightCollapsed', title: t('panel.resize') });
+  parts.splitDiff = splitter({ name: 'diff', axis: 'y', sign: -1, fold: 'diffCollapsed', title: t('panel.resize') });
+  parts.center = h('section', { class: 'center' }, parts.graph, parts.splitDiff, parts.diff);
+  parts.main = h('div', { class: 'repo-main' }, parts.left, parts.splitLeft, parts.center, parts.splitRight, parts.right);
+  const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, parts.main);
   mount(container, root);
-  view = { path: repo.path, root, ...parts };
+  view = { path: repo.path, root, diffKey: null, ...parts };
+  applyLayout();
+}
+
+/** Sizes and folds of the panels, from the layout. */
+function applyLayout() {
+  if (!view) return;
+  const l = layout.state;
+  const hasDiff = Boolean(repoStore.state.diff);
+  view.main.style.setProperty('--left-w', `${l.left}px`);
+  view.main.style.setProperty('--right-w', `${l.right}px`);
+  view.center.style.setProperty('--diff-h', `${l.diff}px`);
+  view.left.classList.toggle('collapsed', l.leftCollapsed);
+  view.right.classList.toggle('collapsed', l.rightCollapsed);
+  view.splitLeft.hidden = l.leftCollapsed;
+  view.splitRight.hidden = l.rightCollapsed;
+  view.diff.hidden = !hasDiff;
+  view.diff.classList.toggle('collapsed', hasDiff && l.diffCollapsed);
+  const maximized = hasDiff && l.diffMaximized && !l.diffCollapsed;
+  view.center.classList.toggle('diff-max', maximized);
+  view.splitDiff.hidden = !hasDiff || l.diffCollapsed || maximized;
 }
 
 function renderBanner(repo) {
@@ -40,14 +76,18 @@ function renderBanner(repo) {
   if (operation) mount(view.banner, icon('warning', 18), t(`repo.inProgress.${operation}`));
 }
 
-function renderCenter(repo) {
-  if (repoStore.state.diff) {
-    renderDiff(view.center);
-    return;
-  }
-  // The graph keeps its element (and its scroll position) when the diff closes.
-  if (view.center.firstChild !== view.graph) mount(view.center, view.graph);
+function renderGraphPart(repo) {
   renderGraph(view.graph, repo);
+}
+
+/** A file opened in a folded diff panel unfolds it: the user asked to see it. */
+function renderDiffPart() {
+  const diff = repoStore.state.diff;
+  const key = diff ? `${diff.kind}:${diff.oid ?? ''}:${diff.staged ?? ''}:${diff.file}` : null;
+  if (key && key !== view.diffKey && layout.state.diffCollapsed) layout.set({ diffCollapsed: false });
+  view.diffKey = key;
+  applyLayout();
+  if (diff) renderDiff(view.diff);
 }
 
 function renderSide(repo) {
@@ -76,23 +116,39 @@ export function renderRepo(container, repo) {
   renderToolbar(view.toolbar, repo);
   renderBanner(repo);
   renderSidebar(view.sidebar);
-  renderCenter(repo);
+  renderGraphPart(repo);
+  renderDiffPart();
   renderSide(repo);
 }
+
+/** Folds shown by the toolbar and the diff header; sizes alone only need `applyLayout`. */
+const folds = (l) => `${l.leftCollapsed}${l.rightCollapsed}${l.diffCollapsed}${l.diffMaximized}`;
+let lastFolds = folds(layout.state);
+
+layout.subscribe((l) => {
+  applyLayout();
+  const changed = folds(l) !== lastFolds;
+  lastFolds = folds(l);
+  const repo = store.activeRepo;
+  if (changed && view && repo && repo.path === view.path) {
+    renderToolbar(view.toolbar, repo);
+    if (repoStore.state.diff) renderDiff(view.diff);
+  }
+});
 
 repoStore.subscribe((topic) => {
   const repo = store.activeRepo;
   if (!view || !repo || repo.path !== view.path) return;
-  if (topic === 'history') renderCenter(repo);
+  if (topic === 'history') renderGraphPart(repo);
   if (topic === 'refs') renderSidebar(view.sidebar);
   if (topic === 'selection') {
     renderSide(repo);
-    if (repoStore.state.diff) renderCenter(repo);
-    else updateGraphSelection(view.graph);
+    updateGraphSelection(view.graph);
+    renderDiffPart();
   }
   if (topic === 'details') renderSide(repo);
   if (topic === 'diff') {
-    renderCenter(repo);
+    renderDiffPart();
     renderSide(repo);
   }
   if (topic === 'running') {

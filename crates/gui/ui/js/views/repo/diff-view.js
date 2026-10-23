@@ -1,9 +1,11 @@
-// Diff of one file, in the centre: its hunks with old and new line numbers. For the working copy,
+// Diff of one file, in the panel below the graph: its hunks with old and new line numbers. For the working copy,
 // each hunk can be staged, unstaged or discarded on its own, and the whole file as well.
 
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
+import { shortcut } from '../../app/actions.js';
+import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
 
@@ -26,6 +28,28 @@ function fileActions() {
   return [
     entry && h('button', { type: 'button', class: 'btn', onclick: () => repoStore.discard([entry]) }, icon('remove', 14), t('wip.discard')),
     h('button', { type: 'button', class: 'btn primary', onclick: () => repoStore.stage([diff.file]) }, icon('plus', 14), t('wip.stage')),
+  ];
+}
+
+const withKey = (label, action) => (shortcut(action) ? `${label} (${shortcut(action)})` : label);
+
+/** Fold the panel to its header, or let it take the whole centre (and back). */
+function panelButtons() {
+  const { diffCollapsed, diffMaximized } = layout.state;
+  const maximized = diffMaximized && !diffCollapsed;
+  return [
+    h('button', {
+      type: 'button',
+      class: `icon-btn fold${diffCollapsed ? ' folded' : ''}`,
+      title: withKey(diffCollapsed ? t('diff.unfold') : t('diff.fold'), 'view.toggleDiff'),
+      onclick: () => layout.toggle('diffCollapsed'),
+    }, icon('chevron', 16)),
+    h('button', {
+      type: 'button',
+      class: 'icon-btn',
+      title: withKey(maximized ? t('diff.restore') : t('diff.maximize'), 'view.maximizeDiff'),
+      onclick: () => layout.set({ diffMaximized: !maximized, diffCollapsed: false }),
+    }, icon(maximized ? 'restore' : 'maximize', 15)),
   ];
 }
 
@@ -55,12 +79,17 @@ export function renderDiff(container) {
     ]);
   }
   mount(container, h('div', { class: 'diff' },
-    h('div', { class: 'diff-head' },
+    h('div', {
+      class: 'diff-head',
+      ondblclick: (event) => { if (!event.target.closest('button')) layout.set({ diffMaximized: !layout.state.diffMaximized, diffCollapsed: false }); },
+    },
       h('span', { class: 'path', title: diff.file },
         data?.oldPath && h('span', { class: 'from' }, `${data.oldPath} → `), diff.file),
       h('span', { class: 'side-label' }, sideLabel),
       data && !data.binary && h('span', { class: 'stats' }, h('span', { class: 'add' }, `+${data.additions}`), ' ', h('span', { class: 'del' }, `−${data.deletions}`)),
       fileActions(),
+      h('div', { class: 'vsep' }),
+      panelButtons(),
       h('button', { type: 'button', class: 'icon-btn', title: t('diff.close'), onclick: () => repoStore.closeDiff() }, icon('close', 16))),
     h('div', { class: 'diff-body' }, body)));
 }

@@ -1,11 +1,12 @@
-/* One repository: toolbar, branches on the left, graph or diff in the centre, working copy or commit
-   details on the right. */
+/* One repository: toolbar, branches on the left, graph and diff in the centre, working copy or commit
+   details on the right. The panels are resized with splitters and can be folded. */
 
 .repo { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .repo-toolbar {
   display: flex; align-items: center; gap: 6px; padding: 8px 12px; flex: 0 0 auto;
   background: var(--panel); border-bottom: 1px solid var(--border);
 }
+.repo-toolbar .icon-btn.toggle[aria-pressed="true"] { color: var(--accent); }
 .repo-toolbar .vsep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 .tool {
   height: 34px; min-width: 54px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink2);
@@ -27,13 +28,50 @@
 }
 .op-banner svg { color: var(--warn); flex: 0 0 auto; }
 
-.repo-main { flex: 1 1 auto; display: grid; grid-template-columns: 230px minmax(0, 1fr) 380px; min-height: 0; }
+.repo-main { flex: 1 1 auto; display: flex; min-height: 0; }
 .repo-main > * { min-height: 0; min-width: 0; }
-.center { display: flex; flex-direction: column; background: var(--panel); }
-.side { border-left: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+.center { flex: 1 1 0; display: flex; flex-direction: column; background: var(--panel); }
+.center .graph { min-height: 60px; }
+.center.diff-max .graph { display: none; }
+
+.panel { flex: 0 0 auto; display: flex; flex-direction: column; position: relative; }
+.panel.left { width: var(--left-w); background: var(--bg); border-right: 1px solid var(--border); }
+.panel.right { width: var(--right-w); background: var(--panel); border-left: 1px solid var(--border); }
+.panel-body { flex: 1 1 auto; min-height: 0; }
+.panel.collapsed { width: 36px; }
+.panel.collapsed .panel-body { display: none; }
+.panel:not(.collapsed) .rail { display: none; }
+.rail {
+  flex: 1 1 auto; border: 0; background: transparent; color: var(--muted); display: flex; flex-direction: column;
+  align-items: center; gap: 10px; padding: 12px 0; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+}
+.rail:hover { background: var(--hover); color: var(--ink); }
+.rail-label { writing-mode: vertical-rl; text-transform: uppercase; white-space: nowrap; }
+.panel.left .rail-label { transform: rotate(180deg); }
+.side { background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+
+/* Splitters: a thin line, with a wider area to grab. */
+.splitter { flex: 0 0 auto; position: relative; z-index: 3; background: transparent; }
+.splitter.x { width: 0; cursor: col-resize; }
+.splitter.y { height: 0; cursor: row-resize; }
+.splitter::after { content: ""; position: absolute; transition: background .1s; }
+.splitter.x::after { top: 0; bottom: 0; left: -3px; width: 6px; }
+.splitter.y::after { left: 0; right: 0; top: -3px; height: 6px; }
+.splitter:hover::after, .splitter.active::after { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.splitter[hidden] { display: none; }
+body.resizing-x, body.resizing-x * { cursor: col-resize !important; user-select: none; }
+body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select: none; }
+
+/* Diff below the graph: folded to its header, or over the whole centre. */
+.diff-panel { flex: 0 0 var(--diff-h); max-height: calc(100% - 90px); display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--border); }
+.diff-panel[hidden] { display: none; }
+.diff-panel.collapsed { flex: 0 0 auto; }
+.diff-panel.collapsed .diff-body { display: none; }
+.diff-panel.collapsed .diff-head { border-bottom: 0; }
+.center.diff-max .diff-panel { flex: 1 1 auto; max-height: none; border-top: 0; }
 
 /* ---------- Branches ---------- */
-.sidebar { border-right: 1px solid var(--border); background: var(--bg); overflow: auto; padding: 8px 0 16px; }
+.sidebar { overflow: auto; padding: 8px 0 16px; }
 .sb-section { margin-bottom: 6px; }
 .sb-head {
   display: flex; align-items: center; gap: 6px; width: 100%; height: 30px; padding: 0 8px 0 12px; border: 0; background: transparent;

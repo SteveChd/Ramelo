@@ -19,6 +19,7 @@ export const {
   removeRepository,
   selectRepository,
   reorderRepository,
+  setRepositoryColor,
   openFolder,
   history,
   commitDetails,

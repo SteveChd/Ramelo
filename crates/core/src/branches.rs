@@ -133,14 +133,24 @@ pub fn switch(git: &Git, root: &Path, target: &str, carry_changes: bool) -> Resu
         vec!["switch".into(), "--detach".into(), target.into()]
     };
 
-    let dirty = carry_changes && !parse_status(&git.output(root, STATUS_ARGS)?)?.is_clean();
-    if !dirty {
+    if carry_changes {
+        carry(git, root, target, &args)
+    } else {
         git.output(root, &args)?;
+        Ok(Carried::Nothing)
+    }
+}
+
+/// Runs `args` (a switch of branch) with the local changes put aside, then applies them again on
+/// the new branch. A clean working copy is switched directly.
+fn carry(git: &Git, root: &Path, target: &str, args: &[impl AsRef<std::ffi::OsStr>]) -> Result<Carried, GitError> {
+    if parse_status(&git.output(root, STATUS_ARGS)?)?.is_clean() {
+        git.output(root, args)?;
         return Ok(Carried::Nothing);
     }
     let message = format!("GitController: changes carried over to {target}");
     git.output(root, ["stash", "push", "--include-untracked", "--message", &message])?;
-    if let Err(error) = git.output(root, &args) {
+    if let Err(error) = git.output(root, args) {
         // Back to where we were, with the changes.
         let _ = git.output(root, ["stash", "pop", "--index"]);
         return Err(error);
@@ -156,12 +166,18 @@ fn has_conflicts(git: &Git, root: &Path) -> Result<bool, GitError> {
     Ok(parse_status(&git.output(root, STATUS_ARGS)?)?.conflicted() > 0)
 }
 
-/// Creates branch `name` at `start` (HEAD when `None`), and switches to it with `checkout`.
-pub fn create(git: &Git, root: &Path, name: &str, start: Option<&str>, checkout: bool) -> Result<(), GitError> {
+/// Creates branch `name` at `start` (HEAD when `None`). With `checkout`, switches to it and brings
+/// the local changes along, whatever commit it starts from.
+pub fn create(git: &Git, root: &Path, name: &str, start: Option<&str>, checkout: bool) -> Result<Carried, GitError> {
     validate_name(git, root, name)?;
     let mut args = if checkout { vec!["switch", "--create", name] } else { vec!["branch", name] };
     args.extend(start);
-    git.output(root, &args).map(drop)
+    if checkout {
+        carry(git, root, name, &args)
+    } else {
+        git.output(root, &args)?;
+        Ok(Carried::Nothing)
+    }
 }
 
 /// Deletes a local branch; without `force`, git refuses when its commits are not merged anywhere.

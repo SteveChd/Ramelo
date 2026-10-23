@@ -29,6 +29,8 @@ pub struct Snapshot {
 pub struct RepoView {
     pub path: String,
     pub name: String,
+    /// Colour chosen by the user; `None`: the interface derives one from the name.
+    pub color: Option<String>,
     /// `None` until the repository was read, or when it could not be.
     pub summary: Option<SummaryView>,
     pub error: Option<CommandError>,
@@ -85,6 +87,7 @@ impl Snapshot {
                 RepoView {
                     path: entry.path.display().to_string(),
                     name: entry.path.file_name().map_or_else(|| entry.path.display().to_string(), |n| n.to_string_lossy().into_owned()),
+                    color: entry.color.clone(),
                     summary: state.and_then(|s| s.as_ref().ok()).map(SummaryView::from),
                     error: state.and_then(|s| s.as_ref().err()).cloned(),
                 }

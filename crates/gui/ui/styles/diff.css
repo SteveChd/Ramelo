@@ -2,6 +2,7 @@
 
 .diff { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .diff-head {
+  background: var(--bg); user-select: none;
   display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--border); flex: 0 0 auto;
 }
 .diff-head .path { font-family: var(--mono); font-size: 13px; font-weight: 600; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
@@ -10,6 +11,10 @@
 .diff-head .stats { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
 .diff-head .stats .add { color: var(--added); } .diff-head .stats .del { color: var(--deleted); }
 .diff-head .btn { height: 28px; font-size: 12.5px; }
+.diff-head .vsep { width: 1px; height: 20px; background: var(--border); }
+.diff-head .icon-btn { width: 30px; height: 30px; }
+.diff-head .fold svg { transition: transform .12s; }
+.diff-head .fold.folded svg { transform: rotate(180deg); }
 .diff-body { flex: 1 1 auto; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 20px; }
 .hunk-head {
   display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; height: 30px; position: sticky; left: 0;

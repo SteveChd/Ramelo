@@ -20,6 +20,8 @@ export const removeRepository = (path) => invoke('remove_repository', { path });
 /** `path` null: the overview of all repositories. */
 export const selectRepository = (path) => invoke('select_repository', { path });
 export const reorderRepository = (path, index) => invoke('reorder_repository', { path, index });
+/** `color`: « #rrggbb », or null for the automatic one. */
+export const setRepositoryColor = (path, color) => invoke('set_repository_color', { path, color });
 export const openFolder = (path) => invoke('open_folder', { path });
 
 // ---------- One repository ----------
@@ -44,6 +46,7 @@ export const lastMessage = (path) => invoke('last_message', { path });
 export const branches = (path) => invoke('branches', { path });
 /** Returns { snapshot, carried: 'nothing' | 'reapplied' | 'conflicted' }. */
 export const switchBranch = (path, target, carryChanges) => invoke('switch_branch', { path, target, carryChanges });
+/** Returns { snapshot, carried }: the local changes follow when switching to the new branch. */
 export const createBranch = (path, name, start, checkout) => invoke('create_branch', { path, name, start, checkout });
 export const deleteBranch = (path, name, force) => invoke('delete_branch', { path, name, force });
 export const fetch = (path) => invoke('fetch', { path });

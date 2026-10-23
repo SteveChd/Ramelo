@@ -13,7 +13,7 @@ let added = 0;
 
 function snapshot() {
   return structuredClone({
-    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), summary: r.summary ?? null, error: r.error ?? null })),
+    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, summary: r.summary ?? null, error: r.error ?? null })),
     active,
   });
 }
@@ -69,6 +69,12 @@ export async function reorderRepository(path, index) {
   if (from < 0) return snapshot();
   const [entry] = repositories.splice(from, 1);
   repositories.splice(Math.min(index, repositories.length), 0, entry);
+  return snapshot();
+}
+
+export async function setRepositoryColor(path, color) {
+  const repo = repositories.find((r) => r.path === path);
+  if (repo) repo.color = color;
   return snapshot();
 }
 
@@ -192,9 +198,12 @@ export async function switchBranch(path, target) {
   return { snapshot: snapshot(), carried: 'nothing' };
 }
 
-export async function createBranch(path, name) {
+export async function createBranch(path, name, start, checkout) {
   if (/\s|\.\./.test(name)) throw { code: 'invalid_branch_name', subject: name, message: 'invalid' };
-  return change(path, (s) => { s.head.branch = name; s.upstream = null; s.ahead = 0; s.behind = 0; });
+  const dirty = repositories.find((r) => r.path === path)?.summary?.fileCount > 0;
+  if (!checkout) return { snapshot: snapshot(), carried: 'nothing' };
+  const result = await change(path, (s) => { s.head.branch = name; s.upstream = null; s.ahead = 0; s.behind = 0; });
+  return { snapshot: result, carried: dirty ? 'reapplied' : 'nothing' };
 }
 
 export async function deleteBranch(path, name, force) {

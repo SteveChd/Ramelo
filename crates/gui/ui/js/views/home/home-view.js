@@ -2,11 +2,12 @@
 // its changes and its last commit. A click opens the repository's tab.
 
 import { needsSync, repoBadges, repoState } from '../../components/badges.js';
+import { openRepoMenu } from '../../components/repo-menu.js';
 import { avatar } from '../../components/tabbar.js';
 import { describeError } from '../../app/errors.js';
 import { t, tn } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
-import { icon, logo } from '../../lib/icons.js';
+import { icon, logo, repoColor } from '../../lib/icons.js';
 import { fullDate, relativeTime } from '../../lib/time.js';
 import { store } from '../../state/store.js';
 
@@ -37,15 +38,16 @@ function emptyState() {
 function card(repo) {
   const s = repo.summary;
   const attention = ['conflict', 'error'].includes(repoState(repo));
-  return h('article', { class: `card${attention ? ' attention' : ''}` },
+  return h('article', { class: `card${attention ? ' attention' : ''}`, style: { '--repo': repoColor(repo) }, oncontextmenu: (event) => openRepoMenu(event, repo) },
     h('button', { type: 'button', class: 'card-open', 'aria-label': t('home.open', { name: repo.name }), onclick: () => store.select(repo.path) }),
     h('div', { class: 'card-head' },
-      avatar(repo.name, 'avatar large'),
+      avatar(repo, 'avatar large'),
       h('div', { class: 'card-title' },
         h('span', { class: 'name' }, repo.name),
         // Shown right-to-left so that a long path is cut at its start and keeps the useful end.
         h('span', { class: 'path', title: repo.path }, h('bdi', {}, repo.path))),
       h('div', { class: 'card-actions' },
+        h('button', { type: 'button', class: 'icon-btn', title: t('color.change'), onclick: (event) => { event.stopPropagation(); openRepoMenu(event.currentTarget, repo); } }, icon('palette', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.remove'), onclick: () => store.remove(repo.path) }, icon('close', 16)))),
