@@ -31,6 +31,12 @@ export const history = (path, limit) => invoke('history', { path, limit });
 export const commitDetails = (path, oid) => invoke('commit_details', { path, oid });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
 /** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */
+/**
+ * The file before and after a change: { before, after }, each { size, data (base64, null when too
+ * large) } or null when the file does not exist on that side. `commit`: an oid, or null for the
+ * working copy (`staged` or not).
+ */
+export const fileVersions = (path, file, oldPath, commit, staged) => invoke('file_versions', { path, file, oldPath, commit, staged });
 export const fileDiff = (path, file, staged, untracked) => invoke('file_diff', { path, file, staged, untracked });
 export const stage = (path, files) => invoke('stage', { path, files });
 export const stageAll = (path) => invoke('stage_all', { path });

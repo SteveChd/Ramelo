@@ -33,3 +33,25 @@
 .dline.noNewline .code { color: var(--muted); font-style: italic; }
 .diff-note { padding: 30px; text-align: center; color: var(--muted); font-family: var(--font); font-size: 13px; }
 .diff-head .fold { color: var(--accent); }
+
+/* Preview instead of the diff: images side by side, documents in a sandboxed frame. */
+.diff-head .mode-switch button, .preview-side button { height: 24px; padding: 0 10px; font-size: 12px; }
+.diff-body.preview { font-family: var(--font); display: flex; flex-direction: column; }
+.img-compare { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 16px; align-content: start; }
+.img-frame { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.img-frame figcaption { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--muted); }
+.img-frame .side { font-weight: 650; text-transform: uppercase; letter-spacing: .05em; font-size: 11.5px; }
+.img-frame.before .side { color: var(--deleted); }
+.img-frame.after .side { color: var(--added); }
+.img-frame .checker {
+  display: grid; place-items: center; padding: 12px; min-height: 120px; border: 1px solid var(--border); border-radius: 8px;
+  background-color: var(--panel);
+  background-image: linear-gradient(45deg, var(--soft) 25%, transparent 25%), linear-gradient(-45deg, var(--soft) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--soft) 75%), linear-gradient(-45deg, transparent 75%, var(--soft) 75%);
+  background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.img-frame img { max-width: 100%; max-height: 60vh; object-fit: contain; image-rendering: auto; }
+.doc-preview { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.doc-preview .preview-side { align-self: flex-start; margin: 8px 12px 0; }
+.doc-frame { flex: 1 1 auto; width: 100%; min-height: 200px; border: 0; background: var(--panel); }
+.doc-frame.html { background: #FFFFFF; }

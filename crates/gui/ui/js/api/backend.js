@@ -25,6 +25,7 @@ export const {
   commitDetails,
   commitFileDiff,
   fileDiff,
+  fileVersions,
   stage,
   stageAll,
   unstage,

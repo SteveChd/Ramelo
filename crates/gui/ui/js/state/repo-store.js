@@ -8,6 +8,7 @@ import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { choose, confirm, prompt } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
+import { defaultMode, fileKind } from '../lib/file-kinds.js';
 import { store } from './store.js';
 
 /** Commits read at first, then added each time the end of the list is reached. */
@@ -23,7 +24,11 @@ const state = {
   /** 'wip' for the working copy, otherwise the oid of the selected commit. */
   selection: 'wip',
   details: null,
-  /** Diff shown in the centre: { kind: 'worktree' | 'commit', file, staged, untracked, oid, data, loading }. */
+  /**
+   * Diff shown below the graph: { kind: 'worktree' | 'commit', file, staged, untracked, oid, data,
+   * loading, mode: 'diff' | 'preview', versions }. `versions` (the file before and after, for an
+   * image or a preview) is read when the preview is first shown.
+   */
   diff: null,
   /** Long command in progress ('fetch', 'pull', 'push', 'commit'…), for the busy buttons. */
   running: null,
@@ -120,8 +125,27 @@ async function reloadDiff() {
   if (!data) {
     state.diff = null;
   } else {
-    state.diff = { ...diff, data };
+    state.diff = { ...diff, data, versions: null };
   }
+  emit('diff');
+  if (state.diff?.mode === 'preview') loadVersions();
+}
+
+/** Which file and side a diff shows; a diff read again keeps it. */
+const diffKey = (d) => d && `${d.kind}\u0000${d.oid ?? ''}\u0000${Boolean(d.staged)}\u0000${d.file}`;
+
+/** Reads the file before and after the change, for the preview of the open diff. */
+let versionsFor = null;
+async function loadVersions() {
+  const diff = state.diff;
+  const key = diffKey(diff);
+  if (!diff || diff.versions || versionsFor === key) return;
+  versionsFor = key;
+  const commit = diff.kind === 'commit' ? diff.oid : null;
+  const versions = await run(() => backend.fileVersions(state.path, diff.file, diff.data?.oldPath ?? null, commit, Boolean(diff.staged)));
+  if (versionsFor === key) versionsFor = null;
+  if (diffKey(state.diff) !== key) return;
+  state.diff = { ...state.diff, versions: versions ?? { before: null, after: null, failed: true } };
   emit('diff');
 }
 
@@ -187,27 +211,37 @@ export const repoStore = {
   },
 
   async openWorktreeDiff(file, staged, untracked) {
-    const diff = { kind: 'worktree', file, staged, untracked, data: null, loading: true };
+    const diff = { kind: 'worktree', file, staged, untracked, data: null, loading: true, mode: defaultMode(file), versions: null };
     state.diff = diff;
     emit('diff');
     const data = await run(() => backend.fileDiff(state.path, file, staged, untracked));
     if (state.diff !== diff) return;
     state.diff = { ...diff, data, loading: false };
     emit('diff');
+    if (state.diff.mode === 'preview') loadVersions();
   },
 
   async openCommitDiff(file) {
     const details = state.details;
     if (!details) return;
     const known = details.files.find((f) => f.path === file);
-    const diff = { kind: 'commit', file, oid: details.oid, data: known, loading: Boolean(known?.truncated) };
+    const diff = { kind: 'commit', file, oid: details.oid, data: known, loading: Boolean(known?.truncated), mode: defaultMode(file), versions: null };
     state.diff = diff;
     emit('diff');
+    if (diff.mode === 'preview') loadVersions();
     if (!known?.truncated) return;
     const data = await run(() => backend.commitFileDiff(state.path, details.oid, file));
     if (state.diff !== diff) return;
     state.diff = { ...diff, data: data ?? known, loading: false };
     emit('diff');
+  },
+
+  /** Diff or formatted preview of the open file (images, Markdown, HTML). */
+  setDiffMode(mode) {
+    if (!state.diff || !fileKind(state.diff.file) || state.diff.mode === mode) return;
+    state.diff = { ...state.diff, mode };
+    emit('diff');
+    if (mode === 'preview') loadVersions();
   },
 
   closeDiff() {

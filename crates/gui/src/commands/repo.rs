@@ -3,7 +3,8 @@
 
 use std::path::PathBuf;
 
-use gitcontroller_core::{self as core, refs, Carried, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
+use base64::Engine;
+use gitcontroller_core::{self as core, refs, Carried, Content, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -62,6 +63,52 @@ pub async fn commit_file_diff(state: State<'_, AppState>, path: String, oid: Str
 #[tauri::command]
 pub async fn file_diff(state: State<'_, AppState>, path: String, file: String, staged: bool, untracked: bool) -> CommandResult<Option<FileDiff>> {
     Ok(core::worktree_diff(&state.git, &PathBuf::from(path), &file, staged, untracked)?)
+}
+
+/// One version of a file, for an image or a preview.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileVersion {
+    pub size: u64,
+    /// The content in base64; `None` when the file is too large to be shown.
+    pub data: Option<String>,
+}
+
+impl From<Content> for FileVersion {
+    fn from(content: Content) -> Self {
+        Self { size: content.size, data: content.bytes.map(|b| base64::engine::general_purpose::STANDARD.encode(b)) }
+    }
+}
+
+/// The file before and after the change shown in a diff; either side is `None` when the file does
+/// not exist there (added or deleted).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileVersions {
+    pub before: Option<FileVersion>,
+    pub after: Option<FileVersion>,
+}
+
+/// `commit`: the change made by that commit (compared with its first parent). Otherwise the working
+/// copy: the staged change (`staged`) or the one not staged yet.
+#[tauri::command]
+pub async fn file_versions(
+    state: State<'_, AppState>,
+    path: String,
+    file: String,
+    old_path: Option<String>,
+    commit: Option<String>,
+    staged: bool,
+) -> CommandResult<FileVersions> {
+    let root = PathBuf::from(path);
+    let parent = commit.as_ref().map(|oid| format!("{oid}^"));
+    let (before, after) = match (&commit, &parent) {
+        (Some(oid), Some(parent)) => (Version::Revision(parent), Version::Revision(oid)),
+        _ if staged => (Version::Revision("HEAD"), Version::Index),
+        _ => (Version::Index, Version::Worktree),
+    };
+    let read = |file: &str, version| core::file_content(&state.git, &root, file, version).map(|c| c.map(FileVersion::from));
+    Ok(FileVersions { before: read(old_path.as_deref().unwrap_or(&file), before)?, after: read(&file, after)? })
 }
 
 #[tauri::command]

@@ -103,17 +103,17 @@ export function diffFor(path, status = 'modified') {
       ['context', 15, 16, '    for (i, task) in project.tasks().enumerate() {'],
     ];
   return {
-    path, oldPath: null, status, binary: path.endsWith('.png'), truncated: false,
+    path, oldPath: null, status, binary: /\.(png|jpe?g|gif|webp)$/.test(path), truncated: false,
     additions: lines.filter((l) => l[0] === 'added').length,
     deletions: lines.filter((l) => l[0] === 'deleted').length,
-    hunks: [{ header: '@@ -12,4 +12,5 @@ pub fn export', oldStart: 12, newStart: 12, lines: lines.map(([kind, old, nw, text]) => ({ kind, old, new: nw, text })) }],
+    hunks: /\.(png|jpe?g|gif|webp)$/.test(path) ? [] : [{ header: '@@ -12,4 +12,5 @@ pub fn export', oldStart: 12, newStart: 12, lines: lines.map(([kind, old, nw, text]) => ({ kind, old, new: nw, text })) }],
   };
 }
 
 export function commitDetails(path, oid) {
   const commit = histories.get(path)?.find((c) => c.oid === oid);
   if (!commit) throw { code: 'git_failed', subject: 'show', message: 'unknown commit' };
-  const files = ['crates/export/src/gantt.rs', 'crates/export/src/style.rs', 'README.md'].map((p, i) => diffFor(p, i === 1 ? 'added' : 'modified'));
+  const files = ['crates/export/src/gantt.rs', 'crates/export/src/style.rs', 'README.md', 'docs/logo.png', 'docs/index.html'].map((p, i) => diffFor(p, i === 1 ? 'added' : 'modified'));
   return {
     oid, parents: commit.parents, author: commit.author, email: commit.email, time: commit.time,
     committer: commit.author, commitTime: commit.time, message: `${commit.summary}\n\nThe export now follows the project calendar.`, files,
@@ -133,4 +133,44 @@ export function branches(path) {
     remote: [branch('origin/main'), branch('origin/feature/capacity'), branch('origin/release/0.3')],
     tags: [{ name: 'v0.3.0', oid: tip('v0.3.0') }],
   };
+}
+
+// ---------- Contents, for images and previews ----------
+
+const PNG_BEFORE = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAACX0lEQVR4nO3dPU4jQRSF0WI0OaSzkglgR7Ac2BEErGRSWAETWSIxrv5x39fV58Sm+kn+9Nq21KI1AAAAAGB0N2sedv/48bXmedT19nK3SjuLDxEdS2L8teTC4qO1ZR3MKld4nDN1G07egOLjJ1P7mBSg+OgxpZNFnwFhqe4AbT+m6O2lK0DxMUdPN27BRAmQqIsBuv2yxKV+bECiBEiUAIkSIFECJEqARAmQKAESJUCiBEjU7/QAc70+3/679JqHp88/W8zCfLsKsCe6c68XY027CHBqeD+dIcRaSge4RnjnzhRiDWW/hFwjvi3Pp0/JALeKQ4R55QLcOgoRZpUKMBWDCHPKBJiOIH39oyoRYJU3v8ocR1L6Z5g9en2+fU/PsLaHp8+/1zo7vgGrbZ1q84wuHiDHFg2w6rapOteIbECiBEhULMDqt7nq843CBiRKgEQJkCgBEiVAogRIlACJEiBRsQCrP5VWfb5R2IBECZCoaIBVb3NV5xqRDUhUPMBq26baPKPzUNLKrvkAz4jiG7C1OlunyhxHUiLA1vJvfvr6R1UmwNZyEYgvp1SArW0fg/iyygXY2nZRiC+vZICtXT8O8dVQ+meYUyRrPqEmvFpKB3iyRojCq2kXAZ58j8j/CRnDrgL8TlxjKPslhGMQIFECJEqARAmQKAESJUCiBEiUAIkSIFEXA3x7ubvZYhDGdKkfG5AoARLVFaDbMHP0dNO9AUXIFL29uAUTNSlAW5AeUzqZvAFFyE+m9rEopvvHj68lf8845i6mRZ8BbUNaW9bBqgHZiMdh+QAAAADsyn86jbw82aQQzgAAAABJRU5ErkJggg==';
+const PNG_AFTER = 'iVBORw0KGgoAAAANSUhEUgAAAKAAAABkCAYAAAABtjuPAAACXUlEQVR4nO3d0U3jQBSG0WG1RZBKthxoAoqAJqAcKgldsE+ReEniiR3/1+NznsP4Svl0nUSyaA0AAAAAGN3Dkoc9frz9LHkedX0/vy7SzuxDRMecGP/MubD4aG1eBzeVKzzO6d2G3RtQfFzS20dXgOJjip5OZn0GhLkmB2j70WNqL5MCFB+3mNKNWzBRAiTqaoBuv8xxrR8bkCgBEiVAogRIlACJEiBRAiRKgEQJkCgBEvU3PcCtjk8vx2uvOXy+H9aYhdttKsAp0Z17vRhr2kSAveFdOkOItZQOcInwzp0pxBrKfgm5R3xrns80JQNcKw4R5pULcO0oRJhVKsBUDCLMKRNgOoL09feqRIBV3vwqc+xJ6Z9htuj49PKVnmFph8/3f/c6O74Bq22davOMLh4g+xYNsOq2qTrXiGxAogRIVCzA6re56vONwgYkSoBECZAoARIlQKIESJQAiRIgUbEAqz+VVn2+UdiARAmQqGiAVW9zVecakQ1IVDzAatum2jyj81DSwu75AM+I4huwtTpbp8oce1IiwNbyb376+ntVJsDWchGIL6dUgK2tH4P4ssoF2Np6UYgvr2SArd0/DvHVUPpnmFMkSz6hJrxaSgd4skSIwqtpEwGe/I7I/wkZw6YC/E1cYyj7JYR9ECBRAiRKgEQJkCgBEiVAogRIlACJEiBRVwP8fn59WGMQxnStHxuQKAESNSlAt2FuMaWbyRtQhPSY2otbMFFdAdqCTNHTSfcGFCGX9PYxK6bHj7efOX/POG5dTLM+A9qGtDavg0UDshH3w/IBAAAA2JT/uWi7lF/7rwEAAAAASUVORK5CYII=';
+
+const MARKDOWN_BEFORE = '# Export\n\nThe Gantt export writes **one column per day**.\n';
+const MARKDOWN_AFTER = [
+  '# Export guide',
+  '',
+  'The Gantt export now follows the **project calendar**: one column per *working* day, weekends shaded.',
+  '',
+  '## Options',
+  '',
+  '| Option | Effect |',
+  '| --- | --- |',
+  '| `--weekends` | Keep the weekends as columns |',
+  '| `--holidays` | Shade the public holidays |',
+  '',
+  '- Works with `.planif` and `.waypoint` files',
+  '- Keeps the task colours',
+  '',
+  '> Large projects are written in a few seconds.',
+  '',
+  '```rust',
+  'let days = project.calendar().working_days(project.span());',
+  '```',
+].join('\n');
+const HTML = '<!doctype html><html><head><style>body{font-family:sans-serif;margin:24px;color:#223} h1{color:#2450d8} .card{border:1px solid #ccd;border-radius:10px;padding:12px 16px;max-width:360px}</style></head>'
+  + '<body><h1>Waypoint</h1><div class="card"><strong>Export</strong><p>One column per working day.</p></div><script>document.body.append("script ran")</script></body></html>';
+
+const utf8 = (text) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+const version = (data, size) => ({ size: size ?? Math.round(data.length * 0.75), data });
+
+export function fileVersions(file) {
+  if (/\.png$/.test(file)) return { before: version(PNG_BEFORE), after: version(PNG_AFTER) };
+  if (/\.md$/.test(file)) return { before: version(utf8(MARKDOWN_BEFORE)), after: version(utf8(MARKDOWN_AFTER)) };
+  if (/\.html?$/.test(file)) return { before: null, after: version(utf8(HTML)) };
+  return { before: version(utf8('before\n')), after: version(utf8('after\n')) };
 }

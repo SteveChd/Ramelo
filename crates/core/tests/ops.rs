@@ -183,6 +183,29 @@ fn creates_a_branch_at_an_older_commit_carrying_local_changes() {
 }
 
 #[test]
+fn reads_a_file_in_the_working_copy_the_index_and_commits() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    let bytes = |v| file_content(&g, &root, "img.png", v).unwrap().and_then(|c| c.bytes);
+    fs::write(root.join("img.png"), [0x89, b'P', b'N', b'G', 0, 1]).unwrap();
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-q", "-m", "first"]);
+    fs::write(root.join("img.png"), [0x89, b'P', b'N', b'G', 0, 2]).unwrap();
+    git(&root, &["add", "."]);
+    fs::write(root.join("img.png"), [0x89, b'P', b'N', b'G', 0, 3]).unwrap();
+
+    assert_eq!(bytes(Version::Revision("HEAD")).unwrap()[5], 1);
+    assert_eq!(bytes(Version::Index).unwrap()[5], 2);
+    assert_eq!(bytes(Version::Worktree).unwrap()[5], 3);
+    // No parent, or no such file: absent.
+    assert_eq!(bytes(Version::Revision("HEAD^")), None);
+    assert_eq!(file_content(&g, &root, "missing.png", Version::Index).unwrap(), None);
+    assert_eq!(file_content(&g, &root, "missing.png", Version::Worktree).unwrap(), None);
+    assert_eq!(file_content(&g, &root, "img.png", Version::Worktree).unwrap().unwrap().size, 6);
+}
+
+#[test]
 fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     let dir = tempfile::tempdir().unwrap();
     let remote = dir.path().join("remote.git");

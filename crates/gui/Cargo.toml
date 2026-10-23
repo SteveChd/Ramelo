@@ -12,6 +12,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 gitcontroller-core.workspace = true
 gitcontroller-storage.workspace = true
+base64 = "0.22"
 open = "5"
 rfd = "0.15"
 serde.workspace = true

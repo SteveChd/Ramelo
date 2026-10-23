@@ -4,6 +4,7 @@
 //! exactly like the user's own git: same configuration, credentials, hooks and worktrees.
 
 mod branches;
+mod content;
 mod diff;
 mod error;
 mod git;
@@ -16,6 +17,7 @@ mod status;
 mod worktree;
 
 pub use branches::{Branch, Carried, RefList, Tag};
+pub use content::{file_content, Content, Version, MAX_CONTENT};
 pub use diff::{commit_details, commit_file_diff, parse_diff, worktree_diff, CommitDetails, DiffLine, FileDiff, FileStatus, Hunk, LineKind};
 pub use error::GitError;
 pub use git::Git;

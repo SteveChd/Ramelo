@@ -116,6 +116,11 @@ export async function commitDetails(path, oid) {
   return repo.commitDetails(path, oid);
 }
 
+export async function fileVersions(path, file) {
+  await delay(60);
+  return repo.fileVersions(file);
+}
+
 export async function commitFileDiff(path, oid, file) {
   return repo.diffFor(file);
 }

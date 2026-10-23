@@ -45,6 +45,7 @@ export function sampleWorkspace() {
           file('crates/gui/ui/js/views/gantt/bars.js', 'unmodified', 'modified'),
           file('docs/export guide.md', 'renamed', 'unmodified', 'docs/export.md'),
           file('notes/todo.txt', 'untracked', 'untracked'),
+          file('docs/screens/gantt.png', 'unmodified', 'modified'),
         ],
       }),
     },

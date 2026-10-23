@@ -23,6 +23,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   with a working-copy row on top. Selecting a commit shows its message, author and files; selecting
   a file shows its diff in a panel below the graph, which can be folded or enlarged to the whole
   centre.
+- Images (PNG, JPEG, GIF, WebP, SVG…) are shown before and after, side by side, in place of a
+  binary diff. Markdown and HTML files switch between their diff and a formatted preview; HTML is
+  rendered in a sandboxed frame where scripts never run.
 - The side panels (branches, working copy or commit details) and the diff panel are resized with
   their splitters and folded with the strip along their edge, a double click on the splitter or
   Alt+1 to Alt+4; the layout is remembered.
@@ -57,6 +60,7 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 | `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order and the active one, written atomically. |
 | `crates/gui` | Tauri 2 application: commands called by the interface (`src/commands`). |
 | `crates/gui/ui` | Interface in HTML, CSS and JavaScript (ES modules, no framework, no bundler). |
+| `crates/gui/ui/vendor` | Third-party code, kept as published: [marked](https://github.com/markedjs/marked) (MIT) for the Markdown preview. |
 
 The Rust side is the single source of truth: each command returns a snapshot (repositories and their
 state) that the interface displays without computing anything itself.
