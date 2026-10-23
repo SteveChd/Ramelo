@@ -36,7 +36,7 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   Alt+1 to Alt+4; the layout is remembered.
 - A branch can be created from any commit of the graph (right click, or the button shown on hover):
   local changes are stashed, the new branch is checked out and the changes are applied again.
-- Each repository can be given a colour (right click on its tab or its card, or the palette button),
+- Each repository can be given a colour (right click on its tab or its card),
   used for its avatar, its tab and its card.
 - Staging by file or by hunk, discarding changes (with confirmation), and committing with a summary
   counter. With nothing staged, the commit button stages everything. Amending loads the last message.

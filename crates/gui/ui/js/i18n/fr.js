@@ -263,7 +263,6 @@ export default {
   'color.title': 'Couleur',
   'color.custom': 'Autre…',
   'color.auto': 'Automatique',
-  'color.change': 'Couleur du dépôt',
   'graph.branchHere': 'Créer une branche ici…',
   'graph.switchTo': 'Passer sur {name}',
   'graph.checkoutCommit': 'Extraire ce commit (HEAD détachée)',

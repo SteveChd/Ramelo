@@ -3,7 +3,6 @@
 
 import { t, tn } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
-import { openRepoMenu } from '../../components/repo-menu.js';
 import { icon } from '../../lib/icons.js';
 import { shortcut } from '../../app/actions.js';
 import { repoStore } from '../../state/repo-store.js';
@@ -51,7 +50,6 @@ export function renderToolbar(container, repo) {
     tool('branch', 'newBranch', t('repo.newBranch'), { onclick: () => repoStore.createBranch() }),
     h('div', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-btn', title: `${t('action.repo.search')} (${shortcut('repo.search')})`, onclick: () => search.open() }, icon('search')),
-    h('button', { type: 'button', class: 'icon-btn', title: t('color.change'), onclick: (event) => openRepoMenu(event.currentTarget, repo) }, icon('palette')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh')),
   );

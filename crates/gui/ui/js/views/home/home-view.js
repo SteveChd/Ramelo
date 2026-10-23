@@ -55,7 +55,6 @@ function card(repo) {
         // Shown right-to-left so that a long path is cut at its start and keeps the useful end.
         h('span', { class: 'path', title: repo.path }, h('bdi', {}, repo.path))),
       h('div', { class: 'card-actions' },
-        h('button', { type: 'button', class: 'icon-btn', title: t('color.change'), onclick: (event) => { event.stopPropagation(); openRepoMenu(event.currentTarget, repo); } }, icon('palette', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.remove'), onclick: () => store.remove(repo.path) }, icon('close', 16)))),

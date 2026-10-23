@@ -263,7 +263,6 @@ export default {
   'color.title': 'Colour',
   'color.custom': 'Other…',
   'color.auto': 'Automatic',
-  'color.change': 'Colour of the repository',
   'graph.branchHere': 'Create a branch here…',
   'graph.switchTo': 'Switch to {name}',
   'graph.checkoutCommit': 'Check out this commit (detached)',
