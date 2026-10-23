@@ -67,6 +67,16 @@ function modeSwitch(diff) {
     }, label)));
 }
 
+/** Lines added and removed; a file moved without change, or a binary file, says so instead. */
+function stats(data) {
+  if (!data) return null;
+  if (data.binary) return h('span', { class: 'stats note' }, t('diff.binaryShort'));
+  if (data.additions + data.deletions === 0) {
+    return ['renamed', 'copied'].includes(data.status) ? h('span', { class: 'stats note' }, t('diff.sameContent')) : null;
+  }
+  return h('span', { class: 'stats' }, h('span', { class: 'add' }, `+${data.additions}`), ' ', h('span', { class: 'del' }, `−${data.deletions}`));
+}
+
 function line(l) {
   const sign = { added: '+', deleted: '−', context: '', noNewline: '' }[l.kind];
   return h('div', { class: `dline ${l.kind}` },
@@ -98,11 +108,13 @@ export function renderDiff(container) {
       class: 'diff-head',
       ondblclick: (event) => { if (!event.target.closest('button')) layout.set({ diffMaximized: !layout.state.diffMaximized, diffCollapsed: false }); },
     },
-      h('span', { class: 'path', title: diff.file },
-        data?.oldPath && h('span', { class: 'from' }, `${data.oldPath} → `), diff.file),
+      data?.status && h('span', { class: `change-badge ${data.status}` }, t(`change.${data.status}`)),
+      h('span', { class: 'path', title: data?.oldPath ? `${data.oldPath} → ${diff.file}` : diff.file }, h('bdi', {}, diff.file)),
+      data?.oldPath && h('span', { class: 'from-label' }, t('diff.from')),
+      data?.oldPath && h('span', { class: 'from', title: data.oldPath }, h('bdi', {}, data.oldPath)),
       h('span', { class: 'side-label' }, sideLabel),
       modeSwitch(diff),
-      data && !data.binary && h('span', { class: 'stats' }, h('span', { class: 'add' }, `+${data.additions}`), ' ', h('span', { class: 'del' }, `−${data.deletions}`)),
+      stats(data),
       fileActions(),
       h('div', { class: 'vsep' }),
       panelButtons(),

@@ -40,7 +40,9 @@ export function renderDetailsPanel(container) {
       open: diffKey(diff) === diffKey({ kind: 'commit', oid: details.oid, file: f.path }),
       onclick: () => repoStore.openCommitDiff(f.path),
       extra: h('span', { class: 'stats' },
-        f.binary ? t('diff.binaryShort') : [h('span', { class: 'add' }, `+${f.additions}`), ' ', h('span', { class: 'del' }, `−${f.deletions}`)]),
+        f.binary ? t('diff.binaryShort')
+          : f.additions + f.deletions === 0 && ['renamed', 'copied'].includes(f.status) ? t('diff.movedShort')
+            : [h('span', { class: 'add' }, `+${f.additions}`), ' ', h('span', { class: 'del' }, `−${f.deletions}`)]),
     })),
   ));
 }

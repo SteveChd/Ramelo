@@ -293,4 +293,10 @@ export default {
   'preview.none': 'Nothing to show for this file.',
   'preview.tooLarge': 'Too large to show ({size}).',
   'preview.unreadable': 'This file cannot be shown.',
+  'preview.unchanged': 'Unchanged',
+  'preview.noBefore': 'Did not exist',
+  'preview.noAfter': 'Deleted',
+  'diff.from': 'from',
+  'diff.sameContent': 'content unchanged',
+  'diff.movedShort': 'moved',
 };

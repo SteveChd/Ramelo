@@ -293,4 +293,10 @@ export default {
   'preview.none': 'Rien à afficher pour ce fichier.',
   'preview.tooLarge': 'Trop gros pour être affiché ({size}).',
   'preview.unreadable': 'Ce fichier ne peut pas être affiché.',
+  'preview.unchanged': 'Inchangé',
+  'preview.noBefore': 'N\'existait pas',
+  'preview.noAfter': 'Supprimé',
+  'diff.from': 'depuis',
+  'diff.sameContent': 'contenu inchangé',
+  'diff.movedShort': 'déplacé',
 };

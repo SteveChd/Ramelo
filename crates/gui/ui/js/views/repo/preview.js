@@ -36,13 +36,24 @@ function imageFrame(label, version, type, cls) {
     h('div', { class: 'checker' }, body));
 }
 
+/** The side where the file does not exist: kept empty, so that the other side reads at once. */
+function emptyFrame(label, text, cls) {
+  return h('figure', { class: `img-frame ${cls} missing` },
+    h('figcaption', {}, h('span', { class: 'side' }, label)),
+    h('div', { class: 'checker none' }, h('span', {}, text)));
+}
+
 function imagePreview(diff) {
   const { before, after } = diff.versions;
   const type = imageType(diff.file);
   if (!before && !after) return note(t('preview.none'));
+  // Moved or copied without any change: one picture is enough.
+  if (before && after && before.data && before.data === after.data) {
+    return h('div', { class: 'img-compare single' }, imageFrame(t('preview.unchanged'), after, type, 'same'));
+  }
   return h('div', { class: 'img-compare' },
-    imageFrame(after ? t('preview.before') : t('preview.deleted'), before, type, 'before'),
-    imageFrame(before ? t('preview.after') : t('preview.added'), after, type, 'after'));
+    before ? imageFrame(t('preview.before'), before, type, 'before') : emptyFrame(t('preview.before'), t('preview.noBefore'), 'before'),
+    after ? imageFrame(t('preview.after'), after, type, 'after') : emptyFrame(t('preview.after'), t('preview.noAfter'), 'after'));
 }
 
 // ---------- Documents ----------

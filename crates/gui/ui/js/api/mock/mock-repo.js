@@ -114,6 +114,9 @@ export function commitDetails(path, oid) {
   const commit = histories.get(path)?.find((c) => c.oid === oid);
   if (!commit) throw { code: 'git_failed', subject: 'show', message: 'unknown commit' };
   const files = ['crates/export/src/gantt.rs', 'crates/export/src/style.rs', 'README.md', 'docs/logo.png', 'docs/index.html'].map((p, i) => diffFor(p, i === 1 ? 'added' : 'modified'));
+  // A picture moved without change, and one deleted.
+  files.push({ ...diffFor('assets/images/icon.png', 'renamed'), oldPath: 'docs/images/icon.png', additions: 0, deletions: 0, binary: false, hunks: [] });
+  files.push({ ...diffFor('docs/banner.png', 'deleted'), additions: 0, deletions: 0 });
   return {
     oid, parents: commit.parents, author: commit.author, email: commit.email, time: commit.time,
     committer: commit.author, commitTime: commit.time, message: `${commit.summary}\n\nThe export now follows the project calendar.`, files,
@@ -169,6 +172,8 @@ const utf8 = (text) => btoa(String.fromCharCode(...new TextEncoder().encode(text
 const version = (data, size) => ({ size: size ?? Math.round(data.length * 0.75), data });
 
 export function fileVersions(file) {
+  if (file.endsWith('icon.png')) return { before: version(PNG_AFTER), after: version(PNG_AFTER) };
+  if (file.endsWith('banner.png')) return { before: version(PNG_BEFORE), after: null };
   if (/\.png$/.test(file)) return { before: version(PNG_BEFORE), after: version(PNG_AFTER) };
   if (/\.md$/.test(file)) return { before: version(utf8(MARKDOWN_BEFORE)), after: version(utf8(MARKDOWN_AFTER)) };
   if (/\.html?$/.test(file)) return { before: null, after: version(utf8(HTML)) };
