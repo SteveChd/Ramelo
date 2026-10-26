@@ -135,6 +135,23 @@ export async function commitDetails(path, oid) {
   return repo.commitDetails(path, oid);
 }
 
+export async function rewriteInfo(path, oid) {
+  await delay();
+  const rows = repo.history(path, 400).rows;
+  const index = rows.findIndex((r) => r.oid === oid);
+  return { editable: index >= 0, descendants: Math.max(index, 0), pushedTo: index > 2 ? ['origin/main'] : [] };
+}
+
+export async function rewordCommit(path, oid) {
+  await delay(300);
+  return { head: oid, commit: oid, snapshot: snapshot() };
+}
+
+export async function editCommitFile(path, oid) {
+  await delay(300);
+  return { head: oid, commit: oid, snapshot: snapshot() };
+}
+
 export async function fileVersions(path, file) {
   await delay(60);
   return repo.fileVersions(file);

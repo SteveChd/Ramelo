@@ -40,6 +40,12 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   local changes are stashed, the new branch is checked out and the changes are applied again.
 - Each repository can be given a colour (right click on its tab or its card),
   used for its avatar, its tab and its card.
+- A past commit of the current branch can be corrected without an interactive rebase: its message
+  (button in its details, or right click in the graph), or the content of one of its files (Edit in
+  the diff of that file). The commits after it are written again, keeping their own changes, and the
+  working copy follows; a conflict with a later commit leaves everything as it was. A commit already
+  pushed can be rewritten too: the dialog says which remote branches have it and that a force push
+  (with lease) will be needed.
 - Staging by file or by hunk, discarding changes (with confirmation), and committing with a summary
   counter. With nothing staged, the commit button stages everything. Amending loads the last message.
 - Branches in a side panel: double-click to switch (a remote branch becomes a local tracking branch),
@@ -55,7 +61,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 1. Foundation and multi-repository workspace (done).
 2. Repository view: commit graph, diffs, staging and commit, branches, fetch / pull / push (done).
-3. Automation: squash, fixup, reword and reorder without an interactive rebase, undo based on the
+3. Automation: squash, fixup and reorder without an interactive rebase (reword and editing a file
+   of a past commit are done), undo based on the
    reflog, help with conflict resolution.
 4. git-repo: manifest detection, `repo sync`, `repo start` and a global status of all projects.
 

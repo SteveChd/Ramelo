@@ -31,7 +31,8 @@ export function renderDetailsPanel(container) {
         ]),
       h('div', { class: 'actions' },
         h('button', { type: 'button', class: 'btn', onclick: () => repoStore.createBranch(details.oid) }, icon('newBranch', 14), t('details.branchHere')),
-        h('button', { type: 'button', class: 'btn', onclick: () => repoStore.switchTo(details.oid) }, icon('swap', 14), t('details.checkout')))),
+        h('button', { type: 'button', class: 'btn', onclick: () => repoStore.switchTo(details.oid) }, icon('swap', 14), t('details.checkout')),
+        h('button', { type: 'button', class: 'btn', title: t('rewrite.rewordHint'), onclick: () => repoStore.rewordCommit(details.oid) }, icon('edit', 14), t('rewrite.rewordShort')))),
     h('div', { class: 'fgroup-head' }, h('span', { class: 'section-title' }, tn('details.files', details.files.length))),
     details.files.map((f) => fileRow({
       path: f.path,

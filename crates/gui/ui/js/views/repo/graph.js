@@ -94,6 +94,7 @@ function commitMenu(event, row, headOid) {
     { label: t('graph.branchHere'), icon: 'newBranch', run: () => repoStore.createBranch(row.oid) },
     branches.map((b) => ({ label: t('graph.switchTo', { name: b.name }), icon: 'swap', run: () => repoStore.switchTo(b.name) })),
     { label: t('graph.checkoutCommit'), icon: 'commit', disabled: row.oid === headOid && !current, run: () => repoStore.switchTo(row.oid) },
+    { label: t('rewrite.rewordMenu'), icon: 'edit', run: () => repoStore.rewordCommit(row.oid) },
     '-',
     { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
     { label: t('graph.copySummary'), run: () => copy(row.summary) },

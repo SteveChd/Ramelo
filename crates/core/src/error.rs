@@ -49,6 +49,12 @@ pub enum GitError {
     Conflicts,
     #[error("« {0} » is not a valid regular expression")]
     InvalidPattern(String),
+    #[error("a rebase, merge or other operation is in progress")]
+    OperationInProgress,
+    #[error("commit {0} is not in the history of HEAD")]
+    NotInHistory(String),
+    #[error("a later commit also changed « {0} » in a way that conflicts")]
+    RewriteConflict(String),
 }
 
 impl GitError {
@@ -75,15 +81,19 @@ impl GitError {
             Self::NoUpstream(_) => "no_upstream",
             Self::DetachedHead => "detached_head",
             Self::Conflicts => "conflicts",
+            Self::OperationInProgress => "operation_in_progress",
+            Self::NotInHistory(_) => "not_in_history",
+            Self::RewriteConflict(_) => "rewrite_conflict",
         }
     }
 
     /// What the error is about (a folder, a command), to insert in the translated message.
     pub fn subject(&self) -> Option<String> {
         match self {
-            Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts => None,
+            Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts | Self::OperationInProgress => None,
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
+            Self::NotInHistory(name) | Self::RewriteConflict(name) => Some(name.clone()),
             Self::DetachedHead => None,
             Self::PathMissing(path) | Self::NotARepository(path) | Self::NoRepositoryFound(path) => {
                 Some(path.display().to_string())

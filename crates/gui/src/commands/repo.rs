@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use base64::Engine;
-use gitcontroller_core::{self as core, refs, Carried, Content, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
+use gitcontroller_core::{self as core, refs, Carried, Content, RewriteInfo, Rewritten, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -210,6 +210,40 @@ pub async fn commit(state: State<'_, AppState>, path: String, message: String, a
     // Even when the commit fails (a hook refused it…), what was staged must show.
     let snapshot = changed(&state, root);
     Ok(CommitResult { oid: result?, snapshot })
+}
+
+/// Whether a past commit can be rewritten, how many commits follow it, and where it was pushed.
+#[tauri::command]
+pub async fn rewrite_info(state: State<'_, AppState>, path: String, oid: String) -> CommandResult<RewriteInfo> {
+    Ok(core::rewrite_info(&state.git, &PathBuf::from(path), &oid)?)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RewriteResult {
+    #[serde(flatten)]
+    pub rewritten: Rewritten,
+    pub snapshot: Snapshot,
+}
+
+/// Gives a commit of the current branch a new message; the commits after it are written again.
+#[tauri::command]
+pub async fn reword_commit(state: State<'_, AppState>, path: String, oid: String, message: String) -> CommandResult<RewriteResult> {
+    let root = PathBuf::from(path);
+    if message.trim().is_empty() {
+        return Err(CommandError::new("empty_message", None, "a commit needs a message"));
+    }
+    let rewritten = core::reword(&state.git, &root, &oid, &message)?;
+    Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
+}
+
+/// Replaces a file's content in a commit of the current branch; the commits after it keep their own
+/// changes to the file.
+#[tauri::command]
+pub async fn edit_commit_file(state: State<'_, AppState>, path: String, oid: String, file: String, content: String) -> CommandResult<RewriteResult> {
+    let root = PathBuf::from(path);
+    let rewritten = core::edit_file(&state.git, &root, &oid, &file, content.as_bytes())?;
+    Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
 }
 
 /// Message of the last commit, to edit when amending.

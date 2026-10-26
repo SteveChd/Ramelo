@@ -23,6 +23,11 @@ function hunkActions(index) {
 
 function fileActions() {
   const diff = repoStore.state.diff;
+  // A file of a past commit can be corrected there, unless the commit deleted it or it is binary.
+  if (diff.kind === 'commit') {
+    if (!diff.data || diff.data.status === 'deleted' || diff.data.binary) return null;
+    return h('button', { type: 'button', class: 'btn', title: t('rewrite.editHint'), onclick: () => repoStore.editCommitFile(diff.oid, diff.file) }, icon('edit', 14), t('rewrite.editFile'));
+  }
   if (diff.kind !== 'worktree') return null;
   const entry = store.activeRepo?.summary?.files.find((f) => f.path === diff.file);
   if (diff.staged) {

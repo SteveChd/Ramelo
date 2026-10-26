@@ -273,3 +273,95 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     assert!(!push(&g, &me, false).unwrap().upstream_set);
     fetch(&g, &me).unwrap();
 }
+
+fn messages(root: &Path) -> Vec<String> {
+    git(root, &["log", "--format=%s"]).lines().map(str::to_owned).collect()
+}
+
+#[test]
+fn rewords_a_past_commit_and_keeps_the_ones_after_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "one\n", "First");
+    commit_file(&root, "a.txt", "two\n", "Secnod");
+    let target = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    commit_file(&root, "b.txt", "x\n", "Third");
+    fs::write(root.join("b.txt"), "local\n").unwrap();
+
+    let info = rewrite_info(&g, &root, &target).unwrap();
+    assert!(info.editable && info.pushed_to.is_empty());
+    assert_eq!(info.descendants, 1);
+
+    reword(&g, &root, &target, "Second\n\nWith a body.").unwrap();
+    assert_eq!(messages(&root), ["Third", "Second", "First"]);
+    assert_eq!(git(&root, &["log", "-1", "--skip=1", "--format=%B"]).trim_end(), "Second\n\nWith a body.");
+    // Same author, same content, local changes kept.
+    assert_eq!(git(&root, &["log", "-1", "--skip=1", "--format=%an"]).trim(), "Test");
+    assert_eq!(fs::read_to_string(root.join("b.txt")).unwrap(), "local\n");
+    assert_eq!(fs::read_to_string(root.join("a.txt")).unwrap(), "two\n");
+
+    // A commit outside the history of HEAD cannot be rewritten.
+    git(&root, &["checkout", "-q", "--", "b.txt"]);
+    let main_tip = git(&root, &["rev-parse", "main"]).trim().to_owned();
+    git(&root, &["switch", "-q", "-c", "side", "HEAD~2"]);
+    commit_file(&root, "c.txt", "c\n", "Side");
+    assert!(matches!(reword(&g, &root, &main_tip, "No"), Err(GitError::NotInHistory(_))));
+}
+
+#[test]
+fn edits_a_file_in_a_past_commit_and_carries_the_later_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    fs::create_dir_all(root.join("src")).unwrap();
+    commit_file(&root, "src/lib.rs", "a\nb\nc\nd\ne\n", "Add lib");
+    let target = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    commit_file(&root, "src/lib.rs", "a\nb\nc\nd\nE\n", "Change the end");
+    commit_file(&root, "other.txt", "o\n", "Other file");
+
+    edit_file(&g, &root, &target, "src/lib.rs", b"A\nb\nc\nd\ne\n").unwrap();
+    assert_eq!(messages(&root), ["Other file", "Change the end", "Add lib"]);
+    // The fix is in the old commit, the later change is still on top, the working copy follows.
+    assert_eq!(git(&root, &["show", "HEAD~2:src/lib.rs"]), "A\nb\nc\nd\ne\n");
+    assert_eq!(fs::read_to_string(root.join("src/lib.rs")).unwrap(), "A\nb\nc\nd\nE\n");
+    assert!(status(&root).is_clean());
+
+    // A change that the next commit contradicts stops everything.
+    let before = git(&root, &["rev-parse", "HEAD"]);
+    let target = git(&root, &["rev-parse", "HEAD~2"]).trim().to_owned();
+    let err = edit_file(&g, &root, &target, "src/lib.rs", b"A\nb\nc\nd\nX\n").unwrap_err();
+    assert!(matches!(err, GitError::RewriteConflict(ref p) if p == "src/lib.rs"), "{err:?}");
+    assert_eq!(git(&root, &["rev-parse", "HEAD"]), before);
+
+    // A pushed commit can still be rewritten; its remote branch is named.
+    let remote = dir.path().join("remote.git");
+    git(dir.path(), &["init", "-q", "--bare", remote.to_str().unwrap()]);
+    git(&root, &["remote", "add", "origin", remote.to_str().unwrap()]);
+    git(&root, &["push", "-q", "-u", "origin", "main"]);
+    let info = rewrite_info(&g, &root, &target).unwrap();
+    assert_eq!(info.pushed_to, ["origin/main"]);
+}
+
+#[test]
+fn rewrites_through_a_merge() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "1\n2\n3\n", "Base");
+    let target = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(&root, &["switch", "-q", "-c", "feature"]);
+    commit_file(&root, "f.txt", "f\n", "Feature");
+    git(&root, &["switch", "-q", "main"]);
+    commit_file(&root, "a.txt", "1\n2\nthree\n", "Main change");
+    git(&root, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"]);
+
+    edit_file(&g, &root, &target, "a.txt", b"one\n2\n3\n").unwrap();
+    assert_eq!(fs::read_to_string(root.join("a.txt")).unwrap(), "one\n2\nthree\n");
+    let parents = git(&root, &["log", "-1", "--format=%P"]);
+    assert_eq!(parents.split_whitespace().count(), 2);
+    // Both sides of the merge now start from the edited commit.
+    assert_eq!(git(&root, &["show", "HEAD^2~1:a.txt"]), "one\n2\n3\n");
+    assert!(fs::metadata(root.join("f.txt")).is_ok());
+    assert!(status(&root).is_clean());
+}

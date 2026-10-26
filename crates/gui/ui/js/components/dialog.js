@@ -101,3 +101,46 @@ export function prompt({ title, message, label, value = '', placeholder = '', co
     setTimeout(() => input.select(), 0);
   });
 }
+
+/**
+ * A text to edit in a large field (a commit message, the content of a file). `notes` are short texts
+ * shown above the field, `warning` one shown in its colour. Ctrl+Enter confirms. Resolves with the
+ * text, or null.
+ */
+export function editText({ title, notes = [], warning = null, value = '', code = false, confirmLabel, validate = () => null }) {
+  return open((box, close) => {
+    box.classList.add(code ? 'wide' : 'medium');
+    const error = h('div', { class: 'field-error' });
+    const area = h('textarea', { class: `edit-area${code ? ' code' : ''}`, spellcheck: code ? 'false' : 'true', autofocus: true, wrap: code ? 'off' : 'soft' });
+    area.value = value;
+    const submit = () => {
+      const problem = validate(area.value);
+      error.textContent = problem ?? '';
+      if (!problem) close(area.value);
+    };
+    area.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        submit();
+      }
+      // In code, Tab indents instead of leaving the field.
+      if (code && event.key === 'Tab' && !event.shiftKey) {
+        event.preventDefault();
+        area.setRangeText('\t', area.selectionStart, area.selectionEnd, 'end');
+      }
+    });
+    area.addEventListener('input', () => { error.textContent = ''; });
+    mount(box,
+      head(title, close),
+      notes.filter(Boolean).map((note) => h('p', { class: 'dialog-text' }, note)),
+      warning && h('p', { class: 'dialog-warning' }, icon('warning', 16), h('span', {}, warning)),
+      area,
+      error,
+      h('div', { class: 'dialog-foot' },
+        h('span', { class: 'hint' }, 'Ctrl+Enter'),
+        h('button', { type: 'button', class: 'btn', onclick: () => close(null) }, t('dialog.cancel')),
+        h('button', { type: 'button', class: 'btn primary', onclick: submit }, confirmLabel)),
+    );
+    setTimeout(() => { area.setSelectionRange(0, 0); area.scrollTop = 0; }, 0);
+  });
+}

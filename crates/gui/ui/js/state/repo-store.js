@@ -6,7 +6,7 @@
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
-import { choose, confirm, prompt } from '../components/dialog.js';
+import { choose, confirm, editText, prompt } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
 import { defaultMode, fileKind } from '../lib/file-kinds.js';
 import { store } from './store.js';
@@ -181,6 +181,49 @@ async function reveal(oid, { select = true } = {}) {
 function revealHead() {
   const summary = repo()?.summary;
   if (summary?.head.oid) reveal(summary.head.oid, { select: summary.fileCount === 0 });
+}
+
+// ---------- Rewriting history ----------
+
+/** What rewriting a commit implies, or null (with the reason shown) when it cannot be rewritten. */
+async function rewritable(oid) {
+  const info = await run(() => backend.rewriteInfo(state.path, oid));
+  if (!info) return null;
+  if (!info.editable) {
+    store.notify(t('rewrite.notInHistory'), true);
+    return null;
+  }
+  return info;
+}
+
+/** Texts of the rewrite dialog: the commits written again, and the force push to come. */
+function rewriteNotes(info) {
+  return {
+    notes: [info.descendants > 0 ? tn('rewrite.descendants', info.descendants) : t('rewrite.noDescendants')],
+    warning: info.pushedTo.length ? t('rewrite.pushed', { remotes: info.pushedTo.slice(0, 3).join(', ') }) : null,
+  };
+}
+
+/** After a rewrite: the new history shows, with the new version of the commit selected. */
+async function afterRewrite(result, info) {
+  store.notify(t(info.pushedTo.length ? 'rewrite.donePushed' : 'rewrite.done'));
+  state.selection = 'wip';
+  state.details = null;
+  state.diff = null;
+  emit('selection');
+  await afterChange(result.snapshot);
+  await reveal(result.commit);
+}
+
+/** Text of a file from its base64 content; null when it is not text (binary or not UTF-8). */
+function decodeText(base64) {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  if (bytes.includes(0)) return null;
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
 }
 
 function draft() {
@@ -375,6 +418,57 @@ export const repoStore = {
     emit('draft');
     store.notify(t(d.amend ? 'notice.amended' : 'notice.committed', { oid: result.oid.slice(0, 7) }));
     await afterChange(result.snapshot);
+  },
+
+  // ---------- Rewriting history ----------
+
+  /** Edits the message of a commit of the current branch; the commits after it are written again. */
+  async rewordCommit(oid) {
+    const details = state.details?.oid === oid ? state.details : await run(() => backend.commitDetails(state.path, oid));
+    if (!details) return;
+    const info = await rewritable(oid);
+    if (!info) return;
+    const message = await editText({
+      title: t('rewrite.rewordTitle', { oid: oid.slice(0, 7) }),
+      ...rewriteNotes(info),
+      value: details.message,
+      confirmLabel: t('rewrite.reword'),
+      validate: (value) => (value.trim() ? null : t('rewrite.messageMissing')),
+    });
+    if (message === null || message.trimEnd() === details.message.trimEnd()) return;
+    const result = await run(() => backend.rewordCommit(state.path, oid, message), 'rewrite');
+    if (result) await afterRewrite(result, info);
+  },
+
+  /** Edits a file as it is in a commit of the current branch; later changes to it are kept on top. */
+  async editCommitFile(oid, file) {
+    const info = await rewritable(oid);
+    if (!info) return;
+    const versions = await run(() => backend.fileVersions(state.path, file, null, oid, false));
+    const after = versions?.after;
+    if (!after) {
+      store.notify(t('rewrite.fileMissing', { file }), true);
+      return;
+    }
+    const text = after.data ? decodeText(after.data) : null;
+    if (text === null) {
+      store.notify(t(after.data ? 'rewrite.notText' : 'rewrite.tooLarge', { file }), true);
+      return;
+    }
+    // The field works with \n only: Windows line endings are put back when saving.
+    const crlf = text.includes('\r\n');
+    const original = crlf ? text.replace(/\r\n/g, '\n') : text;
+    const edited = await editText({
+      title: t('rewrite.editTitle', { file, oid: oid.slice(0, 7) }),
+      ...rewriteNotes(info),
+      value: original,
+      code: true,
+      confirmLabel: t('rewrite.save'),
+    });
+    if (edited === null || edited === original) return;
+    const content = crlf ? edited.replace(/\n/g, '\r\n') : edited;
+    const result = await run(() => backend.editCommitFile(state.path, oid, file, content), 'rewrite');
+    if (result) await afterRewrite(result, info);
   },
 
   // ---------- Branches ----------
