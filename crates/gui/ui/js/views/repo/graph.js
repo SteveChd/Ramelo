@@ -30,14 +30,14 @@ function path(from, to, y1, y2) {
 function laneSvg(row, width, isHead) {
   const g = row.graph;
   const lines = [
-    ...g.top.map((e) => s('path', { d: path(e.from, e.to, 0, ROW / 2), stroke: laneColor(e.color) })),
-    ...g.bottom.map((e) => s('path', { d: path(e.from, e.to, ROW / 2, ROW), stroke: laneColor(e.color) })),
+    ...g.top.map((e) => s('path', { d: path(e.from, e.to, 0, ROW / 2), stroke: laneColor(e.color), 'data-line': e.color })),
+    ...g.bottom.map((e) => s('path', { d: path(e.from, e.to, ROW / 2, ROW), stroke: laneColor(e.color), 'data-line': e.color })),
   ];
   const cx = laneX(g.lane);
   const color = laneColor(g.color);
   const dot = row.parents.length > 1
-    ? s('circle', { cx, cy: ROW / 2, r: 3.6, fill: 'var(--panel)', stroke: color, 'stroke-width': 2.2 })
-    : s('circle', { cx, cy: ROW / 2, r: 4.6, fill: color });
+    ? s('circle', { cx, cy: ROW / 2, r: 3.6, fill: 'var(--panel)', stroke: color, 'stroke-width': 2.2, 'data-line': g.color })
+    : s('circle', { cx, cy: ROW / 2, r: 4.6, fill: color, 'data-line': g.color });
   return s('svg', { width, height: ROW, fill: 'none', 'stroke-width': 2, 'aria-hidden': 'true' },
     lines,
     isHead && s('circle', { cx, cy: ROW / 2, r: 7.5, stroke: color, 'stroke-width': 1.6, opacity: 0.55 }),
@@ -188,6 +188,20 @@ export function renderGraph(container, repo) {
   );
   container.scrollTop = scroll;
   lastHistory = history;
+  focusLine(container);
+}
+
+/**
+ * Brings forward the line of history of the selected commit: the branch it belongs to, from its tip
+ * down to where it leaves another line. Its strokes get thicker, the other lines fade. Each line has
+ * its own colour index, so its edges and dots are the ones carrying that index.
+ */
+function focusLine(container) {
+  const { history, selection } = repoStore.state;
+  const row = selection !== 'wip' && history?.rows.find((r) => r.oid === selection);
+  const line = row ? String(row.graph.color) : null;
+  container.classList.toggle('focus-line', line !== null);
+  for (const el of container.querySelectorAll('.grow svg [data-line]')) el.classList.toggle('on', el.dataset.line === line);
 }
 
 /** Selection changed: only the highlighted row changes, and the selected commit is scrolled into view. */
@@ -197,6 +211,7 @@ export function updateGraphSelection(container) {
   const target = selection === 'wip' ? container.querySelector('.grow.wip') : container.querySelector(`.grow[data-oid="${selection}"]`);
   target?.classList.add('selected');
   target?.scrollIntoView({ block: 'nearest' });
+  focusLine(container);
 }
 
 /** Brings a commit into the middle of the view, after a switch of branch. */
