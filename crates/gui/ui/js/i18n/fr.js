@@ -352,4 +352,11 @@ export default {
   'errors.operation_in_progress': 'Une opération (rebase, merge…) est en cours : termine-la ou annule-la d\'abord.',
   'errors.not_in_history': 'Le commit {subject} n\'est pas dans l\'historique de la branche courante.',
   'errors.rewrite_conflict': 'Un commit suivant a aussi modifié « {subject} » au même endroit : l\'historique n\'a pas été touché.',
+  'worktree.title': '« {name} » est ouverte dans un autre worktree',
+  'worktree.message': 'Git n\'extrait une branche que dans un seul worktree à la fois, et « {name} » est extraite dans « {folder} ».',
+  'worktree.open': 'Ouvrir ce worktree dans un onglet',
+  'worktree.detach': 'Extraire son commit ici',
+  'worktree.detachHint': 'Commit {oid}, sans branche (HEAD détachée)',
+  'worktree.badge': 'Extraite dans le worktree « {folder} »',
+  'errors.branch_in_worktree': 'Cette branche est déjà extraite dans le worktree « {subject} ».',
 };

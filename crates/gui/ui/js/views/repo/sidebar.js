@@ -42,6 +42,7 @@ function localItem(branch) {
     ondblclick: () => { if (!branch.isHead) repoStore.switchTo(branch.name); },
   },
   h('span', { class: 'lbl' }, branch.name),
+  branch.worktree && h('span', { class: 'wt', title: t('worktree.badge', { folder: branch.worktree }) }, icon('folder', 13)),
   trackInfo(branch),
   h('span', { class: 'acts' },
     !branch.isHead && h('button', { type: 'button', class: 'icon-btn', title: t('branch.switch'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name); } }, icon('swap', 14)),

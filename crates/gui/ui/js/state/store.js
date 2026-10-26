@@ -93,14 +93,18 @@ export const store = {
     apply(snapshot);
   },
 
-  /** Adds repositories: from `paths` (dropped folders), or chosen in a folder dialog. */
-  async add(paths = null) {
+  /**
+   * Adds repositories: from `paths` (dropped folders), or chosen in a folder dialog. `quiet`: no
+   * notice when they were already there (they are simply shown).
+   */
+  async add(paths = null, { quiet = false } = {}) {
     const chosen = paths ?? (await run(() => backend.pickFolder()));
     if (!chosen?.length) return;
     const result = await run(() => backend.addRepositories(chosen));
     if (!result) return;
     apply(result.snapshot);
     const { added, existing } = result;
+    if (quiet) return;
     if (added.length > 1) emit('notice', tn('notice.added', added.length));
     else if (added.length === 0 && existing > 1) emit('notice', tn('notice.alreadyThere', existing));
     else if (added.length === 0) emit('notice', t('notice.alreadyOpen'));

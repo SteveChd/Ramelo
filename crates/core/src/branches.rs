@@ -23,6 +23,8 @@ pub struct Branch {
     /// The tracked remote branch was deleted on the remote.
     pub gone: bool,
     pub is_head: bool,
+    /// Folder of another worktree where this branch is checked out: git will not check it out here.
+    pub worktree: Option<String>,
     /// Time of the last commit.
     pub time: i64,
     pub summary: String,
@@ -44,14 +46,14 @@ pub struct RefList {
     pub tags: Vec<Tag>,
 }
 
-const FORMAT: &str = "--format=%(refname)%1f%(objectname)%1f%(*objectname)%1f%(upstream:short)%1f%(upstream:track,nobracket)%1f%(HEAD)%1f%(committerdate:unix)%1f%(contents:subject)";
+const FORMAT: &str = "--format=%(refname)%1f%(objectname)%1f%(*objectname)%1f%(upstream:short)%1f%(upstream:track,nobracket)%1f%(HEAD)%1f%(worktreepath)%1f%(committerdate:unix)%1f%(contents:subject)";
 
 pub fn list(git: &Git, root: &Path) -> Result<RefList, GitError> {
     let text = git.text(root, ["for-each-ref", "--sort=-committerdate", FORMAT, "refs/heads", "refs/remotes", "refs/tags"])?;
     let mut refs = RefList::default();
     for line in text.lines().filter(|l| !l.is_empty()) {
-        let fields: Vec<&str> = line.splitn(8, '\x1f').collect();
-        let [name, oid, peeled, upstream, track, head, time, summary] = fields[..] else {
+        let fields: Vec<&str> = line.splitn(9, '\x1f').collect();
+        let [name, oid, peeled, upstream, track, head, worktree, time, summary] = fields[..] else {
             return Err(GitError::Parse { command: "for-each-ref".into(), detail: line.to_owned() });
         };
         let (ahead, behind, gone) = parse_track(track);
@@ -63,6 +65,7 @@ pub fn list(git: &Git, root: &Path) -> Result<RefList, GitError> {
             behind,
             gone,
             is_head: head == "*",
+            worktree: (head != "*" && !worktree.is_empty()).then(|| worktree.to_owned()),
             time: time.parse().unwrap_or(0),
             summary: summary.to_owned(),
         };
@@ -132,6 +135,12 @@ pub fn switch(git: &Git, root: &Path, target: &str, carry_changes: bool) -> Resu
     } else {
         vec!["switch".into(), "--detach".into(), target.into()]
     };
+
+    // Git checks a branch out in one worktree only: say where, before putting any change aside.
+    let local = args.iter().skip(1).find(|a| !a.starts_with("--"));
+    if let Some(path) = local.and_then(|name| refs.local.iter().find(|b| &b.name == name)).and_then(|b| b.worktree.clone()) {
+        return Err(GitError::BranchInWorktree(path));
+    }
 
     if carry_changes {
         carry(git, root, target, &args)

@@ -55,6 +55,8 @@ pub enum GitError {
     NotInHistory(String),
     #[error("a later commit also changed « {0} » in a way that conflicts")]
     RewriteConflict(String),
+    #[error("the branch is already checked out in the worktree « {0} »")]
+    BranchInWorktree(String),
 }
 
 impl GitError {
@@ -84,6 +86,7 @@ impl GitError {
             Self::OperationInProgress => "operation_in_progress",
             Self::NotInHistory(_) => "not_in_history",
             Self::RewriteConflict(_) => "rewrite_conflict",
+            Self::BranchInWorktree(_) => "branch_in_worktree",
         }
     }
 
@@ -93,7 +96,7 @@ impl GitError {
             Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts | Self::OperationInProgress => None,
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
-            Self::NotInHistory(name) | Self::RewriteConflict(name) => Some(name.clone()),
+            Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::BranchInWorktree(name) => Some(name.clone()),
             Self::DetachedHead => None,
             Self::PathMissing(path) | Self::NotARepository(path) | Self::NoRepositoryFound(path) => {
                 Some(path.display().to_string())
@@ -118,6 +121,8 @@ pub(crate) fn classify(command: String, message: String, output: &str) -> GitErr
         GitError::PushRejected(message)
     } else if any(&["Authentication failed", "could not read Username", "Permission denied (publickey", "terminal prompts disabled", "Host key verification failed"]) {
         GitError::AuthFailed(message)
+    } else if let Some(path) = ["is already used by worktree at '", "is already checked out at '"].iter().find_map(|n| output.split(n).nth(1)) {
+        GitError::BranchInWorktree(path.split('\'').next().unwrap_or_default().to_owned())
     } else if let Some(name) = output.split("branch '").nth(1).filter(|_| output.contains("is not fully merged")) {
         GitError::BranchNotMerged(name.split('\'').next().unwrap_or_default().to_owned())
     } else {

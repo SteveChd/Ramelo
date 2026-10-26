@@ -473,10 +473,38 @@ export const repoStore = {
 
   // ---------- Branches ----------
 
+  /**
+   * A branch checked out in another worktree cannot be checked out here: offers to open that
+   * worktree in its own tab, or to check out the branch's commit here, detached.
+   */
+  async branchInWorktree(name, folder) {
+    const branch = state.refs?.local.find((b) => b.name === name);
+    const answer = await choose({
+      title: t('worktree.title', { name }),
+      message: t('worktree.message', { name, folder }),
+      choices: [
+        { value: 'open', label: t('worktree.open'), hint: folder, primary: true },
+        branch && { value: 'detach', label: t('worktree.detach'), hint: t('worktree.detachHint', { oid: branch.oid.slice(0, 7) }) },
+      ].filter(Boolean),
+    });
+    if (answer === 'open') await store.add([folder], { quiet: true });
+    if (answer === 'detach') await repoStore.switchTo(branch.oid);
+  },
+
   /** Switches to `target`. When local changes are in the way, offers to bring them along. */
   async switchTo(target, carry = false) {
+    const held = state.refs?.local.find((b) => b.name === target && b.worktree);
+    if (held) {
+      await repoStore.branchInWorktree(target, held.worktree);
+      return;
+    }
     const first = await attemptRunning(() => backend.switchBranch(state.path, target, carry), 'switch');
     let result = first.value;
+    if (first.error?.code === 'branch_in_worktree') {
+      const local = state.refs?.local.some((b) => b.name === target) ? target : target.split('/').slice(1).join('/');
+      await repoStore.branchInWorktree(local, first.error.subject);
+      return;
+    }
     if (first.error?.code === 'local_changes' && !carry) {
       const answer = await choose({
         title: t('switch.blockedTitle', { target }),

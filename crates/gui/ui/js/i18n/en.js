@@ -352,4 +352,11 @@ export default {
   'errors.operation_in_progress': 'An operation (rebase, merge…) is in progress: finish or abort it first.',
   'errors.not_in_history': 'Commit {subject} is not in the history of the current branch.',
   'errors.rewrite_conflict': 'A later commit also changed « {subject} » at the same place: the history was left as it was.',
+  'worktree.title': '« {name} » is open in another worktree',
+  'worktree.message': 'Git checks a branch out in one worktree at a time, and « {name} » is checked out in « {folder} ».',
+  'worktree.open': 'Open that worktree in a tab',
+  'worktree.detach': 'Check out its commit here',
+  'worktree.detachHint': 'Commit {oid}, without a branch (detached HEAD)',
+  'worktree.badge': 'Checked out in the worktree « {folder} »',
+  'errors.branch_in_worktree': 'This branch is already checked out in the worktree « {subject} ».',
 };

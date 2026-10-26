@@ -365,3 +365,19 @@ fn rewrites_through_a_merge() {
     assert!(fs::metadata(root.join("f.txt")).is_ok());
     assert!(status(&root).is_clean());
 }
+
+#[test]
+fn tells_where_a_branch_is_checked_out_in_another_worktree() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "a\n", "First");
+    git(&root, &["branch", "other"]);
+    let wt = dir.path().join("wt");
+    git(&root, &["worktree", "add", "-q", wt.to_str().unwrap(), "other"]);
+
+    let other = refs::list(&g, &root).unwrap().local.into_iter().find(|b| b.name == "other").unwrap();
+    assert!(other.worktree.as_deref().is_some_and(|p| p.ends_with("wt")), "{other:?}");
+    let err = refs::switch(&g, &root, "other", false).unwrap_err();
+    assert!(matches!(err, GitError::BranchInWorktree(ref p) if p.ends_with("wt")), "{err:?}");
+}

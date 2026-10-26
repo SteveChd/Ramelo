@@ -97,6 +97,7 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .sb-item .track { font-size: 11px; color: var(--muted); white-space: nowrap; display: inline-flex; gap: 4px; }
 .sb-item .track .up { color: var(--ok); } .sb-item .track .down { color: var(--accent); }
 .sb-item .gone { font-size: 11px; color: var(--err); }
+.sb-item .wt { flex: 0 0 auto; display: inline-flex; color: var(--muted); }
 .sb-item .acts { display: none; gap: 0; }
 .sb-item:hover .acts { display: inline-flex; }
 .sb-item:hover .track { display: none; }

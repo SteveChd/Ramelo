@@ -131,7 +131,7 @@ export function branches(path) {
     local: [
       branch('main', { isHead: true, upstream: 'origin/main' }),
       branch('feature/capacity', { upstream: 'origin/feature/capacity', ahead: 1 }),
-      branch('old-experiment', { gone: true, upstream: 'origin/old-experiment' }),
+      branch('old-experiment', { gone: true, upstream: 'origin/old-experiment', worktree: 'C:/Users/steve/dev/waypoint.worktrees/old-experiment' }),
     ],
     remote: [branch('origin/main'), branch('origin/feature/capacity'), branch('origin/release/0.3')],
     tags: [{ name: 'v0.3.0', oid: tip('v0.3.0') }],
