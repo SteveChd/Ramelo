@@ -192,9 +192,9 @@ export function renderGraph(container, repo) {
 }
 
 /**
- * The ancestry of a commit below its own line: following first parents from `start`, the dots and
- * the pieces of line that lead from one to the next, by row: { dot, top, bottom } where top and
- * bottom hold the colours of the lines to bring forward. Only the commits read so far are followed.
+ * Every ancestor of a commit among the commits read so far, merged branches included: the dots and
+ * the pieces of line that lead to them, by row: { dot, top, bottom } where top and bottom hold the
+ * colours of the lines to bring forward.
  */
 function ancestry(rows, start) {
   const index = new Map(rows.map((r, i) => [r.oid, i]));
@@ -203,28 +203,38 @@ function ancestry(rows, start) {
     if (!marks.has(i)) marks.set(i, { dot: false, top: new Set(), bottom: new Set() });
     return marks.get(i);
   };
-  let i = index.get(start);
-  while (i !== undefined) {
-    const j = index.get(rows[i].parents[0]);
-    if (j === undefined) break;
-    // The line of the commit waits for its first parent: it carries the commit's colour down to it.
-    const color = rows[i].graph.color;
-    mark(i).bottom.add(color);
-    for (let k = i + 1; k < j; k += 1) {
-      mark(k).top.add(color);
-      mark(k).bottom.add(color);
-    }
-    mark(j).top.add(color);
-    mark(j).dot = true;
-    i = j;
+  const seen = new Set([index.get(start)]);
+  const queue = [index.get(start)];
+  while (queue.length) {
+    const i = queue.shift();
+    const { graph, parents } = rows[i];
+    // The first parent goes on in the commit's own line; each other parent in the line its merge
+    // edge leads to, in the order of the parents.
+    const merges = graph.bottom.filter((e) => e.from === graph.lane && e.to !== graph.lane);
+    parents.forEach((parent, n) => {
+      const j = index.get(parent);
+      const color = n === 0 ? graph.color : merges[n - 1]?.color;
+      if (j === undefined || color === undefined) return;
+      mark(i).bottom.add(color);
+      for (let k = i + 1; k < j; k += 1) {
+        mark(k).top.add(color);
+        mark(k).bottom.add(color);
+      }
+      mark(j).top.add(color);
+      mark(j).dot = true;
+      if (!seen.has(j)) {
+        seen.add(j);
+        queue.push(j);
+      }
+    });
   }
   return marks;
 }
 
 /**
  * Brings forward the line of history of the selected commit: the branch it belongs to, from its tip
- * down to where it leaves another line, and, less strongly, the commits it comes from below that,
- * not the rest of the line it started from. Its strokes get thicker, the other lines fade. Each line
+ * down to where it leaves another line, and, less strongly, every commit it comes from (the branches
+ * merged into its parent line included), not the rest of the lines they belong to. Its strokes get thicker, the other lines fade. Each line
  * has its own colour index, so its edges and dots are the ones carrying that index.
  */
 function focusLine(container) {
