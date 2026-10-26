@@ -24,7 +24,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 - The repository tab shows the history of every branch, remote branch and tag as a commit graph,
   with a working-copy row on top. Selecting a commit shows its message, author and files; selecting
   a file shows its diff in a panel below the graph, which can be folded or enlarged to the whole
-  centre.
+  centre. The diff is shown in one column or side by side, before on the left and after on the right
+  (Alt+5); the choice is remembered.
 - Commits are searched with Ctrl+F through the whole history, every branch and tag included, not
   only the commits drawn: by message, author, commit id, changed file or changed code, with case
   matching and regular expressions. Matches are highlighted and the other commits fade, or only the

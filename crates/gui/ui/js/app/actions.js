@@ -41,6 +41,7 @@ const ACTIONS = {
   'view.toggleRight': { key: 'Alt+2', enabled: hasActive, run: () => layout.toggle('rightCollapsed') },
   'view.toggleDiff': { key: 'Alt+3', enabled: () => Boolean(repoStore.state.diff), run: () => layout.toggle('diffCollapsed') },
   'view.maximizeDiff': { key: 'Alt+4', enabled: () => Boolean(repoStore.state.diff), run: () => layout.set({ diffMaximized: !layout.state.diffMaximized, diffCollapsed: false }) },
+  'view.splitDiff': { key: 'Alt+5', enabled: () => Boolean(repoStore.state.diff), run: () => layout.set({ diffSplit: !layout.state.diffSplit }) },
   'repo.fetch': { key: 'Ctrl+Shift+F', enabled: () => Boolean(store.activeRepo?.summary?.remotes.length), run: () => repoStore.fetch() },
   'repo.pull': { key: 'Ctrl+Shift+L', enabled: () => Boolean(store.activeRepo?.summary?.upstream), run: () => repoStore.pull() },
   'repo.push': { key: 'Ctrl+Shift+P', enabled: () => Boolean(store.activeRepo?.summary?.head.branch), run: () => repoStore.push() },

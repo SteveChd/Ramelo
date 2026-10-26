@@ -1,4 +1,5 @@
-// Diff of one file, in the panel below the graph: its hunks with old and new line numbers. For the working copy,
+// Diff of one file, in the panel below the graph: its hunks with old and new line numbers, in one
+// column or side by side (before on the left, after on the right). For the working copy,
 // each hunk can be staged, unstaged or discarded on its own, and the whole file as well.
 
 import { t } from '../../i18n/i18n.js';
@@ -67,6 +68,20 @@ function modeSwitch(diff) {
     }, label)));
 }
 
+/** One column, or the file before on the left and after on the right. */
+function styleSwitch(diff) {
+  if (diff.mode === 'preview' || !diff.data?.hunks?.length) return null;
+  const split = layout.state.diffSplit;
+  const key = shortcut('view.splitDiff');
+  return h('div', { class: 'seg style-switch', role: 'group', 'aria-label': t('diff.style') },
+    [[false, 'unified', t('diff.unified')], [true, 'split', t('diff.split')]].map(([value, iconName, label]) => h('button', {
+      type: 'button',
+      title: `${label}${key ? ` (${key})` : ''}`,
+      'aria-pressed': String(split === value),
+      onclick: () => layout.set({ diffSplit: value }),
+    }, icon(iconName, 15))));
+}
+
 /** Lines added and removed; a file moved without change, or a binary file, says so instead. */
 function stats(data) {
   if (!data) return null;
@@ -86,6 +101,57 @@ function line(l) {
     h('span', { class: 'code' }, l.kind === 'noNewline' ? t('diff.noNewline') : l.text));
 }
 
+/**
+ * Rows of a hunk side by side: unchanged lines on both sides; removed lines on the left facing the
+ * lines added in their place on the right, the shorter side padded with empty cells.
+ */
+function splitRows(lines) {
+  const rows = [];
+  let removed = [];
+  let added = [];
+  const flush = () => {
+    for (let i = 0; i < Math.max(removed.length, added.length); i += 1) rows.push([removed[i] ?? null, added[i] ?? null]);
+    removed = [];
+    added = [];
+  };
+  let last = 'context';
+  for (const l of lines) {
+    if (l.kind === 'deleted') {
+      if (added.length) flush();
+      removed.push(l);
+    } else if (l.kind === 'added') {
+      added.push(l);
+    } else if (l.kind === 'noNewline') {
+      // Belongs to the line just before it: on its side, or on both for an unchanged line.
+      if (last === 'deleted') removed.push(l);
+      else if (last === 'added') added.push(l);
+      else rows.push([l, l]);
+      continue;
+    } else {
+      flush();
+      rows.push([l, l]);
+    }
+    last = l.kind;
+  }
+  flush();
+  return rows;
+}
+
+function half(l, side) {
+  if (!l) return [h('span', { class: 'no empty' }), h('span', { class: 'sign empty' }), h('span', { class: 'code empty' })];
+  const kind = l.kind === 'context' ? '' : ` ${l.kind}`;
+  const sign = { added: '+', deleted: '−' }[l.kind] ?? '';
+  return [
+    h('span', { class: `no${kind}` }, (side === 'old' ? l.old : l.new) ?? ''),
+    h('span', { class: `sign${kind}` }, sign),
+    h('span', { class: `code${kind}` }, l.kind === 'noNewline' ? t('diff.noNewline') : l.text),
+  ];
+}
+
+function splitLine([before, after]) {
+  return h('div', { class: 'sline' }, half(before, 'old'), half(after, 'new'));
+}
+
 export function renderDiff(container) {
   const diff = repoStore.state.diff;
   const data = diff.data;
@@ -100,7 +166,7 @@ export function renderDiff(container) {
   else {
     body = data.hunks.map((hunk, index) => [
       h('div', { class: 'hunk-head' }, h('span', { class: 'h' }, hunk.header), hunkActions(index)),
-      hunk.lines.map(line),
+      layout.state.diffSplit ? splitRows(hunk.lines).map(splitLine) : hunk.lines.map(line),
     ]);
   }
   mount(container, h('div', { class: 'diff' },
@@ -114,10 +180,11 @@ export function renderDiff(container) {
       data?.oldPath && h('span', { class: 'from', title: data.oldPath }, h('bdi', {}, data.oldPath)),
       h('span', { class: 'side-label' }, sideLabel),
       modeSwitch(diff),
+      styleSwitch(diff),
       stats(data),
       fileActions(),
       h('div', { class: 'vsep' }),
       panelButtons(),
       h('button', { type: 'button', class: 'icon-btn', title: t('diff.close'), onclick: () => repoStore.closeDiff() }, icon('close', 16))),
-    h('div', { class: `diff-body${diff.mode === 'preview' ? ' preview' : ''}` }, body)));
+    h('div', { class: `diff-body${diff.mode === 'preview' ? ' preview' : ''}${layout.state.diffSplit ? ' split' : ''}` }, body)));
 }

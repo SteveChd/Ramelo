@@ -75,3 +75,17 @@
 .img-frame.same .side { color: var(--muted); }
 .img-compare.single { grid-template-columns: minmax(220px, 560px); }
 .img-frame .checker.none { background: transparent; border-style: dashed; color: var(--muted); font-size: 12.5px; }
+
+/* Side by side: before on the left, after on the right. Long lines wrap so that both sides stay aligned. */
+.diff-head .style-switch button { height: 24px; width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.sline { display: grid; grid-template-columns: 48px 16px minmax(0, 1fr) 48px 16px minmax(0, 1fr); }
+.sline .no { text-align: right; padding-right: 6px; color: var(--muted); opacity: .7; user-select: none; }
+.sline .sign { text-align: center; user-select: none; color: var(--muted); }
+.sline .code { white-space: pre-wrap; overflow-wrap: anywhere; padding-right: 12px; user-select: text; tab-size: 4; }
+.sline > :nth-child(4) { border-left: 1px solid var(--border); }
+.sline .deleted { background: color-mix(in srgb, var(--deleted) 12%, transparent); }
+.sline .sign.deleted { color: var(--deleted); }
+.sline .added { background: color-mix(in srgb, var(--added) 13%, transparent); }
+.sline .sign.added { color: var(--added); }
+.sline .code.noNewline { color: var(--muted); font-style: italic; }
+.sline .empty { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--muted) 7%, transparent) 5px 6px); }

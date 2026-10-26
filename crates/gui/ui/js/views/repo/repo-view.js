@@ -155,8 +155,8 @@ export function renderRepo(container, repo) {
   renderSide(repo);
 }
 
-/** Folds shown by the toolbar and the diff header; sizes alone only need `applyLayout`. */
-const folds = (l) => `${l.leftCollapsed}${l.rightCollapsed}${l.diffCollapsed}${l.diffMaximized}`;
+/** Folds and diff style shown by the toolbar and the diff panel; sizes alone only need `applyLayout`. */
+const folds = (l) => `${l.leftCollapsed}${l.rightCollapsed}${l.diffCollapsed}${l.diffMaximized}${l.diffSplit}`;
 let lastFolds = folds(layout.state);
 
 layout.subscribe((l) => {

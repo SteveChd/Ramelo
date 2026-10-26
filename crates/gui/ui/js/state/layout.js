@@ -17,6 +17,8 @@ const DEFAULTS = {
   rightCollapsed: false,
   diffCollapsed: false,
   diffMaximized: false,
+  /** Diff shown side by side (before on the left, after on the right) instead of in one column. */
+  diffSplit: false,
 };
 
 function load() {
