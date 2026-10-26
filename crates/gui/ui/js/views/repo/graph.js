@@ -15,6 +15,8 @@ const LANE = 16;
 const PAD = 12;
 /** Beyond this many lanes the graph column stops growing (the rest is clipped). */
 const MAX_LANES = 14;
+/** Reference labels shown on a row; the others are counted. */
+const MAX_LABELS = 2;
 
 const laneX = (lane) => PAD + lane * LANE;
 const laneColor = (color) => `var(--g${color % 8})`;
@@ -60,14 +62,27 @@ function refLabels(row) {
     }
     labels.push(ref);
   }
-  return labels.map((ref) => {
+  const chip = (ref) => {
     const cls = ref.kind === 'tag' ? 'tag' : ref.kind === 'remote' ? 'remote' : ref.isHead ? 'head' : '';
     const iconName = ref.kind === 'tag' ? 'tag' : ref.kind === 'remote' ? 'cloud' : ref.kind === 'head' ? 'commit' : null;
     return h('span', { class: `ref ${cls}`, style: { '--lane': color }, title: ref.name },
       iconName && icon(iconName, 12, 2),
-      ref.kind === 'head' ? t('graph.detached') : ref.name,
+      h('span', { class: 'ref-name' }, ref.kind === 'head' ? t('graph.detached') : ref.name),
       synced.has(ref.name) && icon('cloud', 12, 2));
-  });
+  };
+  // HEAD and local branches first. Two labels at most, then their number (one on a narrow window):
+  // the message keeps room, and the hidden names are in the count's tooltip.
+  const order = (ref) => (ref.kind === 'head' || ref.isHead ? 0 : { branch: 1, remote: 2, tag: 3 }[ref.kind] ?? 4);
+  labels.sort((a, b) => order(a) - order(b));
+  const more = (rest, cls) => rest.length > 0 && h('span', { class: `ref more ${cls}`, style: { '--lane': color }, title: rest.map((r) => r.name).join('\n') }, `+${rest.length}`);
+  return labels.length > 0 && h('span', { class: 'refs' },
+    labels.slice(0, MAX_LABELS).map((ref, i) => {
+      const el = chip(ref);
+      if (i > 0) el.classList.add('extra');
+      return el;
+    }),
+    more(labels.slice(MAX_LABELS), 'wide'),
+    more(labels.slice(1), 'narrow'));
 }
 
 /** Right click on a commit: branch from it, switch to it or to one of its branches, copy its id. */
