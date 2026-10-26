@@ -30,8 +30,8 @@ function path(from, to, y1, y2) {
 function laneSvg(row, width, isHead) {
   const g = row.graph;
   const lines = [
-    ...g.top.map((e) => s('path', { d: path(e.from, e.to, 0, ROW / 2), stroke: laneColor(e.color), 'data-line': e.color })),
-    ...g.bottom.map((e) => s('path', { d: path(e.from, e.to, ROW / 2, ROW), stroke: laneColor(e.color), 'data-line': e.color })),
+    ...g.top.map((e) => s('path', { d: path(e.from, e.to, 0, ROW / 2), stroke: laneColor(e.color), 'data-line': e.color, 'data-half': 'top' })),
+    ...g.bottom.map((e) => s('path', { d: path(e.from, e.to, ROW / 2, ROW), stroke: laneColor(e.color), 'data-line': e.color, 'data-half': 'bottom' })),
   ];
   const cx = laneX(g.lane);
   const color = laneColor(g.color);
@@ -192,31 +192,61 @@ export function renderGraph(container, repo) {
 }
 
 /**
- * The line a line of history started from: the one of the commit where it ends by joining another
- * line (its fork point). Null when it goes down to a first commit, or its fork is not read yet.
+ * The ancestry of a commit below its own line: following first parents from `start`, the dots and
+ * the pieces of line that lead from one to the next, by row: { dot, top, bottom } where top and
+ * bottom hold the colours of the lines to bring forward. Only the commits read so far are followed.
  */
-function sourceLine(rows, line) {
-  for (const row of rows) {
-    if (row.graph.color !== line && row.graph.top.some((e) => e.color === line && e.to === row.graph.lane)) return row.graph.color;
+function ancestry(rows, start) {
+  const index = new Map(rows.map((r, i) => [r.oid, i]));
+  const marks = new Map();
+  const mark = (i) => {
+    if (!marks.has(i)) marks.set(i, { dot: false, top: new Set(), bottom: new Set() });
+    return marks.get(i);
+  };
+  let i = index.get(start);
+  while (i !== undefined) {
+    const j = index.get(rows[i].parents[0]);
+    if (j === undefined) break;
+    // The line of the commit waits for its first parent: it carries the commit's colour down to it.
+    const color = rows[i].graph.color;
+    mark(i).bottom.add(color);
+    for (let k = i + 1; k < j; k += 1) {
+      mark(k).top.add(color);
+      mark(k).bottom.add(color);
+    }
+    mark(j).top.add(color);
+    mark(j).dot = true;
+    i = j;
   }
-  return null;
+  return marks;
 }
 
 /**
  * Brings forward the line of history of the selected commit: the branch it belongs to, from its tip
- * down to where it leaves another line, and, less strongly, the line it started from. Its strokes get
- * thicker, the other lines fade. Each line has its own colour index, so its edges and dots are the
- * ones carrying that index.
+ * down to where it leaves another line, and, less strongly, the commits it comes from below that,
+ * not the rest of the line it started from. Its strokes get thicker, the other lines fade. Each line
+ * has its own colour index, so its edges and dots are the ones carrying that index.
  */
 function focusLine(container) {
   const { history, selection } = repoStore.state;
   const row = selection !== 'wip' && history?.rows.find((r) => r.oid === selection);
-  const line = row ? row.graph.color : null;
-  const source = line === null ? null : sourceLine(history.rows, line);
+  const line = row ? String(row.graph.color) : null;
   container.classList.toggle('focus-line', line !== null);
   for (const el of container.querySelectorAll('.grow svg [data-line]')) {
-    el.classList.toggle('on', el.dataset.line === String(line));
-    el.classList.toggle('src', el.dataset.line === String(source));
+    el.classList.toggle('on', el.dataset.line === line);
+    el.classList.remove('src');
+  }
+  if (!row) return;
+  const marks = ancestry(history.rows, row.oid);
+  for (const [i, m] of marks) {
+    const svg = container.querySelector(`.grow[data-oid="${history.rows[i].oid}"] svg`);
+    if (!svg) continue;
+    for (const el of svg.querySelectorAll('[data-line]')) {
+      const color = Number(el.dataset.line);
+      const half = el.dataset.half;
+      const on = half ? m[half].has(color) : m.dot && color === history.rows[i].graph.color;
+      if (on && el.dataset.line !== line) el.classList.add('src');
+    }
   }
 }
 
