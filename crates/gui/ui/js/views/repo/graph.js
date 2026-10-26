@@ -192,16 +192,32 @@ export function renderGraph(container, repo) {
 }
 
 /**
+ * The line a line of history started from: the one of the commit where it ends by joining another
+ * line (its fork point). Null when it goes down to a first commit, or its fork is not read yet.
+ */
+function sourceLine(rows, line) {
+  for (const row of rows) {
+    if (row.graph.color !== line && row.graph.top.some((e) => e.color === line && e.to === row.graph.lane)) return row.graph.color;
+  }
+  return null;
+}
+
+/**
  * Brings forward the line of history of the selected commit: the branch it belongs to, from its tip
- * down to where it leaves another line. Its strokes get thicker, the other lines fade. Each line has
- * its own colour index, so its edges and dots are the ones carrying that index.
+ * down to where it leaves another line, and, less strongly, the line it started from. Its strokes get
+ * thicker, the other lines fade. Each line has its own colour index, so its edges and dots are the
+ * ones carrying that index.
  */
 function focusLine(container) {
   const { history, selection } = repoStore.state;
   const row = selection !== 'wip' && history?.rows.find((r) => r.oid === selection);
-  const line = row ? String(row.graph.color) : null;
+  const line = row ? row.graph.color : null;
+  const source = line === null ? null : sourceLine(history.rows, line);
   container.classList.toggle('focus-line', line !== null);
-  for (const el of container.querySelectorAll('.grow svg [data-line]')) el.classList.toggle('on', el.dataset.line === line);
+  for (const el of container.querySelectorAll('.grow svg [data-line]')) {
+    el.classList.toggle('on', el.dataset.line === String(line));
+    el.classList.toggle('src', el.dataset.line === String(source));
+  }
 }
 
 /** Selection changed: only the highlighted row changes, and the selected commit is scrolled into view. */

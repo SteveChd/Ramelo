@@ -87,8 +87,10 @@
 .graph.only-matches .graph-head, .graph.only-matches .grow { grid-template-columns: 8px minmax(0, 1fr) 150px 110px 72px; }
 .graph.only-matches .graph-head > span:first-child { visibility: hidden; padding: 0; }
 
-/* The line of history of the selected commit stands out; the other lines fade. */
+/* The line of history of the selected commit stands out, and the line it started from a little less;
+   the other lines fade. */
 .graph.focus-line .grow svg [data-line] { opacity: .3; transition: opacity .15s; }
-.graph.focus-line .grow svg [data-line].on { opacity: 1; }
+.graph.focus-line .grow svg [data-line].on, .graph.focus-line .grow svg [data-line].src { opacity: 1; }
+.graph.focus-line .grow svg path.src { stroke-width: 2.6; }
 .graph.focus-line .grow svg path.on { stroke-width: 3.4; }
 .graph.focus-line .grow svg circle.on { transform-box: fill-box; transform-origin: center; transform: scale(1.18); }
