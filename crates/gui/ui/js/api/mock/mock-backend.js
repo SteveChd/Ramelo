@@ -139,7 +139,15 @@ export async function rewriteInfo(path, oid) {
   await delay();
   const rows = repo.history(path, 400).rows;
   const index = rows.findIndex((r) => r.oid === oid);
-  return { editable: index >= 0, descendants: Math.max(index, 0), pushedTo: index > 2 ? ['origin/main'] : [] };
+  const row = rows[index];
+  const parent = row?.parents.length === 1 ? row.parents[0] : null;
+  const squash = parent ? { parent, pushedTo: index + 1 > 2 ? ['origin/main'] : [] } : null;
+  return { editable: index >= 0, descendants: Math.max(index, 0), pushedTo: index > 2 ? ['origin/main'] : [], squash };
+}
+
+export async function squashCommit(path, oid) {
+  await delay(300);
+  return { head: oid, commit: oid, snapshot: snapshot() };
 }
 
 export async function rewordCommit(path, oid) {

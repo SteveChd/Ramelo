@@ -35,12 +35,17 @@ export const history = (path, limit) => invoke('history', { path, limit });
  */
 export const searchCommits = (path, query, limit) => invoke('search_commits', { path, query, limit });
 export const commitDetails = (path, oid) => invoke('commit_details', { path, oid });
-/** { editable, descendants, pushedTo: [remote branch] } for a commit to rewrite. */
+/**
+ * { editable, descendants, pushedTo: [remote branch], squash: { parent, pushedTo } | null } for a
+ * commit to rewrite.
+ */
 export const rewriteInfo = (path, oid) => invoke('rewrite_info', { path, oid });
 /** New message for a commit of the current branch: { head, commit, snapshot }. */
 export const rewordCommit = (path, oid, message) => invoke('reword_commit', { path, oid, message });
 /** New content for a file of a commit of the current branch: { head, commit, snapshot }. */
 export const editCommitFile = (path, oid, file, content) => invoke('edit_commit_file', { path, oid, file, content });
+/** Combines a commit with the one before it, with `message` or, when null, its message: { head, commit, snapshot }. */
+export const squashCommit = (path, oid, message) => invoke('squash_commit', { path, oid, message });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
 /** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */
 /**

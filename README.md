@@ -46,6 +46,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   working copy follows; a conflict with a later commit leaves everything as it was. A commit already
   pushed can be rewritten too: the dialog says which remote branches have it and that a force push
   (with lease) will be needed.
+- A commit can be combined with the one before it (right click in the graph): squash, with a message
+  to edit that starts from both, or fixup, which keeps the message of the commit before. Merges, the
+  first commit, and a commit whose parent also starts another line cannot be combined.
 - Staging by file or by hunk, discarding changes (with confirmation), and committing with a summary
   counter. With nothing staged, the commit button stages everything. Amending loads the last message.
 - Branches in a side panel: double-click to switch (a remote branch becomes a local tracking branch),
@@ -61,9 +64,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 1. Foundation and multi-repository workspace (done).
 2. Repository view: commit graph, diffs, staging and commit, branches, fetch / pull / push (done).
-3. Automation: squash, fixup and reorder without an interactive rebase (reword and editing a file
-   of a past commit are done), undo based on the
-   reflog, help with conflict resolution.
+3. Automation: reorder without an interactive rebase (reword, editing a file of a past commit,
+   squash and fixup are done), undo based on the reflog, help with conflict resolution.
 4. git-repo: manifest detection, `repo sync`, `repo start` and a global status of all projects.
 
 ## Layout

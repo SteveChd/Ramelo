@@ -205,8 +205,8 @@ function rewriteNotes(info) {
 }
 
 /** After a rewrite: the new history shows, with the new version of the commit selected. */
-async function afterRewrite(result, info) {
-  store.notify(t(info.pushedTo.length ? 'rewrite.donePushed' : 'rewrite.done'));
+async function afterRewrite(result, { pushedTo }) {
+  store.notify(t(pushedTo.length ? 'rewrite.donePushed' : 'rewrite.done'));
   state.selection = 'wip';
   state.details = null;
   state.diff = null;
@@ -469,6 +469,49 @@ export const repoStore = {
     const content = crlf ? edited.replace(/\n/g, '\r\n') : edited;
     const result = await run(() => backend.editCommitFile(state.path, oid, file, content), 'rewrite');
     if (result) await afterRewrite(result, info);
+  },
+
+  /**
+   * Combines a commit of the current branch with the one before it. A squash asks for the message
+   * of the commit that results (both messages to start with); a fixup keeps the one of the commit
+   * before.
+   */
+  async squashCommit(oid, { fixup = false } = {}) {
+    const info = await rewritable(oid);
+    if (!info) return;
+    if (!info.squash) {
+      store.notify(t('rewrite.cannotSquash'), true);
+      return;
+    }
+    const { parent, pushedTo } = info.squash;
+    const [child, before] = await Promise.all([oid, parent].map((sha) =>
+      (state.details?.oid === sha ? state.details : run(() => backend.commitDetails(state.path, sha)))));
+    if (!child || !before) return;
+    const names = { oid: oid.slice(0, 7), parent: parent.slice(0, 7), summary: before.message.split('\n')[0].trim() };
+    const notes = [t(fixup ? 'rewrite.fixupNote' : 'rewrite.squashNote', names), rewriteNotes(info).notes[0]];
+    const warning = pushedTo.length ? t('rewrite.squashPushed', { remotes: pushedTo.slice(0, 3).join(', ') }) : null;
+    let message = null;
+    if (fixup) {
+      const ok = await confirm({
+        title: t('rewrite.fixupTitle', names),
+        message: [...notes, warning].filter(Boolean).join(' '),
+        confirmLabel: t('rewrite.fixup'),
+        danger: Boolean(warning),
+      });
+      if (!ok) return;
+    } else {
+      message = await editText({
+        title: t('rewrite.squashTitle', names),
+        notes,
+        warning,
+        value: `${before.message.trimEnd()}\n\n${child.message.trimEnd()}\n`,
+        confirmLabel: t('rewrite.squash'),
+        validate: (value) => (value.trim() ? null : t('rewrite.messageMissing')),
+      });
+      if (message === null) return;
+    }
+    const result = await run(() => backend.squashCommit(state.path, oid, message), 'rewrite');
+    if (result) await afterRewrite(result, info.squash);
   },
 
   // ---------- Branches ----------

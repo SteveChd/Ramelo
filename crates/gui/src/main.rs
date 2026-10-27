@@ -35,6 +35,7 @@ fn main() {
             commands::repo::history,
             commands::repo::rewrite_info,
             commands::repo::reword_commit,
+            commands::repo::squash_commit,
             commands::repo::edit_commit_file,
             commands::repo::commit_details,
             commands::repo::commit_file_diff,

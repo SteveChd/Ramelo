@@ -246,6 +246,15 @@ pub async fn edit_commit_file(state: State<'_, AppState>, path: String, oid: Str
     Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
 }
 
+/// Combines a commit of the current branch with the one before it: with `message` (squash), or with
+/// the message of the one before it when there is none (fixup).
+#[tauri::command]
+pub async fn squash_commit(state: State<'_, AppState>, path: String, oid: String, message: Option<String>) -> CommandResult<RewriteResult> {
+    let root = PathBuf::from(path);
+    let rewritten = core::squash(&state.git, &root, &oid, message.as_deref())?;
+    Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
+}
+
 /// Message of the last commit, to edit when amending.
 #[tauri::command]
 pub async fn last_message(state: State<'_, AppState>, path: String) -> CommandResult<Option<String>> {

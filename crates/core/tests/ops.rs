@@ -367,6 +367,49 @@ fn rewrites_through_a_merge() {
 }
 
 #[test]
+fn squashes_and_fixes_up_a_commit_into_the_one_before() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "1\n", "Base");
+    commit_file(&root, "a.txt", "2\n", "Change a");
+    commit_file(&root, "b.txt", "b\n", "Fix a");
+    let fix = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    commit_file(&root, "c.txt", "c\n", "Add c");
+    let tree = git(&root, &["rev-parse", "HEAD^{tree}"]);
+
+    let info = rewrite_info(&g, &root, &fix).unwrap();
+    let parent = git(&root, &["rev-parse", "HEAD~2"]).trim().to_owned();
+    assert_eq!(info.squash.as_ref().map(|s| s.parent.as_str()), Some(parent.as_str()));
+
+    // Fixup: the parent's message stays, the content is the same at the end.
+    let done = squash(&g, &root, &fix, None).unwrap();
+    assert_eq!(messages(&root), ["Add c", "Change a", "Base"]);
+    assert_eq!(git(&root, &["rev-parse", "HEAD^{tree}"]), tree);
+    assert_eq!(git(&root, &["show", "--format=", "--name-only", &done.commit]).trim(), "a.txt\nb.txt");
+
+    // Squash with a new message, the last commit included.
+    let head = git(&root, &["rev-parse", "HEAD"]).trim().to_owned();
+    squash(&g, &root, &head, Some("Change a, add c")).unwrap();
+    assert_eq!(messages(&root), ["Change a, add c", "Base"]);
+    assert_eq!(git(&root, &["rev-parse", "HEAD^{tree}"]), tree);
+
+    // The first commit has nothing before it, a merge cannot be squashed.
+    let first = git(&root, &["rev-list", "--max-parents=0", "HEAD"]).trim().to_owned();
+    assert!(rewrite_info(&g, &root, &first).unwrap().squash.is_none());
+    assert!(matches!(squash(&g, &root, &first, None), Err(GitError::CannotSquash(_))));
+    git(&root, &["switch", "-q", "-c", "feature"]);
+    commit_file(&root, "f.txt", "f\n", "Feature");
+    git(&root, &["switch", "-q", "main"]);
+    commit_file(&root, "m.txt", "m\n", "Main");
+    git(&root, &["merge", "-q", "--no-ff", "-m", "Merge feature", "feature"]);
+    assert!(rewrite_info(&g, &root, "HEAD").unwrap().squash.is_none());
+    // Neither can a commit whose parent also starts another line.
+    assert!(rewrite_info(&g, &root, "HEAD^1").unwrap().squash.is_none());
+    assert!(rewrite_info(&g, &root, "HEAD^2").unwrap().squash.is_none());
+}
+
+#[test]
 fn tells_where_a_branch_is_checked_out_in_another_worktree() {
     let dir = tempfile::tempdir().unwrap();
     let root = new_repo(&dir.path().join("r"));

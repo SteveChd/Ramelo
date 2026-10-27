@@ -28,6 +28,7 @@ export const {
   rewriteInfo,
   rewordCommit,
   editCommitFile,
+  squashCommit,
   commitFileDiff,
   fileDiff,
   fileVersions,

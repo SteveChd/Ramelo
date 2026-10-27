@@ -1,5 +1,6 @@
 //! Rewriting the history of the current branch without an interactive rebase: changing the message
-//! of a past commit, or the content of one of its files.
+//! of a past commit or the content of one of its files, or combining a commit with the one before it
+//! (squash, fixup).
 //!
 //! The commit and every commit after it up to HEAD are written again as new objects (same author,
 //! same messages, the user as committer), then HEAD moves to the new tip with `reset --keep`, which
@@ -26,19 +27,49 @@ pub struct RewriteInfo {
     pub descendants: usize,
     /// Remote branches that already contain it: they will need a force push.
     pub pushed_to: Vec<String>,
+    /// How it can be combined with the commit before it; `None` when it cannot (a merge, the first
+    /// commit, or another line leaves from the commit before it).
+    pub squash: Option<SquashInfo>,
+}
+
+/// The commit a squash or a fixup would combine the selected one with.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SquashInfo {
+    pub parent: String,
+    /// Remote branches that already contain the parent: they will need a force push.
+    pub pushed_to: Vec<String>,
 }
 
 pub fn rewrite_info(git: &Git, root: &Path, oid: &str) -> Result<RewriteInfo, GitError> {
     let editable = operation(git, root)?.is_none() && is_ancestor_of_head(git, root, oid)?;
     let descendants = if editable { descendants(git, root, oid)?.len() } else { 0 };
-    let pushed_to = git
+    let squash = match editable.then(|| squash_parent(git, root, oid)).transpose()?.flatten() {
+        Some(parent) => Some(SquashInfo { pushed_to: pushed_to(git, root, &parent)?, parent }),
+        None => None,
+    };
+    Ok(RewriteInfo { editable, descendants, pushed_to: pushed_to(git, root, oid)?, squash })
+}
+
+fn pushed_to(git: &Git, root: &Path, oid: &str) -> Result<Vec<String>, GitError> {
+    Ok(git
         .text(root, ["for-each-ref", "--contains", oid, "--format=%(refname:short)", "refs/remotes"])?
         .lines()
         .map(str::trim)
         .filter(|name| !name.is_empty() && !name.ends_with("/HEAD"))
         .map(str::to_owned)
-        .collect();
-    Ok(RewriteInfo { editable, descendants, pushed_to })
+        .collect())
+}
+
+/// The parent `oid` can be combined with: its only parent, when every commit after that parent up to
+/// HEAD comes through `oid` (otherwise another line would lose its base).
+fn squash_parent(git: &Git, root: &Path, oid: &str) -> Result<Option<String>, GitError> {
+    let commit = RawCommit::read(git, root, oid)?;
+    let [parent] = commit.parents.as_slice() else {
+        return Ok(None);
+    };
+    let linear = descendants(git, root, parent)?.len() == descendants(git, root, oid)?.len() + 1;
+    Ok(linear.then(|| parent.clone()))
 }
 
 /// The history after a rewrite.
@@ -65,12 +96,28 @@ pub fn edit_file(git: &Git, root: &Path, oid: &str, path: &str, content: &[u8]) 
     rewrite(git, root, oid, Change::File { path: path.to_owned(), content: content.to_vec() })
 }
 
+/// Combines commit `oid` with the commit before it: one commit with both changes, the parent's
+/// author and `message` (squash), or the parent's message when `message` is `None` (fixup).
+pub fn squash(git: &Git, root: &Path, oid: &str, message: Option<&str>) -> Result<Rewritten, GitError> {
+    let oid = check(git, root, oid)?;
+    let parent = squash_parent(git, root, &oid)?.ok_or_else(|| GitError::CannotSquash(short(&oid)))?;
+    let message = match message.map(str::trim_end) {
+        Some(m) if m.trim().is_empty() => return Err(GitError::NothingToCommit),
+        Some(m) => Some(format!("{m}\n")),
+        None => None,
+    };
+    rewrite(git, root, &parent, Change::Squash { child: oid, message })
+}
+
 enum Change {
     Message(String),
     File { path: String, content: Vec<u8> },
+    /// The rewritten commit takes the tree of `child`, which disappears.
+    Squash { child: String, message: Option<String> },
 }
 
-fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritten, GitError> {
+/// The full id of `oid`, once checked that it can be rewritten.
+fn check(git: &Git, root: &Path, oid: &str) -> Result<String, GitError> {
     if operation(git, root)?.is_some() {
         return Err(GitError::OperationInProgress);
     }
@@ -78,6 +125,11 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
     if !is_ancestor_of_head(git, root, &oid)? {
         return Err(GitError::NotInHistory(short(&oid)));
     }
+    Ok(oid)
+}
+
+fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritten, GitError> {
+    let oid = check(git, root, oid)?;
     let head = git.text(root, ["rev-parse", "HEAD"])?.trim().to_owned();
     let committer = git.text(root, ["var", "GIT_COMMITTER_IDENT"]).map_err(|_| GitError::IdentityMissing)?.trim().to_owned();
 
@@ -86,9 +138,22 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
     let mut order = vec![oid.clone()];
     order.extend(descendants(git, root, &oid)?);
     for old in &order {
+        // The squashed commit is now part of the one before it.
+        if let Change::Squash { child, .. } = &change {
+            if old == child {
+                let merged = rewritten[&oid].clone();
+                rewritten.insert(old.clone(), merged);
+                continue;
+            }
+        }
         let commit = RawCommit::read(git, root, old)?;
         let parents: Vec<String> = commit.parents.iter().map(|p| rewritten.get(p).cloned().unwrap_or_else(|| p.clone())).collect();
         let (tree, message) = match &change {
+            Change::Squash { child, message } if *old == oid => {
+                let tree = git.text(root, ["rev-parse", &format!("{child}^{{tree}}")])?.trim().to_owned();
+                (tree, message.as_ref().map_or_else(|| commit.message.clone(), |m| m.as_bytes().to_vec()))
+            }
+            Change::Squash { .. } => (commit.tree.clone(), commit.message.clone()),
             Change::Message(message) if *old == oid => (commit.tree.clone(), message.as_bytes().to_vec()),
             Change::Message(_) => (commit.tree.clone(), commit.message.clone()),
             Change::File { path, content } if *old == oid => {
@@ -107,7 +172,7 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
             }
         };
         // Nothing actually changes: the history is left alone.
-        if *old == oid && tree == commit.tree && message == commit.message {
+        if *old == oid && tree == commit.tree && message == commit.message && !matches!(change, Change::Squash { .. }) {
             return Ok(Rewritten { head, commit: oid });
         }
         let new = commit.write(git, root, &tree, &parents, &committer, &message)?;
