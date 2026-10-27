@@ -157,7 +157,7 @@ fn carry(git: &Git, root: &Path, target: &str, args: &[impl AsRef<std::ffi::OsSt
         git.output(root, args)?;
         return Ok(Carried::Nothing);
     }
-    let message = format!("GitController: changes carried over to {target}");
+    let message = format!("Ramelo: changes carried over to {target}");
     git.output(root, ["stash", "push", "--include-untracked", "--message", &message])?;
     if let Err(error) = git.output(root, args) {
         // Back to where we were, with the changes.

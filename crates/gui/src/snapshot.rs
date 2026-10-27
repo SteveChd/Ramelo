@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use gitcontroller_core::{CommitInfo, FileChange, Head, Operation, RepoSummary};
-use gitcontroller_storage::Workspace;
+use ramelo_core::{CommitInfo, FileChange, Head, Operation, RepoSummary};
+use ramelo_storage::Workspace;
 use serde::Serialize;
 
 use crate::error::CommandError;

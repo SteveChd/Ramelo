@@ -5,8 +5,8 @@
   let theme = null;
   let lang = null;
   try {
-    theme = localStorage.getItem('gitcontroller.theme');
-    lang = localStorage.getItem('gitcontroller.language');
+    theme = localStorage.getItem('ramelo.theme');
+    lang = localStorage.getItem('ramelo.language');
   } catch {
     /* storage unavailable: defaults */
   }

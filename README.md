@@ -1,4 +1,4 @@
-# GitController
+# Ramelo
 
 Desktop git client for people who juggle many repositories. It brings as much
 automation as possible so that everyday git is fast and friendly: no need to drive an interactive
@@ -79,7 +79,7 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 The Rust side is the single source of truth: each command returns a snapshot (repositories and their
 state) that the interface displays without computing anything itself.
 
-Every git operation goes through the `git` command line rather than a library, so GitController
+Every git operation goes through the `git` command line rather than a library, so Ramelo
 behaves exactly like the user's own git: same configuration, credentials, hooks, worktrees and
 `repo` integration. Git calls never open a console window on Windows, never wait for a prompt, and
 never take the index lock when they only read.
@@ -93,7 +93,7 @@ never take the index lock when they only read.
 ## Build and run
 
 ```sh
-cargo run -p gitcontroller          # the application
+cargo run -p ramelo                 # the application
 cargo test --workspace              # tests (they create temporary repositories with git)
 ```
 

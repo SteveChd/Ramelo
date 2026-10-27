@@ -67,7 +67,7 @@ export function renderMenubar(container) {
   const dark = currentTheme() === 'dark';
   mount(container,
     logo(),
-    h('span', { class: 'app-name' }, 'GitController'),
+    h('span', { class: 'app-name' }, 'Ramelo'),
     MENUS.map(menuButton),
     h('div', { class: 'spacer' }),
     languageSwitch(),

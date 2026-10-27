@@ -31,7 +31,7 @@ export default {
 
   'home.title': 'Repositories',
   'home.emptyTitle': 'Add your first repository',
-  'home.emptyText': 'Choose a repository, or a folder that holds several of them: GitController finds them all, including the projects of a git-repo workspace.',
+  'home.emptyText': 'Choose a repository, or a folder that holds several of them: Ramelo finds them all, including the projects of a git-repo workspace.',
   'home.dropHint': 'You can also drop folders onto the window.',
   'home.dropHere': 'Drop to add the repositories of these folders',
   'home.open': 'Open {name}',
@@ -103,7 +103,7 @@ export default {
   'change.untracked': 'Untracked',
   'change.conflicted': 'Conflict',
 
-  'errors.git_not_found': 'Git cannot be found. Install Git for Windows (or your distribution\'s git package) and restart GitController.',
+  'errors.git_not_found': 'Git cannot be found. Install Git for Windows (or your distribution\'s git package) and restart Ramelo.',
   'errors.path_missing': 'The folder « {subject} » does not exist any more. It may have been moved or deleted.',
   'errors.not_a_repository': '« {subject} » is not a git repository.',
   'errors.no_repository_found': 'No git repository was found in « {subject} ».',

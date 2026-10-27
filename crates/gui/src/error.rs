@@ -1,8 +1,8 @@
 //! Error sent to the interface: a stable code that the interface translates, what the error is about
 //! (a folder, a git command…), and an English fallback message.
 
-use gitcontroller_core::GitError;
-use gitcontroller_storage::StorageError;
+use ramelo_core::GitError;
+use ramelo_storage::StorageError;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

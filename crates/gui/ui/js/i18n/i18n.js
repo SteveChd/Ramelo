@@ -8,7 +8,7 @@ import fr from './fr.js';
 
 const DICTIONARIES = { en, fr };
 const LOCALES = { en: 'en-GB', fr: 'fr-FR' };
-const KEY = 'gitcontroller.language';
+const KEY = 'ramelo.language';
 
 export const LANGUAGES = Object.keys(DICTIONARIES);
 

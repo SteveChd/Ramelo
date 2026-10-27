@@ -1,7 +1,7 @@
 // Layout of the repository view: width of the side panels, height of the diff panel, and which of
 // them are folded. Remembered between sessions, for all repositories.
 
-const KEY = 'gitcontroller.layout';
+const KEY = 'ramelo.layout';
 
 export const LIMITS = {
   left: { min: 160, max: 480, initial: 230 },

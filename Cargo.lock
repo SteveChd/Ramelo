@@ -1339,43 +1339,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitcontroller"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "gitcontroller-core",
- "gitcontroller-storage",
- "open",
- "rfd",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tempfile",
-]
-
-[[package]]
-name = "gitcontroller-core"
-version = "0.1.0"
-dependencies = [
- "dunce",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "gitcontroller-storage"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "glib"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2797,6 +2760,43 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "ramelo"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "open",
+ "ramelo-core",
+ "ramelo-storage",
+ "rfd",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tempfile",
+]
+
+[[package]]
+name = "ramelo-core"
+version = "0.1.0"
+dependencies = [
+ "dunce",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ramelo-storage"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "rand"

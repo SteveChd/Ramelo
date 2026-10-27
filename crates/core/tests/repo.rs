@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use gitcontroller_core::{open, summary, ChangeKind, Git, GitError, Operation};
+use ramelo_core::{open, summary, ChangeKind, Git, GitError, Operation};
 
 fn git(dir: &Path, args: &[&str]) {
     let out = Git::default().raw(dir, args).unwrap();

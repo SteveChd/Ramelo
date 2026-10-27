@@ -161,7 +161,7 @@ fn carry_file(git: &Git, root: &Path, commit: &RawCommit, old_parent: Option<&st
 
 /// Three-way merge of one file's blobs; a conflict stops the rewrite.
 fn merge_file(git: &Git, root: &Path, ours: &str, base: &str, theirs: &str, path: &str) -> Result<String, GitError> {
-    let dir = std::env::temp_dir().join(format!("gitcontroller-merge-{}-{}", std::process::id(), short(ours)));
+    let dir = std::env::temp_dir().join(format!("ramelo-merge-{}-{}", std::process::id(), short(ours)));
     fs::create_dir_all(&dir).map_err(|source| GitError::Io { path: dir.clone(), source })?;
     let result = (|| {
         let mut files = Vec::new();

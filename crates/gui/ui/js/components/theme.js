@@ -1,6 +1,6 @@
 // Light or dark theme, remembered between sessions.
 
-const KEY = 'gitcontroller.theme';
+const KEY = 'ramelo.theme';
 const listeners = new Set();
 
 export function currentTheme() {

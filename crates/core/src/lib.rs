@@ -1,4 +1,4 @@
-//! Core of GitController: runs git, reads the state of repositories and finds them on disk.
+//! Core of Ramelo: runs git, reads the state of repositories and finds them on disk.
 //!
 //! Every git operation goes through the `git` command line ([`Git`]), so the application behaves
 //! exactly like the user's own git: same configuration, credentials, hooks and worktrees.

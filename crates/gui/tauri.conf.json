@@ -1,9 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "GitController",
-  "mainBinaryName": "gitcontroller",
+  "productName": "Ramelo",
+  "mainBinaryName": "ramelo",
   "version": "0.1.0",
-  "identifier": "fr.gitcontroller.app",
+  "identifier": "fr.ramelo.app",
   "build": {
     "frontendDist": "ui"
   },
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "GitController",
+        "title": "Ramelo",
         "width": 1440,
         "height": 880,
         "minWidth": 1024,

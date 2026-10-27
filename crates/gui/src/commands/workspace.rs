@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use gitcontroller_core::{GitError, ScanLimits};
+use ramelo_core::{GitError, ScanLimits};
 use serde::Serialize;
 use tauri::State;
 
@@ -82,10 +82,10 @@ pub async fn add_repositories(state: State<'_, AppState>, paths: Vec<String>) ->
 }
 
 fn find_repositories(state: &AppState, path: &Path) -> CommandResult<Vec<PathBuf>> {
-    match gitcontroller_core::open(&state.git, path) {
+    match ramelo_core::open(&state.git, path) {
         Ok(location) => Ok(vec![location.root]),
         Err(GitError::NotARepository(_)) => {
-            let roots = gitcontroller_core::scan(path, ScanLimits::default());
+            let roots = ramelo_core::scan(path, ScanLimits::default());
             if roots.is_empty() {
                 Err(GitError::NoRepositoryFound(path.to_path_buf()).into())
             } else {

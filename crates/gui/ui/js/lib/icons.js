@@ -44,7 +44,7 @@ export function icon(name, size = 18, strokeWidth = 1.8) {
   );
 }
 
-/** Logo of GitController: a branch leaving a main line, three commits, on a rounded background. */
+/** Logo of Ramelo: a branch leaving a main line, three commits, on a rounded background. */
 export function logo(className = 'logo') {
   return svgFromString(
     `<svg class="${className}" viewBox="0 0 28 28" fill="none" aria-hidden="true">

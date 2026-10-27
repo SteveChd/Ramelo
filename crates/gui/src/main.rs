@@ -1,7 +1,7 @@
 // No extra console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! GitController, desktop application: a thin layer that exposes the core and the storage to the
+//! Ramelo, desktop application: a thin layer that exposes the core and the storage to the
 //! interface.
 
 mod commands;
@@ -17,6 +17,7 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
+            migrate_legacy_data(&data_dir);
             app.manage(AppState::new(data_dir));
             Ok(())
         })
@@ -59,5 +60,19 @@ fn main() {
             commands::settings::show_window,
         ])
         .run(tauri::generate_context!())
-        .expect("cannot start GitController");
+        .expect("cannot start Ramelo");
+}
+
+/// The application was called GitController before: brings its workspace over on the first start
+/// under the new name, so the repositories the user registered are not lost.
+fn migrate_legacy_data(data_dir: &std::path::Path) {
+    const FILE: &str = "workspace.json";
+    let Some(legacy) = data_dir.parent().map(|parent| parent.join("fr.gitcontroller.app").join(FILE)) else {
+        return;
+    };
+    let target = data_dir.join(FILE);
+    if target.exists() || !legacy.exists() {
+        return;
+    }
+    let _ = std::fs::create_dir_all(data_dir).and_then(|()| std::fs::copy(&legacy, &target));
 }

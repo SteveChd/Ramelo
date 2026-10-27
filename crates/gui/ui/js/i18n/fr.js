@@ -31,7 +31,7 @@ export default {
 
   'home.title': 'Dépôts',
   'home.emptyTitle': 'Ajoute ton premier dépôt',
-  'home.emptyText': 'Choisis un dépôt, ou un dossier qui en contient plusieurs : GitController les trouve tous, y compris les projets d\'un espace git-repo.',
+  'home.emptyText': 'Choisis un dépôt, ou un dossier qui en contient plusieurs : Ramelo les trouve tous, y compris les projets d\'un espace git-repo.',
   'home.dropHint': 'Tu peux aussi déposer des dossiers sur la fenêtre.',
   'home.dropHere': 'Dépose pour ajouter les dépôts de ces dossiers',
   'home.open': 'Ouvrir {name}',
@@ -103,7 +103,7 @@ export default {
   'change.untracked': 'Non suivi',
   'change.conflicted': 'Conflit',
 
-  'errors.git_not_found': 'Git est introuvable. Installe Git for Windows (ou le paquet git de ta distribution) puis relance GitController.',
+  'errors.git_not_found': 'Git est introuvable. Installe Git for Windows (ou le paquet git de ta distribution) puis relance Ramelo.',
   'errors.path_missing': 'Le dossier « {subject} » n\'existe plus. Il a peut-être été déplacé ou supprimé.',
   'errors.not_a_repository': '« {subject} » n\'est pas un dépôt git.',
   'errors.no_repository_found': 'Aucun dépôt git trouvé dans « {subject} ».',

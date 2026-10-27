@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
-use gitcontroller_core::{Git, RepoSummary};
-use gitcontroller_storage::Workspace;
+use ramelo_core::{Git, RepoSummary};
+use ramelo_storage::Workspace;
 
 use crate::error::{CommandError, CommandResult};
 use crate::snapshot::Snapshot;
@@ -103,8 +103,8 @@ impl AppState {
 
 /// Reads one repository.
 fn read_one(git: &Git, path: &Path) -> RepoState {
-    let location = gitcontroller_core::open(git, path)?;
-    Ok(gitcontroller_core::summary(git, &location)?)
+    let location = ramelo_core::open(git, path)?;
+    Ok(ramelo_core::summary(git, &location)?)
 }
 
 /// Reads several repositories in parallel: each one starts a few git processes, which mostly wait for

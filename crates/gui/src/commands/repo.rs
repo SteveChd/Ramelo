@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use base64::Engine;
-use gitcontroller_core::{self as core, refs, Carried, Content, RewriteInfo, Rewritten, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
+use ramelo_core::{self as core, refs, Carried, Content, RewriteInfo, Rewritten, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 

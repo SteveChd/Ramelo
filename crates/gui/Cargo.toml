@@ -1,6 +1,6 @@
 [package]
-name = "gitcontroller"
-description = "GitController, desktop application (Tauri)"
+name = "ramelo"
+description = "Ramelo, desktop application (Tauri)"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -10,8 +10,8 @@ license.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-gitcontroller-core.workspace = true
-gitcontroller-storage.workspace = true
+ramelo-core.workspace = true
+ramelo-storage.workspace = true
 base64 = "0.22"
 open = "5"
 rfd = "0.15"
