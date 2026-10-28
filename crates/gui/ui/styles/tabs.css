@@ -1,10 +1,26 @@
 /* Repository tabs: the overview first, then one tab per repository, which can be dragged to reorder. */
 
 .tabbar {
-  display: flex; align-items: flex-end; gap: 2px; padding: 6px 10px 0; flex: 0 0 auto;
-  background: var(--bg); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none;
+  display: flex; align-items: flex-end; gap: 2px; padding: 6px 10px 0; flex: 0 0 auto; min-width: 0;
+  background: var(--bg); border-bottom: 1px solid var(--border);
 }
-.tabbar::-webkit-scrollbar { display: none; }
+/* The pinned tabs keep their place; the others scroll sideways when they do not fit. */
+.tabs-pinned, .tabs-scroll { display: flex; align-items: flex-end; gap: 2px; min-width: 0; }
+.tabs-pinned { flex: 0 0 auto; max-width: 45%; position: relative; padding-right: 7px; margin-right: 5px; }
+.tabs-pinned::after { content: ''; position: absolute; right: 0; top: 9px; bottom: 8px; width: 1px; background: var(--border); }
+/* Overflowing sideways clips the tabs vertically too: the bottom edge is kept so that the active
+   tab still covers the line below the tabs. */
+.tabs-scroll { flex: 0 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; margin-bottom: -1px; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tab-tools { display: flex; align-items: center; gap: 2px; margin: 0 0 4px 4px; flex: 0 0 auto; }
+.tab-tools .icon-btn { width: 28px; height: 28px; }
+.tab-tools .scroll-prev, .tab-tools .scroll-next { display: none; }
+.tabbar.overflow .tab-tools .scroll-prev, .tabbar.overflow .tab-tools .scroll-next { display: inline-flex; }
+.tab-tools .scroll-prev svg { transform: rotate(90deg); }
+.tab-tools .scroll-next svg { transform: rotate(-90deg); }
+.tab-tools .icon-btn:disabled { opacity: .35; cursor: default; background: transparent; }
+.tab-tools .tab-list-btn { height: 26px; padding: 0 8px; gap: 5px; font-size: 12px; color: var(--muted); border-color: transparent; background: transparent; }
+.tab-tools .tab-list-btn:hover { background: var(--hover); color: var(--ink); }
 .tab {
   position: relative; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 12px;
   min-width: 0; max-width: 240px; flex: 0 1 auto; border: 1px solid transparent; border-bottom: 0;
@@ -28,6 +44,32 @@
 .tab:hover .close, .tab[aria-selected="true"] .close { opacity: 1; }
 .tab .close:hover { background: var(--hover); color: var(--ink); }
 .tab.home { padding: 0 12px; flex: 0 0 auto; }
+/* In the scrolling part, a tab keeps a readable name instead of shrinking to its avatar. */
+.tabs-scroll .tab { flex: 0 0 auto; max-width: 200px; }
+.tab.pinned { padding: 0 12px 0 10px; max-width: 170px; min-width: 40px; flex: 0 1 auto; }
+
+/* List of all open tabs. */
+.menu.tab-list-menu { padding: 0; width: min(460px, calc(100vw - 8px)); }
+.tab-list { display: flex; flex-direction: column; max-height: min(520px, 70vh); }
+.tab-list-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.tab-list-field { flex: 1 1 auto; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 13px; height: 26px; }
+.tab-list-items { overflow-y: auto; padding: 4px; }
+.tab-list-row {
+  display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 4px 0 8px; border-radius: var(--radius-sm);
+  font-size: 13px; cursor: pointer; min-width: 0;
+}
+.tab-list-row.cursor { background: var(--hover); }
+.tab-list-row.current .name { font-weight: 650; }
+.tab-list-row .name { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.tab-list-row .where { flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.tab-list-row .state-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.tab-list-row .state-dot.dirty { background: var(--modified); }
+.tab-list-row .state-dot.conflict { background: var(--conflict); }
+.tab-list-row .state-dot.error { background: var(--err); }
+.tab-list-row .icon-btn { width: 24px; height: 24px; flex: 0 0 auto; opacity: 0; }
+.tab-list-row.cursor .icon-btn, .tab-list-row .pin.on { opacity: 1; }
+.tab-list-row .pin.on { color: var(--accent); }
+.tab-list-empty { padding: 14px; color: var(--muted); font-size: 13px; text-align: center; }
 .tab.dragging { opacity: .85; box-shadow: var(--shadow); z-index: 2; background: var(--panel); }
 .tabbar.reordering .tab { transition: transform .12s ease; }
 .tabbar.reordering .tab.dragging { transition: none; }
@@ -55,3 +97,6 @@
 .color-row .btn.on { border-color: var(--accent); color: var(--accent); }
 .color-row .custom { position: relative; overflow: hidden; cursor: pointer; }
 .color-row .custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: 0; padding: 0; }
+
+/* Tabs cut by the edges of the scrolling part fade out. */
+.tabbar.overflow .tabs-scroll { mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); }

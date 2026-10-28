@@ -127,6 +127,31 @@ export const store = {
     await store.reorder(path, Math.max(0, target));
   },
 
+  /** Closes several tabs at once; their repositories stay in the overview. */
+  async closeMany(paths) {
+    if (!paths.length) return;
+    const snapshot = await run(() => backend.closeRepositories(paths));
+    if (snapshot) apply(snapshot);
+  },
+
+  /** Closes every tab but the pinned ones (and `keep`, when given). */
+  async closeAll(keep = null) {
+    await store.closeMany(store.tabs.filter((r) => !r.pinned && r.path !== keep).map((r) => r.path));
+  },
+
+  /** Closes the tabs after `path`, except the pinned ones. */
+  async closeToTheRight(path) {
+    const tabs = store.tabs;
+    const index = tabs.findIndex((r) => r.path === path);
+    await store.closeMany(tabs.slice(index + 1).filter((r) => !r.pinned).map((r) => r.path));
+  },
+
+  /** Pins a tab at the start of the tabs (opening it when closed), or unpins it. */
+  async setPinned(path, pinned) {
+    const snapshot = await run(() => backend.setRepositoryPinned(path, pinned));
+    if (snapshot) apply(snapshot);
+  },
+
   async remove(path) {
     const snapshot = await run(() => backend.removeRepository(path));
     if (snapshot) apply(snapshot);

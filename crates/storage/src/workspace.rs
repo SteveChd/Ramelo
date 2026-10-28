@@ -20,6 +20,9 @@ pub struct RepoEntry {
     /// The tab was closed: the repository stays in the overview, from where it can be opened again.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub closed: bool,
+    /// The tab is pinned: it stays at the start of the tabs, always in view.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,7 +68,7 @@ impl Workspace {
             self.open(&path);
             return false;
         }
-        self.repositories.push(RepoEntry { path, color: None, closed: false });
+        self.repositories.push(RepoEntry { path, color: None, closed: false, pinned: false });
         true
     }
 
@@ -81,9 +84,30 @@ impl Workspace {
     pub fn close(&mut self, path: &Path) {
         let Some(index) = self.repositories.iter().position(|r| r.path == path) else { return };
         self.repositories[index].closed = true;
+        self.repositories[index].pinned = false;
         if self.active.as_deref() == Some(path) {
             self.active = self.open_neighbour(index);
         }
+    }
+
+    /// Closes several tabs at once; the active one, if closed, gives way to an open neighbour.
+    pub fn close_many(&mut self, paths: &[PathBuf]) {
+        for path in paths {
+            self.close(path);
+        }
+    }
+
+    /// Pins a tab (opening it if it was closed) or unpins it. Pinned tabs come first: the tab moves to
+    /// the end of the pinned ones, or, when unpinned, to the start of the others.
+    pub fn set_pinned(&mut self, path: &Path, pinned: bool) {
+        let Some(from) = self.repositories.iter().position(|r| r.path == path) else { return };
+        let mut entry = self.repositories.remove(from);
+        entry.pinned = pinned;
+        if pinned {
+            entry.closed = false;
+        }
+        let at = self.repositories.iter().take_while(|r| r.pinned).count();
+        self.repositories.insert(at, entry);
     }
 
     /// The open tab after `index`, or else the one before it.
@@ -110,11 +134,14 @@ impl Workspace {
         }
     }
 
-    /// Moves a tab to `index` (clamped to the number of tabs).
+    /// Moves a tab to `index` (clamped to the number of tabs), staying among the pinned tabs or
+    /// among the others.
     pub fn reorder(&mut self, path: &Path, index: usize) {
         let Some(from) = self.repositories.iter().position(|r| r.path == path) else { return };
         let entry = self.repositories.remove(from);
-        self.repositories.insert(index.min(self.repositories.len()), entry);
+        let pinned = self.repositories.iter().take_while(|r| r.pinned).count();
+        let index = if entry.pinned { index.min(pinned) } else { index.clamp(pinned, self.repositories.len()) };
+        self.repositories.insert(index, entry);
     }
 }
 
@@ -204,6 +231,30 @@ mod tests {
         assert_eq!(w.active, None);
         w.open(Path::new("/c"));
         assert!(w.is_open(Path::new("/c")));
+    }
+
+    #[test]
+    fn pins_tabs_first_and_closes_several() {
+        let mut w = workspace(&["/a", "/b", "/c", "/d"]);
+        let order = |w: &Workspace| w.repositories.iter().map(|r| r.path.to_str().unwrap().to_owned()).collect::<Vec<_>>();
+        w.set_pinned(Path::new("/c"), true);
+        w.set_pinned(Path::new("/d"), true);
+        assert_eq!(order(&w), ["/c", "/d", "/a", "/b"]);
+        // A pinned tab stays among the pinned ones, another one after them.
+        w.reorder(Path::new("/d"), 3);
+        assert_eq!(order(&w), ["/c", "/d", "/a", "/b"]);
+        w.reorder(Path::new("/b"), 0);
+        assert_eq!(order(&w), ["/c", "/d", "/b", "/a"]);
+        w.set_pinned(Path::new("/c"), false);
+        assert_eq!(order(&w), ["/d", "/c", "/b", "/a"]);
+
+        w.active = Some(PathBuf::from("/b"));
+        w.close_many(&[PathBuf::from("/b"), PathBuf::from("/c"), PathBuf::from("/d")]);
+        assert_eq!(w.active.as_deref(), Some(Path::new("/a")));
+        assert!(w.repositories.iter().all(|r| !r.pinned));
+        // Pinning a closed tab opens it again.
+        w.set_pinned(Path::new("/b"), true);
+        assert!(w.is_open(Path::new("/b")));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 // Commands of the interface, shared by the menus and the keyboard: label, shortcut, availability and
 // what they do.
 
+import { openTabList } from '../components/tabbar.js';
 import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
 import { layout } from '../state/layout.js';
@@ -32,10 +33,13 @@ const ACTIONS = {
   'repo.refreshAll': { key: 'Ctrl+F5', enabled: hasRepos, run: () => store.refresh(null) },
   'repo.openFolder': { key: 'Ctrl+Shift+E', enabled: hasActive, run: () => store.openFolder(store.active) },
   'repo.closeTab': { key: 'Ctrl+W', enabled: hasActive, run: () => store.close(store.active) },
+  'repo.closeAllTabs': { key: 'Ctrl+Shift+W', enabled: () => store.tabs.some((r) => !r.pinned), run: () => store.closeAll() },
+  'repo.pinTab': { enabled: hasActive, run: () => store.setPinned(store.active, !store.activeRepo?.pinned) },
   'repo.remove': { enabled: hasActive, run: () => store.remove(store.active) },
   'view.home': { key: 'Ctrl+1', run: () => goToTab(1) },
   'view.nextTab': { key: 'Ctrl+Tab', enabled: hasTabs, run: () => cycleTab(1) },
   'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasTabs, run: () => cycleTab(-1) },
+  'view.tabList': { key: 'Ctrl+Shift+A', enabled: hasTabs, run: () => openTabList() },
   'view.theme': { run: () => toggleTheme() },
   'view.toggleLeft': { key: 'Alt+1', enabled: hasActive, run: () => layout.toggle('leftCollapsed') },
   'view.toggleRight': { key: 'Alt+2', enabled: hasActive, run: () => layout.toggle('rightCollapsed') },

@@ -13,7 +13,7 @@ let added = 0;
 
 function snapshot() {
   return structuredClone({
-    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), summary: r.summary ?? null, error: r.error ?? null })),
+    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), pinned: Boolean(r.pinned), summary: r.summary ?? null, error: r.error ?? null })),
     active,
   });
 }
@@ -21,6 +21,13 @@ function snapshot() {
 export async function startup() {
   await delay(300);
   repositories = sampleWorkspace();
+  // « ?many=200 » adds as many sample repositories, to see a crowded tab bar.
+  const many = Number(new URLSearchParams(location.search).get('many')) || 0;
+  const words = ['core', 'utils', 'pipeline', 'exporter', 'gateway', 'firmware', 'shared', 'lib', 'tools', 'service'];
+  for (let i = 0; i < many; i += 1) {
+    const name = `${words[i % words.length]}-${String.fromCharCode(97 + (i * 7) % 26)}${i}`;
+    repositories.push({ path: `C:\\codes\\many\\${name}`, summary: structuredClone(repositories[1].summary) });
+  }
   active = null;
   return snapshot();
 }
@@ -71,6 +78,26 @@ export async function closeRepository(path) {
   return snapshot();
 }
 
+export async function closeRepositories(paths) {
+  for (const path of paths) {
+    const repo = repositories.find((r) => r.path === path);
+    if (repo) repo.pinned = false;
+    await closeRepository(path);
+  }
+  return snapshot();
+}
+
+export async function setRepositoryPinned(path, pinned) {
+  const from = repositories.findIndex((r) => r.path === path);
+  if (from < 0) return snapshot();
+  const [entry] = repositories.splice(from, 1);
+  entry.pinned = pinned;
+  if (pinned) entry.closed = false;
+  const at = repositories.findIndex((r) => !r.pinned);
+  repositories.splice(at < 0 ? repositories.length : at, 0, entry);
+  return snapshot();
+}
+
 export async function selectRepository(path) {
   const repo = repositories.find((r) => r.path === path);
   if (repo) repo.closed = false;
@@ -82,7 +109,9 @@ export async function reorderRepository(path, index) {
   const from = repositories.findIndex((r) => r.path === path);
   if (from < 0) return snapshot();
   const [entry] = repositories.splice(from, 1);
-  repositories.splice(Math.min(index, repositories.length), 0, entry);
+  const pinned = repositories.filter((r) => r.pinned).length;
+  const at = entry.pinned ? Math.min(index, pinned) : Math.max(pinned, Math.min(index, repositories.length));
+  repositories.splice(at, 0, entry);
   return snapshot();
 }
 

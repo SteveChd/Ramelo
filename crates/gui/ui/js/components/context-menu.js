@@ -15,7 +15,8 @@ window.addEventListener('pointerdown', (event) => { if (current && !current.cont
 window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && current) { event.stopPropagation(); closeContextMenu(); } }, true);
 window.addEventListener('blur', closeContextMenu);
 window.addEventListener('resize', closeContextMenu);
-document.addEventListener('scroll', closeContextMenu, true);
+// A list scrolled inside the menu itself leaves it open.
+document.addEventListener('scroll', (event) => { if (current && !current.contains(event.target)) closeContextMenu(); }, true);
 
 /**
  * `items`: '-' for a separator, an element shown as it is, or { label, icon, hint, danger, disabled, run }.
@@ -53,5 +54,6 @@ export function openContextMenu(at, items) {
   const { width, height } = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(4, Math.min(x, window.innerWidth - width - 4))}px`;
   menu.style.top = `${Math.max(4, y + height > window.innerHeight - 4 ? y - height : y)}px`;
-  menu.querySelector('.mi:not(:disabled)')?.focus();
+  (menu.querySelector('[autofocus]') ?? menu.querySelector('.mi:not(:disabled)'))?.focus();
+  return menu;
 }

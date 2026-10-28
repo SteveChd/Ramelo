@@ -28,6 +28,8 @@ fn main() {
             commands::workspace::add_repositories,
             commands::workspace::remove_repository,
             commands::workspace::close_repository,
+            commands::workspace::close_repositories,
+            commands::workspace::set_repository_pinned,
             commands::workspace::select_repository,
             commands::workspace::reorder_repository,
             commands::workspace::set_repository_color,

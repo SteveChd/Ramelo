@@ -18,6 +18,8 @@ export const {
   addRepositories,
   removeRepository,
   closeRepository,
+  closeRepositories,
+  setRepositoryPinned,
   selectRepository,
   reorderRepository,
   setRepositoryColor,

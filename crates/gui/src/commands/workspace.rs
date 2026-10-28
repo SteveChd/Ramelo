@@ -112,6 +112,21 @@ pub fn close_repository(state: State<'_, AppState>, path: String) -> CommandResu
     Ok(state.snapshot())
 }
 
+/// Closes several tabs at once (close the others, close all); the repositories stay in the overview.
+#[tauri::command]
+pub fn close_repositories(state: State<'_, AppState>, paths: Vec<String>) -> CommandResult<Snapshot> {
+    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    state.edit_workspace(|workspace| workspace.close_many(&paths))?;
+    Ok(state.snapshot())
+}
+
+/// Pins a tab at the start of the tabs, or unpins it.
+#[tauri::command]
+pub fn set_repository_pinned(state: State<'_, AppState>, path: String, pinned: bool) -> CommandResult<Snapshot> {
+    state.edit_workspace(|workspace| workspace.set_pinned(Path::new(&path), pinned))?;
+    Ok(state.snapshot())
+}
+
 /// Shows a repository (`None`: the overview of all repositories), opening its tab again if it was
 /// closed. Its state is read again, so that a tab always opens on fresh information.
 #[tauri::command]

@@ -7,9 +7,9 @@ import { icon, logo } from '../lib/icons.js';
 import { currentTheme, toggleTheme } from './theme.js';
 
 const MENUS = [
-  { label: 'menu.file', items: ['repo.add', '-', 'repo.openFolder', '-', 'repo.closeTab', 'repo.remove'] },
+  { label: 'menu.file', items: ['repo.add', '-', 'repo.openFolder', '-', 'repo.pinTab', 'repo.closeTab', 'repo.closeAllTabs', 'repo.remove'] },
   { label: 'menu.repository', items: ['repo.fetch', 'repo.pull', 'repo.push', '-', 'repo.newBranch', 'repo.stageAll', '-', 'repo.search', '-', 'repo.refresh', 'repo.refreshAll'] },
-  { label: 'menu.view', items: ['view.home', 'view.nextTab', 'view.prevTab', '-', 'view.toggleLeft', 'view.toggleRight', 'view.toggleDiff', 'view.maximizeDiff', 'view.splitDiff', '-', 'view.theme'] },
+  { label: 'menu.view', items: ['view.home', 'view.nextTab', 'view.prevTab', 'view.tabList', '-', 'view.toggleLeft', 'view.toggleRight', 'view.toggleDiff', 'view.maximizeDiff', 'view.splitDiff', '-', 'view.theme'] },
 ];
 
 let openMenu = null;

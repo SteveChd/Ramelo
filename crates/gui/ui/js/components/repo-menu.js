@@ -51,7 +51,37 @@ export function openRepoMenu(at, repo) {
     { label: t('action.repo.openFolder'), icon: 'folder', run: () => store.openFolder(repo.path) },
     { label: t('action.repo.refresh'), icon: 'refresh', run: () => store.refresh(repo.path) },
     '-',
-    !repo.closed && { label: t('action.repo.closeTab'), icon: 'close', run: () => store.close(repo.path) },
+    tabItems(repo),
     { label: t('action.repo.remove'), icon: 'remove', run: () => store.remove(repo.path) },
-  ]);
+  ].flat());
+}
+
+/** Pinning, and closing this tab or several at once. */
+function tabItems(repo) {
+  const tabs = store.tabs;
+  const unpinned = tabs.filter((r) => !r.pinned);
+  const index = tabs.findIndex((r) => r.path === repo.path);
+  const anyPinned = tabs.some((r) => r.pinned);
+  return [
+    { label: t(repo.pinned ? 'tabs.unpin' : 'tabs.pin'), icon: 'pin', run: () => store.setPinned(repo.path, !repo.pinned) },
+    '-',
+    !repo.closed && { label: t('action.repo.closeTab'), icon: 'close', hint: 'Ctrl+W', run: () => store.close(repo.path) },
+    !repo.closed && {
+      label: t('tabs.closeOthers'),
+      disabled: !unpinned.some((r) => r.path !== repo.path),
+      run: () => store.closeAll(repo.path),
+    },
+    !repo.closed && {
+      label: t('tabs.closeRight'),
+      disabled: !tabs.slice(index + 1).some((r) => !r.pinned),
+      run: () => store.closeToTheRight(repo.path),
+    },
+    {
+      label: t(anyPinned ? 'tabs.closeAllButPinned' : 'tabs.closeAll'),
+      hint: 'Ctrl+Shift+W',
+      disabled: unpinned.length === 0,
+      run: () => store.closeAll(),
+    },
+    '-',
+  ];
 }

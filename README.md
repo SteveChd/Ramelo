@@ -17,6 +17,10 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 - One tab per repository, plus an overview tab. Tabs can be dragged to reorder, closed with the
   middle button or Ctrl+W, and are remembered between sessions. A closed tab's repository stays in
   the overview, where a click opens it again; removing it from the workspace is a separate command.
+  Tabs can be pinned: they stay at the start, always in view, without a close button. When the
+  other tabs do not fit, they scroll (wheel or arrows) and a list of all open tabs finds one by name
+  or path (Ctrl+Shift+A). The right click on a tab also closes the others, those to its right, or
+  all of them except the pinned ones (Ctrl+Shift+W).
 - The overview shows every repository at a glance: branch, commits to push or pull, changes,
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
   (name, path, branch, upstream, last commit; several words all have to match, case and accents are

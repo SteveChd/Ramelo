@@ -19,6 +19,8 @@ export const addRepositories = (paths) => invoke('add_repositories', { paths });
 export const removeRepository = (path) => invoke('remove_repository', { path });
 /** `path` null: the overview of all repositories. */
 export const closeRepository = (path) => invoke('close_repository', { path });
+export const closeRepositories = (paths) => invoke('close_repositories', { paths });
+export const setRepositoryPinned = (path, pinned) => invoke('set_repository_pinned', { path, pinned });
 export const selectRepository = (path) => invoke('select_repository', { path });
 export const reorderRepository = (path, index) => invoke('reorder_repository', { path, index });
 /** `color`: « #rrggbb », or null for the automatic one. */

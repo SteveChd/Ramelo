@@ -19,6 +19,7 @@ const PATHS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  pin: '<path d="M9 3.5h6l-1 5.5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6.5"/>',
   minus: '<path d="M5 12h14"/>',
   pull: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   push: '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>',
