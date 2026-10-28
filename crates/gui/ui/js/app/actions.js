@@ -29,6 +29,7 @@ function goToTab(n) {
 
 const ACTIONS = {
   'repo.add': { key: 'Ctrl+O', run: () => store.add() },
+  'repo.clone': { key: 'Ctrl+Shift+O', run: () => store.clone() },
   'repo.refresh': { key: 'F5', enabled: hasRepos, run: () => store.refresh(store.activeRepo?.path ?? null) },
   'repo.refreshAll': { key: 'Ctrl+F5', enabled: hasRepos, run: () => store.refresh(null) },
   'repo.openFolder': { key: 'Ctrl+Shift+E', enabled: hasActive, run: () => store.openFolder(store.active) },

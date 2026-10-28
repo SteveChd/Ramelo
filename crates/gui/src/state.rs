@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
@@ -23,6 +23,8 @@ pub struct AppState {
     workspace: Mutex<Workspace>,
     states: Mutex<HashMap<PathBuf, RepoState>>,
     language: Mutex<String>,
+    /// Set to stop the clone in progress.
+    pub clone_cancelled: AtomicBool,
 }
 
 impl AppState {
@@ -38,6 +40,7 @@ impl AppState {
             workspace: Mutex::new(workspace),
             states: Mutex::new(HashMap::new()),
             language: Mutex::new("en".to_owned()),
+            clone_cancelled: AtomicBool::new(false),
         }
     }
 

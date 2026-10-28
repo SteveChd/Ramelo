@@ -38,7 +38,9 @@ function emptyState() {
     logo(),
     h('h2', {}, t('home.emptyTitle')),
     h('p', {}, t('home.emptyText')),
-    h('button', { type: 'button', class: 'btn primary large', onclick: () => store.add() }, icon('plus', 16), t('action.repo.add')),
+    h('div', { class: 'empty-actions' },
+      h('button', { type: 'button', class: 'btn primary large', onclick: () => store.add() }, icon('plus', 16), t('action.repo.add')),
+      h('button', { type: 'button', class: 'btn large', onclick: () => store.clone() }, icon('fetch', 16), t('action.repo.clone'))),
     h('p', { class: 'hint' }, t('home.dropHint')),
   );
 }
@@ -113,6 +115,7 @@ export function renderHome(container) {
         disabled: visible.length === 0,
         onclick: () => store.removeMany(visible.length < repos.length ? visible.map((r) => r.path) : null),
       }, icon('remove', 16)),
+      h('button', { type: 'button', class: 'btn', onclick: () => store.clone() }, icon('fetch', 15), t('clone.short')),
       h('button', { type: 'button', class: 'btn primary', onclick: () => store.add() }, icon('plus', 15), t('action.repo.add'))),
     visible.length
       ? h('div', { class: 'cards' }, visible.map(card))

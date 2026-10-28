@@ -20,6 +20,18 @@ export const removeRepository = (path) => invoke('remove_repository', { path });
 export const removeRepositories = (paths) => invoke('remove_repositories', { paths });
 /** `path` null: the overview of all repositories. */
 export const closeRepository = (path) => invoke('close_repository', { path });
+/** Folder chooser for a clone, opened at `start`: the chosen path, or null. */
+export const pickCloneFolder = (start) => invoke('pick_clone_folder', { start });
+/**
+ * Clones `url` into `folder` with { branch, submodules }; `onProgress({ phase, percent, detail })`
+ * follows git. Resolves with the path of the clone.
+ */
+export function cloneRepository(url, folder, options, onProgress) {
+  const progress = new tauri.core.Channel();
+  progress.onmessage = onProgress;
+  return invoke('clone_repository', { url, folder, options, progress });
+}
+export const cancelClone = () => invoke('cancel_clone');
 export const closeRepositories = (paths) => invoke('close_repositories', { paths });
 export const setRepositoryPinned = (path, pinned) => invoke('set_repository_pinned', { path, pinned });
 export const selectRepository = (path) => invoke('select_repository', { path });

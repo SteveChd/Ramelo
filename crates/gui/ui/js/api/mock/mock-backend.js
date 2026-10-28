@@ -83,6 +83,30 @@ export async function closeRepository(path) {
   return snapshot();
 }
 
+export async function pickCloneFolder(start) {
+  return start || 'C:\\Users\\steve\\dev';
+}
+
+let cloneStopped = false;
+
+/** A pretend clone: a few seconds of progress; « fail » in the address makes it fail. */
+export async function cloneRepository(url, folder, options, onProgress) {
+  cloneStopped = false;
+  for (const phase of ['Counting objects', 'Receiving objects', 'Resolving deltas']) {
+    for (let percent = 0; percent <= 100; percent += 20) {
+      await delay(90);
+      if (cloneStopped) throw { code: 'cancelled', subject: null, message: 'stopped' };
+      onProgress({ phase, percent, detail: '' });
+    }
+  }
+  if (url.includes('fail')) throw { code: 'git_failed', subject: 'clone', message: `repository '${url}' not found` };
+  return folder;
+}
+
+export async function cancelClone() {
+  cloneStopped = true;
+}
+
 export async function closeRepositories(paths) {
   for (const path of paths) {
     const repo = repositories.find((r) => r.path === path);

@@ -509,3 +509,34 @@ fn walks_a_rebase_through_its_conflicts() {
     }
     assert_eq!(messages(&root), ["Main", "Base"]);
 }
+
+#[test]
+fn clones_with_progress_and_cleans_up_after_a_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = new_repo(&dir.path().join("source"));
+    commit_file(&source, "a.txt", "a\n", "First");
+    git(&source, &["branch", "other"]);
+    let url = source.display().to_string();
+    let g = Git::default();
+
+    let mut phases = Vec::new();
+    let target = dir.path().join("clones").join("copy");
+    let options = CloneOptions { branch: Some("other".into()), submodules: false };
+    let path = clone(&g, &url, &target, &options, |p| phases.push(p.phase), &|| false).unwrap();
+    assert_eq!(fs::read_to_string(path.join("a.txt")).unwrap(), "a\n");
+    assert_eq!(git(&path, &["branch", "--show-current"]).trim(), "other");
+    assert!(!phases.is_empty());
+
+    // The folder is taken: nothing happens.
+    assert!(matches!(clone(&g, &url, &target, &CloneOptions::default(), |_| {}, &|| false), Err(GitError::TargetExists(_))));
+    // A wrong address fails, and leaves no folder behind.
+    let missing = dir.path().join("missing");
+    let err = clone(&g, &dir.path().join("nothing").display().to_string(), &missing, &CloneOptions::default(), |_| {}, &|| false).unwrap_err();
+    assert!(matches!(err, GitError::Failed { .. }), "{err:?}");
+    assert!(!missing.exists());
+    // Stopped at once: cancelled, no folder either.
+    let stopped = dir.path().join("stopped");
+    assert!(matches!(clone(&g, &url, &stopped, &CloneOptions::default(), |_| {}, &|| true), Err(GitError::Cancelled)));
+    assert!(!stopped.exists());
+    assert!(matches!(clone(&g, " ", &stopped, &CloneOptions::default(), |_| {}, &|| false), Err(GitError::InvalidUrl(_))));
+}

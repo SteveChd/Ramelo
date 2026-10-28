@@ -6,8 +6,11 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use ramelo_core::{GitError, ScanLimits};
+use std::sync::atomic::Ordering;
+
+use ramelo_core::{CloneOptions, CloneProgress, GitError, ScanLimits};
 use serde::Serialize;
+use tauri::ipc::Channel;
 use tauri::State;
 
 use crate::error::{CommandError, CommandResult};
@@ -40,6 +43,41 @@ pub fn pick_folder(state: State<'_, AppState>) -> Option<Vec<String>> {
         .set_title(title)
         .pick_folders()
         .map(|folders| folders.iter().map(|f| f.display().to_string()).collect())
+}
+
+/// Folder chooser for the folder a repository is cloned into; `start` is where it opens.
+#[tauri::command]
+pub fn pick_clone_folder(state: State<'_, AppState>, start: Option<String>) -> Option<String> {
+    let title = if state.language() == "fr" { "Dossier où cloner" } else { "Folder to clone into" };
+    let mut dialog = rfd::FileDialog::new().set_title(title);
+    if let Some(start) = start.filter(|s| Path::new(s).is_dir()) {
+        dialog = dialog.set_directory(start);
+    }
+    dialog.pick_folder().map(|f| f.display().to_string())
+}
+
+/// Clones `url` into `folder` (which must not exist or be empty), sending git's progress on
+/// `progress`; returns the path of the clone, to add to the workspace.
+#[tauri::command]
+pub async fn clone_repository(
+    state: State<'_, AppState>,
+    url: String,
+    folder: String,
+    options: CloneOptions,
+    progress: Channel<CloneProgress>,
+) -> CommandResult<String> {
+    state.clone_cancelled.store(false, Ordering::SeqCst);
+    let cancelled = || state.clone_cancelled.load(Ordering::SeqCst);
+    let path = ramelo_core::clone(&state.git, &url, Path::new(&folder), &options, |p| {
+        let _ = progress.send(p);
+    }, &cancelled)?;
+    Ok(path.display().to_string())
+}
+
+/// Stops the clone in progress; the folder it started is removed.
+#[tauri::command]
+pub fn cancel_clone(state: State<'_, AppState>) {
+    state.clone_cancelled.store(true, Ordering::SeqCst);
 }
 
 #[derive(Debug, Serialize)]

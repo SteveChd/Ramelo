@@ -65,6 +65,12 @@ pub enum GitError {
     NoOperation,
     #[error("after the resolution, the commit no longer changes anything")]
     EmptyAfterResolution,
+    #[error("« {0} » is not a repository address")]
+    InvalidUrl(String),
+    #[error("the folder « {0} » already exists and is not empty")]
+    TargetExists(PathBuf),
+    #[error("stopped")]
+    Cancelled,
 }
 
 impl GitError {
@@ -99,6 +105,9 @@ impl GitError {
             Self::ConflictsRemain(_) => "conflicts_remain",
             Self::NoOperation => "no_operation",
             Self::EmptyAfterResolution => "empty_after_resolution",
+            Self::InvalidUrl(_) => "invalid_url",
+            Self::TargetExists(_) => "target_exists",
+            Self::Cancelled => "cancelled",
         }
     }
 
@@ -109,7 +118,9 @@ impl GitError {
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
             Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) => Some(name.clone()),
-            Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution => None,
+            Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution | Self::Cancelled => None,
+            Self::InvalidUrl(url) => Some(url.clone()),
+            Self::TargetExists(path) => Some(path.display().to_string()),
             Self::ConflictsRemain(count) => Some(count.to_string()),
             Self::PathMissing(path) | Self::NotARepository(path) | Self::NoRepositoryFound(path) => {
                 Some(path.display().to_string())

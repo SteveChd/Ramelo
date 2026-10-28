@@ -5,6 +5,7 @@
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
+import { openCloneDialog } from '../components/clone-dialog.js';
 import { confirm } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
 
@@ -109,6 +110,15 @@ export const store = {
     if (added.length > 1) emit('notice', tn('notice.added', added.length));
     else if (added.length === 0 && existing > 1) emit('notice', tn('notice.alreadyThere', existing));
     else if (added.length === 0) emit('notice', t('notice.alreadyOpen'));
+  },
+
+  /** Asks for a repository to clone, clones it, then adds it and opens its tab. */
+  async clone() {
+    const near = state.active ?? state.repositories[0]?.path ?? null;
+    const path = await openCloneDialog({ near });
+    if (!path) return;
+    await store.add([path], { quiet: true });
+    emit('notice', t('clone.done', { path }));
   },
 
   /** Closes the tab of a repository; it stays in the overview. */

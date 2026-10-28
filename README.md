@@ -23,6 +23,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   all of them except the pinned ones (Ctrl+Shift+W). All the repositories can be removed from the
   workspace at once (File menu, or the bin in the overview, which takes only those shown when a
   filter or a search is on); their folders on disk are not touched.
+- A repository can be cloned from its address (File menu, Ctrl+Shift+O, the overview or the + after
+  the tabs): the folder it goes into, its name there, and optionally a branch and the submodules.
+  Git's progress shows while it runs and the clone can be stopped; it then opens in its own tab.
 - The overview shows every repository at a glance: branch, commits to push or pull, changes,
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
   (name, path, branch, upstream, last commit; several words all have to match, case and accents are
@@ -83,7 +86,7 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 | Folder | Role |
 | --- | --- |
-| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, repository discovery on disk. No dependency on the interface or the storage. |
+| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, cloning, repository discovery on disk. No dependency on the interface or the storage. |
 | `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order and the active one, written atomically. |
 | `crates/gui` | Tauri 2 application: commands called by the interface (`src/commands`). |
 | `crates/gui/ui` | Interface in HTML, CSS and JavaScript (ES modules, no framework, no bundler). |

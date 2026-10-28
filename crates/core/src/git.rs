@@ -6,8 +6,10 @@
 use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process::{Command, Output, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
+use std::time::Duration;
 
 use crate::error::classify;
 use crate::GitError;
@@ -67,7 +69,81 @@ impl Git {
         self.run(dir, args, None)
     }
 
-    fn run<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], input: Option<&[u8]>) -> Result<Output, GitError> {
+    /// Runs git, handing each line of its error output to `on_line` as it comes (progress lines
+    /// end with « \r » and are handed one by one). `cancelled` is asked a few times a second; when
+    /// it answers true, git is stopped and [`GitError::Cancelled`] returned.
+    pub fn streaming<S: AsRef<OsStr>>(
+        &self,
+        dir: &Path,
+        args: &[S],
+        mut on_line: impl FnMut(&str),
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Output, GitError> {
+        let mut command = self.command(dir, args);
+        command.stdin(Stdio::null());
+        let io_error = |source: std::io::Error| GitError::Io { path: dir.to_path_buf(), source };
+        let mut child = command.spawn().map_err(|source| match source.kind() {
+            ErrorKind::NotFound if dir.exists() => GitError::GitNotFound,
+            _ => io_error(source),
+        })?;
+        let mut stderr = child.stderr.take().expect("stderr is piped");
+        let mut stdout = child.stdout.take().expect("stdout is piped");
+        let out_reader = std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            let _ = stdout.read_to_end(&mut bytes);
+            bytes
+        });
+        let (sender, lines) = mpsc::channel::<String>();
+        let err_reader = std::thread::spawn(move || {
+            let (mut all, mut line, mut buffer) = (Vec::new(), Vec::new(), [0u8; 4096]);
+            while let Ok(n) = stderr.read(&mut buffer) {
+                if n == 0 {
+                    break;
+                }
+                all.extend_from_slice(&buffer[..n]);
+                for &byte in &buffer[..n] {
+                    if byte == b'\r' || byte == b'\n' {
+                        if !line.is_empty() {
+                            let _ = sender.send(String::from_utf8_lossy(&line).into_owned());
+                            line.clear();
+                        }
+                    } else {
+                        line.push(byte);
+                    }
+                }
+            }
+            if !line.is_empty() {
+                let _ = sender.send(String::from_utf8_lossy(&line).into_owned());
+            }
+            all
+        });
+        let mut stopped = false;
+        loop {
+            match lines.recv_timeout(Duration::from_millis(150)) {
+                Ok(line) => on_line(&line),
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+            if !stopped && cancelled() {
+                stopped = true;
+                let _ = child.kill();
+            }
+        }
+        let status = child.wait().map_err(io_error)?;
+        let stderr = err_reader.join().unwrap_or_default();
+        let stdout = out_reader.join().unwrap_or_default();
+        if stopped {
+            return Err(GitError::Cancelled);
+        }
+        Ok(Output { status, stdout, stderr })
+    }
+
+    /// Like [`Git::output`] for an output already read: a non-zero exit is an error.
+    pub fn check<S: AsRef<OsStr>>(args: &[S], out: Output) -> Result<Vec<u8>, GitError> {
+        checked(args, out)
+    }
+
+    fn command<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S]) -> Command {
         let mut command = Command::new(&self.program);
         command
             .current_dir(dir)
@@ -82,11 +158,16 @@ impl Git {
             .env("GIT_OPTIONAL_LOCKS", "0")
             .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
             .args(args)
-            // Without a terminal, ssh and editors fail at once instead of waiting for an answer.
-            .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         hide_console(&mut command);
+        command
+    }
+
+    fn run<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], input: Option<&[u8]>) -> Result<Output, GitError> {
+        let mut command = self.command(dir, args);
+        // Without a terminal, ssh and editors fail at once instead of waiting for an answer.
+        command.stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() });
         let spawn_error = |source: std::io::Error| match source.kind() {
             ErrorKind::NotFound if dir.exists() => GitError::GitNotFound,
             ErrorKind::NotFound => GitError::PathMissing(dir.to_path_buf()),

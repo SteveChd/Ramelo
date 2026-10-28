@@ -56,3 +56,22 @@
 }
 .dialog-warning svg { flex: 0 0 auto; margin-top: 1px; }
 .dialog-foot .hint { margin-right: auto; align-self: center; font-size: 12px; color: var(--muted); }
+
+/* Cloning a repository. */
+.field .with-button { display: flex; gap: 8px; }
+.field .with-button input { flex: 1 1 auto; min-width: 0; }
+.field .with-button .btn { height: 34px; flex: 0 0 auto; }
+.clone-options { font-size: 13px; color: var(--ink2); display: flex; flex-direction: column; gap: 10px; }
+.clone-options summary { cursor: pointer; color: var(--muted); font-size: 12.5px; user-select: none; }
+.clone-options[open] { gap: 10px; }
+.clone-options[open] > :not(summary) { margin-top: 10px; }
+.clone-target { font-size: 12px; color: var(--muted); font-family: var(--mono); word-break: break-all; }
+.clone-target:empty { display: none; }
+.clone-progress { display: flex; flex-direction: column; gap: 6px; }
+.clone-progress .line { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink2); }
+.clone-progress .detail { font-family: var(--mono); color: var(--muted); }
+.clone-progress .track { height: 6px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.clone-progress .bar { height: 100%; width: 0; border-radius: 999px; background: var(--accent); transition: width .15s ease; }
+.clone-progress .bar.busy { width: 30% !important; animation: clone-busy 1.1s ease-in-out infinite alternate; }
+@keyframes clone-busy { from { margin-left: 0; } to { margin-left: 70%; } }
+.field input:disabled { opacity: .6; }

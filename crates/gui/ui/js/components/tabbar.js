@@ -231,7 +231,15 @@ export function renderTabbar(container) {
         title: `${t('tabs.list')} (Ctrl+Shift+A)`,
         onclick: (event) => openTabList(event.currentTarget),
       }, icon('chevron', 14, 2.2), h('span', {}, tn('tabs.count', tabs.length))),
-      h('button', { type: 'button', class: 'icon-btn add-tab', title: t('action.repo.add'), onclick: () => store.add() }, icon('plus', 16))),
+      h('button', {
+        type: 'button',
+        class: 'icon-btn add-tab',
+        title: `${t('action.repo.add')} / ${t('action.repo.clone')}`,
+        onclick: (event) => openContextMenu(event.currentTarget, [
+          { label: t('action.repo.add'), icon: 'folder', hint: 'Ctrl+O', run: () => store.add() },
+          { label: t('action.repo.clone'), icon: 'fetch', hint: 'Ctrl+Shift+O', run: () => store.clone() },
+        ]),
+      }, icon('plus', 16))),
   );
   scroller.scrollLeft = previous;
   // The active tab is brought into view when it changes, not at each refresh.

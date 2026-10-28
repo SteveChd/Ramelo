@@ -5,7 +5,11 @@ import { t } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 
-function open(build) {
+/**
+ * Opens a dialog drawn by `build(box, close)`. `guard()`, when given, can refuse closing it with
+ * Escape or a click outside (while something runs).
+ */
+export function openDialog(build, guard = () => true) {
   return new Promise((resolve) => {
     const previous = document.activeElement;
     let done = false;
@@ -21,11 +25,11 @@ function open(build) {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        close(null);
+        if (guard()) close(null);
       }
     };
     const box = h('div', { class: 'dialog', role: 'dialog', 'aria-modal': 'true' });
-    const backdrop = h('div', { class: 'backdrop', onmousedown: (e) => { if (e.target === backdrop) close(null); } }, box);
+    const backdrop = h('div', { class: 'backdrop', onmousedown: (e) => { if (e.target === backdrop && guard()) close(null); } }, box);
     build(box, close);
     document.body.append(backdrop);
     window.addEventListener('keydown', onKey, true);
@@ -33,7 +37,9 @@ function open(build) {
   });
 }
 
-function head(title, close) {
+const open = openDialog;
+
+export function dialogHead(title, close) {
   return h('div', { class: 'dialog-head' },
     h('h2', {}, title),
     h('button', { type: 'button', class: 'icon-btn', title: t('dialog.cancel'), onclick: () => close(null) }, icon('close', 16)));
@@ -46,7 +52,7 @@ function head(title, close) {
 export function choose({ title, message, choices }) {
   return open((box, close) => {
     mount(box,
-      head(title, close),
+      dialogHead(title, close),
       message && h('p', { class: 'dialog-text' }, message),
       h('div', { class: 'choices' }, choices.map((choice) => h('button', {
         type: 'button',
@@ -62,7 +68,7 @@ export function choose({ title, message, choices }) {
 export function confirm({ title, message, confirmLabel, danger = false }) {
   return open((box, close) => {
     mount(box,
-      head(title, close),
+      dialogHead(title, close),
       h('p', { class: 'dialog-text' }, message),
       h('div', { class: 'dialog-foot' },
         h('button', { type: 'button', class: 'btn', onclick: () => close(false) }, t('dialog.cancel')),
@@ -89,7 +95,7 @@ export function prompt({ title, message, label, value = '', placeholder = '', co
     input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); });
     input.addEventListener('input', () => { error.textContent = ''; });
     mount(box,
-      head(title, close),
+      dialogHead(title, close),
       message && h('p', { class: 'dialog-text' }, message),
       h('label', { class: 'field' }, h('span', { class: 'label' }, label), input),
       error,
@@ -131,7 +137,7 @@ export function editText({ title, notes = [], warning = null, value = '', code =
     });
     area.addEventListener('input', () => { error.textContent = ''; });
     mount(box,
-      head(title, close),
+      dialogHead(title, close),
       notes.filter(Boolean).map((note) => h('p', { class: 'dialog-text' }, note)),
       warning && h('p', { class: 'dialog-warning' }, icon('warning', 16), h('span', {}, warning)),
       area,

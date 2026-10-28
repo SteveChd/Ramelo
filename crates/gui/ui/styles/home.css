@@ -53,3 +53,4 @@
 }
 .home-head .remove-all { width: 34px; height: 34px; color: var(--muted); }
 .home-head .remove-all:hover:not(:disabled) { color: var(--err); background: color-mix(in srgb, var(--err) 10%, transparent); }
+.empty .empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
