@@ -424,3 +424,88 @@ fn tells_where_a_branch_is_checked_out_in_another_worktree() {
     let err = refs::switch(&g, &root, "other", false).unwrap_err();
     assert!(matches!(err, GitError::BranchInWorktree(ref p) if p.ends_with("wt")), "{err:?}");
 }
+
+#[test]
+fn resolves_a_merge_conflict_and_continues() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "1\n2\n3\n", "Base");
+    git(&root, &["switch", "-q", "-c", "feature"]);
+    commit_file(&root, "a.txt", "1\ntwo\n3\n", "Feature");
+    git(&root, &["switch", "-q", "main"]);
+    commit_file(&root, "a.txt", "1\nTWO\n3\n", "Main");
+    let _ = Git::default().raw(&root, &["merge", "feature"]).unwrap();
+    assert!(matches!(continue_operation(&g, &root), Err(GitError::ConflictsRemain(1))));
+
+    let file = conflict_file(&g, &root, "a.txt").unwrap();
+    assert_eq!(file.ours.as_deref(), Some("1\nTWO\n3\n"));
+    assert_eq!(file.theirs.as_deref(), Some("1\ntwo\n3\n"));
+    assert_eq!(file.sides.operation, Some(Operation::Merge));
+    assert_eq!(file.sides.ours.name.as_deref(), Some("main"));
+    assert_eq!(file.sides.theirs.name.as_deref(), Some("feature"));
+    assert_eq!(
+        file.segments,
+        [
+            Segment::Common { text: "1\n".into() },
+            Segment::Conflict { ours: "TWO\n".into(), base: "2\n".into(), theirs: "two\n".into() },
+            Segment::Common { text: "3\n".into() },
+        ]
+    );
+
+    take_side(&g, &root, "a.txt", true).unwrap();
+    assert_eq!(fs::read_to_string(root.join("a.txt")).unwrap(), "1\ntwo\n3\n");
+    resolve_file(&g, &root, "a.txt", Some(b"1\nTwo\n3\n")).unwrap();
+    assert_eq!(continue_operation(&g, &root).unwrap(), Progress::Done);
+    assert_eq!(git(&root, &["log", "-1", "--format=%P"]).split_whitespace().count(), 2);
+    assert_eq!(fs::read_to_string(root.join("a.txt")).unwrap(), "1\nTwo\n3\n");
+    assert!(matches!(abort_operation(&g, &root), Err(GitError::NoOperation)));
+}
+
+#[test]
+fn walks_a_rebase_through_its_conflicts() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "a\n", "Base");
+    git(&root, &["switch", "-q", "-c", "feature"]);
+    commit_file(&root, "a.txt", "feature 1\n", "Feature 1");
+    commit_file(&root, "a.txt", "feature 2\n", "Feature 2");
+    commit_file(&root, "b.txt", "b\n", "Feature 3");
+    git(&root, &["switch", "-q", "main"]);
+    commit_file(&root, "a.txt", "main\n", "Main");
+    git(&root, &["switch", "-q", "feature"]);
+    let before = git(&root, &["rev-parse", "HEAD"]);
+
+    // Abort: everything as before.
+    let _ = g.raw(&root, &["rebase", "main"]).unwrap();
+    let file = conflict_file(&g, &root, "a.txt").unwrap();
+    assert_eq!(file.sides.operation, Some(Operation::Rebase));
+    assert_eq!(file.sides.theirs.name.as_deref(), Some("feature"));
+    assert_eq!(file.sides.theirs.summary.as_deref(), Some("Feature 1"));
+    assert_eq!(file.sides.ours.name.as_deref(), Some("main"));
+    abort_operation(&g, &root).unwrap();
+    assert_eq!(git(&root, &["rev-parse", "HEAD"]), before);
+
+    // Resolve the first, which stops on the second; skip that one, the third goes through.
+    let _ = g.raw(&root, &["rebase", "main"]).unwrap();
+    resolve_file(&g, &root, "a.txt", Some(b"main and feature 1\n")).unwrap();
+    assert_eq!(continue_operation(&g, &root).unwrap(), Progress::Conflicts);
+    assert_eq!(conflict_file(&g, &root, "a.txt").unwrap().sides.theirs.summary.as_deref(), Some("Feature 2"));
+    assert_eq!(skip_commit(&g, &root).unwrap(), Progress::Done);
+    assert_eq!(messages(&root), ["Feature 3", "Feature 1", "Main", "Base"]);
+    assert_eq!(fs::read_to_string(root.join("a.txt")).unwrap(), "main and feature 1\n");
+
+    // Resolving with the content of the new base empties the commit: depending on its version, git
+    // drops it or asks for it to be skipped.
+    git(&root, &["switch", "-q", "-c", "other", "main~1"]);
+    commit_file(&root, "a.txt", "other\n", "Other");
+    let _ = g.raw(&root, &["rebase", "main"]).unwrap();
+    resolve_file(&g, &root, "a.txt", Some(b"main\n")).unwrap();
+    match continue_operation(&g, &root) {
+        Ok(Progress::Done) => {}
+        Err(GitError::EmptyAfterResolution) => assert_eq!(skip_commit(&g, &root).unwrap(), Progress::Done),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(messages(&root), ["Main", "Base"]);
+}

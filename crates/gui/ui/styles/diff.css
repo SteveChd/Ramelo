@@ -89,3 +89,61 @@
 .sline .sign.added { color: var(--added); }
 .sline .code.noNewline { color: var(--muted); font-style: italic; }
 .sline .empty { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--muted) 7%, transparent) 5px 6px); }
+
+/* ---------- Conflict editor ---------- */
+
+.change-badge.conflicted { color: var(--conflict); background: color-mix(in srgb, var(--conflict) 15%, transparent); }
+.diff.conflict .side-label { margin-left: auto; }
+.conflict-sides {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px 14px; flex: 0 0 auto;
+  border-bottom: 1px solid var(--border); font-size: 12.5px;
+}
+.conflict-side { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.conflict-side .role { font-weight: 650; white-space: nowrap; }
+.conflict-side.ours .role { color: var(--c-teal); }
+.conflict-side.theirs .role { color: var(--c-blue); }
+.conflict-side .what { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conflict-body {
+  flex: 1 1 55%; overflow: auto; min-height: 80px; padding: 8px 14px 14px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 20px;
+}
+.conflict-body pre { margin: 0; white-space: pre; overflow: visible; font: inherit; }
+.conflict-body .common { color: var(--muted); padding: 0 8px; }
+.conflict-body .common.folded { padding: 0; }
+.conflict-body .common.folded pre { padding: 0 8px; }
+.conflict-body .unfold {
+  display: block; width: 100%; text-align: left; padding: 1px 8px; margin: 2px 0; border: 0; border-radius: var(--radius-sm);
+  background: var(--soft); color: var(--muted); font-family: var(--font); font-size: 11.5px; cursor: pointer;
+}
+.conflict-body .unfold:hover { color: var(--ink); background: var(--hover); }
+.conflict-block {
+  margin: 6px 0; border: 1px solid color-mix(in srgb, var(--conflict) 55%, var(--border)); border-radius: var(--radius-sm); overflow: hidden;
+}
+.conflict-block.settled { border-color: var(--border); }
+.conflict-block .block-head {
+  display: flex; align-items: center; gap: 10px; padding: 4px 8px; font-family: var(--font); font-size: 12px;
+  background: color-mix(in srgb, var(--conflict) 10%, var(--panel)); border-bottom: 1px solid var(--border);
+}
+.conflict-block.settled .block-head { background: var(--soft); }
+.conflict-block .number { font-weight: 650; color: var(--conflict); white-space: nowrap; }
+.conflict-block.settled .number { color: var(--muted); }
+.conflict-block .picks { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.conflict-block .picks .btn { height: 24px; padding: 0 9px; font-size: 12px; gap: 5px; }
+.conflict-block .picks .btn.chosen { border-color: var(--accent); background: var(--a-soft); color: var(--a-ink); font-weight: 600; }
+.conflict-block .block-sides { display: grid; grid-template-columns: 1fr 1fr; }
+.conflict-block .block-sides pre { padding: 2px 8px; overflow-x: auto; min-width: 0; }
+.conflict-block .block-sides .ours { background: color-mix(in srgb, var(--c-teal) 9%, transparent); border-right: 1px solid var(--border); }
+.conflict-block .block-sides .theirs { background: color-mix(in srgb, var(--c-blue) 9%, transparent); }
+.conflict-block[data-choice="ours"] .theirs, .conflict-block[data-choice="theirs"] .ours { opacity: .4; }
+.conflict-block .nothing { font-family: var(--font); font-style: italic; color: var(--muted); }
+.conflict-result {
+  flex: 1 1 45%; min-height: 140px; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px 10px;
+  border-top: 1px solid var(--border); background: var(--soft);
+}
+.conflict-result .result-head { display: flex; align-items: baseline; gap: 10px; }
+.conflict-result .result-head .hint, .conflict-result .result-foot .hint { font-size: 12px; color: var(--muted); }
+.conflict-result .edit-area { flex: 1 1 auto; min-height: 0; background: var(--panel); }
+.conflict-result .result-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.conflict-whole { padding: 18px 14px; display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
+.conflict-whole p { margin: 0; }
+.conflict-whole .picks { display: flex; gap: 10px; flex-wrap: wrap; }

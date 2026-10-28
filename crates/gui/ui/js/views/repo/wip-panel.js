@@ -123,7 +123,7 @@ export function renderWipPanel(container, repo) {
     ? h('div', { class: 'clean-state' }, icon('check', 28), t('repo.clean'))
     : [
       group(t('repo.groups.conflicts'), conflicts, null, (f) => fileRow({
-        path: f.path, kind: 'conflicted', key: keyOf(f, false), open: isOpen(f, false), onclick: openDiff(f, false),
+        path: f.path, kind: 'conflicted', key: keyOf(f, false), open: isOpen(f, false), onclick: () => repoStore.openConflict(f.path),
         actions: [action('check', t('wip.markResolved'), () => repoStore.stage([f.path]))],
       })),
       group(t('wip.unstaged'), unstaged,

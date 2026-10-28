@@ -26,6 +26,12 @@
   background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--warn) 40%, var(--border));
 }
 .op-banner svg { color: var(--warn); flex: 0 0 auto; }
+.op-banner .op-text { min-width: 0; }
+.op-banner .op-left { font-weight: 650; color: var(--conflict); white-space: nowrap; }
+.op-banner .op-actions { margin-left: auto; display: flex; gap: 8px; flex: 0 0 auto; }
+.op-banner .btn { height: 28px; font-size: 12.5px; }
+.btn.danger { color: var(--err); border-color: color-mix(in srgb, var(--err) 45%, var(--ctl)); }
+.btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--err) 10%, var(--panel)); }
 
 .repo-main { flex: 1 1 auto; display: flex; min-height: 0; }
 .repo-main > * { min-height: 0; min-width: 0; }

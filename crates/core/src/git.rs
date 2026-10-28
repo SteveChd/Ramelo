@@ -75,6 +75,9 @@ impl Git {
             .env("LC_ALL", "C")
             .env("LANGUAGE", "C")
             .env("GIT_TERMINAL_PROMPT", "0")
+            // Continuing a merge or a rebase takes the message git prepared instead of opening an
+            // editor, which could not work without a terminal anyway.
+            .env("GIT_EDITOR", "true")
             // Reading the state must not take the index lock away from the user's other tools.
             .env("GIT_OPTIONAL_LOCKS", "0")
             .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])

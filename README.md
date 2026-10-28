@@ -49,6 +49,11 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 - A commit can be combined with the one before it (right click in the graph): squash, with a message
   to edit that starts from both, or fixup, which keeps the message of the commit before. Merges, the
   first commit, and a commit whose parent also starts another line cannot be combined.
+- A merge, rebase, cherry-pick or revert that stops on conflicts shows a banner to continue it, skip
+  the commit (rebase, cherry-pick) or abort it. A conflicted file opens in a conflict editor: both
+  sides of each conflict next to each other, settled in one click (one side, or both in either
+  order), and below the resulting file, which can also be edited by hand before marking it resolved.
+  A binary file, or one deleted on one side, is settled by keeping one side as it is.
 - Staging by file or by hunk, discarding changes (with confirmation), and committing with a summary
   counter. With nothing staged, the commit button stages everything. Amending loads the last message.
 - Branches in a side panel: double-click to switch (a remote branch becomes a local tracking branch),
@@ -64,8 +69,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 1. Foundation and multi-repository workspace (done).
 2. Repository view: commit graph, diffs, staging and commit, branches, fetch / pull / push (done).
-3. Automation: reorder without an interactive rebase (reword, editing a file of a past commit,
-   squash and fixup are done), undo based on the reflog, help with conflict resolution.
+3. Automation: reorder without an interactive rebase, undo based on the reflog (reword, editing a
+   file of a past commit, squash, fixup and conflict resolution are done).
 4. git-repo: manifest detection, `repo sync`, `repo start` and a global status of all projects.
 
 ## Layout

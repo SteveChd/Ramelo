@@ -59,6 +59,12 @@ pub enum GitError {
     CannotSquash(String),
     #[error("the branch is already checked out in the worktree « {0} »")]
     BranchInWorktree(String),
+    #[error("{0} files still have conflicts")]
+    ConflictsRemain(usize),
+    #[error("no merge, rebase or other operation is in progress")]
+    NoOperation,
+    #[error("after the resolution, the commit no longer changes anything")]
+    EmptyAfterResolution,
 }
 
 impl GitError {
@@ -90,6 +96,9 @@ impl GitError {
             Self::RewriteConflict(_) => "rewrite_conflict",
             Self::CannotSquash(_) => "cannot_squash",
             Self::BranchInWorktree(_) => "branch_in_worktree",
+            Self::ConflictsRemain(_) => "conflicts_remain",
+            Self::NoOperation => "no_operation",
+            Self::EmptyAfterResolution => "empty_after_resolution",
         }
     }
 
@@ -100,7 +109,8 @@ impl GitError {
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
             Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) => Some(name.clone()),
-            Self::DetachedHead => None,
+            Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution => None,
+            Self::ConflictsRemain(count) => Some(count.to_string()),
             Self::PathMissing(path) | Self::NotARepository(path) | Self::NoRepositoryFound(path) => {
                 Some(path.display().to_string())
             }

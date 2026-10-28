@@ -215,6 +215,61 @@ async function afterRewrite(result, { pushedTo }) {
   await reveal(result.commit);
 }
 
+// ---------- Conflicts ----------
+
+/** Marker lines git writes around a conflict; one left in a file means it is not resolved. */
+const MARKER = /^(<{7}|>{7})( |$)/m;
+
+/** The file a resolution gives: each conflict as chosen, or with markers while it is not. */
+export function composeResolution(conflict, choices) {
+  const { ours: oursSide, theirs: theirsSide } = conflict.sides;
+  const label = (side, fallback) => side.name ?? side.oid?.slice(0, 7) ?? fallback;
+  const ending = (text) => (text && !text.endsWith('\n') ? `${text}\n` : text);
+  return conflict.segments.map((segment, i) => {
+    if (segment.kind === 'common') return segment.text;
+    const { ours, theirs } = segment;
+    switch (choices[i]) {
+      case 'ours': return ours;
+      case 'theirs': return theirs;
+      case 'both': return ending(ours) + theirs;
+      case 'bothReversed': return ending(theirs) + ours;
+      default: return `<<<<<<< ${label(oursSide, 'ours')}\n${ending(ours)}=======\n${ending(theirs)}>>>>>>> ${label(theirsSide, 'theirs')}\n`;
+    }
+  }).join('');
+}
+
+/** After a file is resolved: the next conflicted file opens, or the operation can go on. */
+async function afterResolved(snapshot) {
+  if (!snapshot) return;
+  await afterChange(snapshot);
+  const next = repo()?.summary?.files.find((f) => f.index === 'conflicted');
+  if (next) {
+    await repoStore.openConflict(next.path);
+  } else {
+    state.diff = null;
+    emit('diff');
+    const operation = repo()?.summary?.operation;
+    store.notify(t(operation ? 'conflict.allResolved' : 'conflict.allResolvedNoOp'));
+  }
+}
+
+/** After a step of the operation: done, or stopped on the conflicts of the next commit. */
+async function afterStep(result, operation) {
+  if (!result) return;
+  await afterChange(result.snapshot);
+  if (result.progress === 'done') {
+    store.notify(t(`conflict.done.${operation}`));
+    if (state.diff?.kind === 'conflict') {
+      state.diff = null;
+      emit('diff');
+    }
+    return;
+  }
+  store.notify(t('conflict.next'), true);
+  const next = repo()?.summary?.files.find((f) => f.index === 'conflicted');
+  if (next) await repoStore.openConflict(next.path);
+}
+
 /** Text of a file from its base64 content; null when it is not text (binary or not UTF-8). */
 function decodeText(base64) {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -512,6 +567,106 @@ export const repoStore = {
     }
     const result = await run(() => backend.squashCommit(state.path, oid, message), 'rewrite');
     if (result) await afterRewrite(result, info.squash);
+  },
+
+  // ---------- Conflicts ----------
+
+  /** Opens the conflict editor on a conflicted file of the working copy. */
+  async openConflict(file) {
+    const diff = { kind: 'conflict', file, loading: true, conflict: null, choices: [], result: '', edited: false };
+    state.diff = diff;
+    emit('diff');
+    const conflict = await run(() => backend.conflictFile(state.path, file));
+    if (state.diff !== diff) return;
+    if (!conflict) {
+      state.diff = null;
+    } else {
+      const choices = conflict.segments.map(() => null);
+      state.diff = { ...diff, loading: false, conflict, choices, result: composeResolution(conflict, choices) };
+    }
+    emit('diff');
+  },
+
+  /**
+   * How conflict `index` (of the segments) is settled: 'ours', 'theirs', 'both', 'bothReversed', or
+   * null; `index` null settles them all. The result is written again from the choices.
+   */
+  chooseConflict(index, choice) {
+    const diff = state.diff;
+    if (diff?.kind !== 'conflict' || !diff.conflict) return;
+    const choices = diff.conflict.segments.map((segment, i) => {
+      if (segment.kind !== 'conflict') return null;
+      return index === null || index === i ? choice : diff.choices[i];
+    });
+    state.diff = { ...diff, choices, result: composeResolution(diff.conflict, choices), edited: false };
+    emit('diff');
+  },
+
+  /** The result typed by hand; kept without drawing the editor again. */
+  editResolution(text) {
+    if (state.diff?.kind !== 'conflict') return;
+    state.diff.result = text;
+    state.diff.edited = true;
+  },
+
+  /** Writes the result to the file and marks it resolved (asks first while markers are left). */
+  async markResolved() {
+    const diff = state.diff;
+    if (diff?.kind !== 'conflict') return;
+    if (MARKER.test(diff.result)) {
+      const ok = await confirm({ title: t('conflict.markersTitle'), message: t('conflict.markersText'), confirmLabel: t('conflict.markResolved') });
+      if (!ok) return;
+    }
+    await afterResolved(await run(() => backend.resolveConflict(state.path, diff.file, diff.result), 'resolve'));
+  },
+
+  /** Settles the file with one side as it is (or deleted, when that side deleted it). */
+  async takeConflictSide(theirs) {
+    const diff = state.diff;
+    if (diff?.kind !== 'conflict') return;
+    await afterResolved(await run(() => backend.takeConflictSide(state.path, diff.file, theirs), 'resolve'));
+  },
+
+  /** Settles the file by deleting it. */
+  async deleteConflicted() {
+    const diff = state.diff;
+    if (diff?.kind !== 'conflict') return;
+    await afterResolved(await run(() => backend.resolveConflict(state.path, diff.file, null), 'resolve'));
+  },
+
+  /** Goes on with the merge, rebase, cherry-pick or revert once its conflicts are resolved. */
+  async continueOperation() {
+    const operation = repo()?.summary?.operation;
+    if (!operation) return;
+    await afterStep(await run(() => backend.continueOperation(state.path), 'operation'), operation);
+  },
+
+  /** Leaves out the commit the rebase or the cherry-pick stopped on. */
+  async skipCommit() {
+    const operation = repo()?.summary?.operation;
+    if (!operation) return;
+    const ok = await confirm({ title: t('conflict.skipTitle'), message: t('conflict.skipText'), confirmLabel: t('conflict.skip'), danger: true });
+    if (!ok) return;
+    await afterStep(await run(() => backend.skipCommit(state.path), 'operation'), operation);
+  },
+
+  /** Gives up the operation: the branch goes back to where it was. */
+  async abortOperation() {
+    const operation = repo()?.summary?.operation;
+    if (!operation) return;
+    const ok = await confirm({
+      title: t(`conflict.abortTitle.${operation}`),
+      message: t(`conflict.abortText.${operation}`),
+      confirmLabel: t(`conflict.abort.${operation}`),
+      danger: true,
+    });
+    if (!ok) return;
+    const snapshot = await run(() => backend.abortOperation(state.path), 'operation');
+    if (!snapshot) return;
+    if (state.diff?.kind === 'conflict') state.diff = null;
+    emit('diff');
+    await afterChange(snapshot);
+    store.notify(t(`conflict.aborted.${operation}`));
   },
 
   // ---------- Branches ----------

@@ -6,7 +6,7 @@
 // also take the whole centre. The layout is built once per repository; each part is then drawn
 // again only when what it shows changes, so that scrolling and typing are never interrupted.
 
-import { t } from '../../i18n/i18n.js';
+import { t, tn } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { describeError } from '../../app/errors.js';
@@ -84,15 +84,40 @@ function applyLayout() {
   updateStrip(view.stripRight, 'right', 'view.toggleRight');
   view.diff.hidden = !hasDiff;
   view.diff.classList.toggle('collapsed', hasDiff && l.diffCollapsed);
-  const maximized = hasDiff && l.diffMaximized && !l.diffCollapsed;
+  // The conflict editor needs room: it always takes the whole centre.
+  const conflict = repoStore.state.diff?.kind === 'conflict';
+  if (conflict) view.diff.classList.remove('collapsed');
+  const maximized = hasDiff && (conflict || (l.diffMaximized && !l.diffCollapsed));
   view.center.classList.toggle('diff-max', maximized);
-  view.splitDiff.hidden = !hasDiff || l.diffCollapsed || maximized;
+  view.splitDiff.hidden = !hasDiff || (l.diffCollapsed && !conflict) || maximized;
 }
 
+/** The operation in progress, with what can be done about it: continue, skip the commit, abort. */
 function renderBanner(repo) {
-  const operation = repo.summary?.operation;
+  const summary = repo.summary;
+  const operation = summary?.operation;
   view.banner.hidden = !operation;
-  if (operation) mount(view.banner, icon('warning', 18), t(`repo.inProgress.${operation}`));
+  if (!operation) return;
+  const busy = Boolean(repoStore.state.running);
+  const left = summary.conflicted;
+  const button = (label, onclick, { kind = '', disabled = false, title = null } = {}) =>
+    h('button', { type: 'button', class: `btn${kind}`, disabled: busy || disabled, title, onclick }, label);
+  const actions = operation === 'bisect'
+    ? [button(t('conflict.abort.bisect'), () => repoStore.abortOperation())]
+    : [
+      ['rebase', 'cherryPick', 'revert'].includes(operation) && button(t('conflict.skip'), () => repoStore.skipCommit(), { title: t('conflict.skipHint') }),
+      button(t(`conflict.abort.${operation}`), () => repoStore.abortOperation(), { kind: ' danger' }),
+      button(t('conflict.continue'), () => repoStore.continueOperation(), {
+        kind: ' primary',
+        disabled: left > 0,
+        title: left > 0 ? tn('conflict.resolveFirst', left) : null,
+      }),
+    ];
+  mount(view.banner,
+    icon('warning', 18),
+    h('span', { class: 'op-text' }, t(`repo.inProgress.${operation}`)),
+    left > 0 && h('span', { class: 'op-left' }, tn('conflict.files', left)),
+    h('div', { class: 'op-actions' }, actions));
 }
 
 function renderGraphPart(repo) {
@@ -188,6 +213,7 @@ repoStore.subscribe((topic) => {
   if (topic === 'reveal') revealCommit(view.graph, repoStore.state.reveal);
   if (topic === 'running') {
     renderToolbar(view.toolbar, repo);
+    renderBanner(repo);
     updateWipRunning(repo);
   }
   if (topic === 'draft') renderSide(repo);

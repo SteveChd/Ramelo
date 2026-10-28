@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use base64::Engine;
-use ramelo_core::{self as core, refs, Carried, Content, RewriteInfo, Rewritten, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
+use ramelo_core::{self as core, refs, Carried, ConflictFile, Progress, Content, RewriteInfo, Rewritten, SearchQuery, SearchResult, Version, Commit, CommitDetails, FileDiff, GraphRow, HunkAction, PullMode, PullOutcome, PushOutcome, RefList};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -253,6 +253,61 @@ pub async fn squash_commit(state: State<'_, AppState>, path: String, oid: String
     let root = PathBuf::from(path);
     let rewritten = core::squash(&state.git, &root, &oid, message.as_deref())?;
     Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressResult {
+    pub progress: Progress,
+    pub snapshot: Snapshot,
+}
+
+/// Goes on with the merge, rebase, cherry-pick or revert in progress once its conflicts are resolved.
+#[tauri::command]
+pub async fn continue_operation(state: State<'_, AppState>, path: String) -> CommandResult<ProgressResult> {
+    let root = PathBuf::from(path);
+    let progress = core::continue_operation(&state.git, &root);
+    let snapshot = changed(&state, root);
+    Ok(ProgressResult { progress: progress?, snapshot })
+}
+
+/// Leaves out the commit a rebase or a cherry-pick stopped on.
+#[tauri::command]
+pub async fn skip_commit(state: State<'_, AppState>, path: String) -> CommandResult<ProgressResult> {
+    let root = PathBuf::from(path);
+    let progress = core::skip_commit(&state.git, &root);
+    let snapshot = changed(&state, root);
+    Ok(ProgressResult { progress: progress?, snapshot })
+}
+
+/// Gives up the operation in progress.
+#[tauri::command]
+pub async fn abort_operation(state: State<'_, AppState>, path: String) -> CommandResult<Snapshot> {
+    let root = PathBuf::from(path);
+    core::abort_operation(&state.git, &root)?;
+    Ok(changed(&state, root))
+}
+
+/// The versions of a conflicted file, for the conflict editor.
+#[tauri::command]
+pub async fn conflict_file(state: State<'_, AppState>, path: String, file: String) -> CommandResult<ConflictFile> {
+    Ok(core::conflict_file(&state.git, &PathBuf::from(path), &file)?)
+}
+
+/// Marks a conflicted file resolved with `content`, or deleted when there is none.
+#[tauri::command]
+pub async fn resolve_conflict(state: State<'_, AppState>, path: String, file: String, content: Option<String>) -> CommandResult<Snapshot> {
+    let root = PathBuf::from(path);
+    core::resolve_file(&state.git, &root, &file, content.as_deref().map(str::as_bytes))?;
+    Ok(changed(&state, root))
+}
+
+/// Marks a conflicted file resolved with one side as it is (`theirs`, or ours).
+#[tauri::command]
+pub async fn take_conflict_side(state: State<'_, AppState>, path: String, file: String, theirs: bool) -> CommandResult<Snapshot> {
+    let root = PathBuf::from(path);
+    core::take_side(&state.git, &root, &file, theirs)?;
+    Ok(changed(&state, root))
 }
 
 /// Message of the last commit, to edit when amending.

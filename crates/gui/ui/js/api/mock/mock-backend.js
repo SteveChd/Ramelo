@@ -291,3 +291,71 @@ export async function push(path) {
 export async function setLanguage() {}
 export async function showWindow() {}
 export function onFoldersDropped() {}
+
+// ---------- Conflicts ----------
+
+const resolved = (path, file) => change(path, (s) => s.files.forEach((f) => {
+  if (f.path === file) Object.assign(f, { index: 'modified', worktree: 'unmodified' });
+}));
+
+export async function continueOperation(path) {
+  await delay(300);
+  return { progress: 'done', snapshot: change(path, (s) => { s.operation = null; }) };
+}
+
+export async function skipCommit(path) {
+  return continueOperation(path);
+}
+
+export async function abortOperation(path) {
+  await delay(300);
+  return change(path, (s) => {
+    s.operation = null;
+    s.files = s.files.filter((f) => f.index !== 'conflicted');
+  });
+}
+
+export async function conflictFile(path, file) {
+  await delay(80);
+  const common = (lines) => ({ kind: 'common', text: lines.join('\n') + '\n' });
+  return {
+    path: file,
+    binary: false,
+    ours: '',
+    theirs: '',
+    base: '',
+    working: '',
+    segments: [
+      common(['use std::time::Duration;', '', 'pub struct Watch {', '    counters: Vec<Counter>,', '}', '', 'impl Watch {']),
+      {
+        kind: 'conflict',
+        ours: '    pub fn poll(&mut self) -> Result<(), Error> {\n        let interval = Duration::from_millis(500);\n',
+        base: '    pub fn poll(&mut self) {\n        let interval = Duration::from_secs(1);\n',
+        theirs: '    pub fn poll(&mut self) {\n        let interval = self.interval;\n',
+      },
+      common(['        for counter in &mut self.counters {', '            counter.read();', '        }']),
+      {
+        kind: 'conflict',
+        ours: '        Ok(())\n',
+        base: '',
+        theirs: '        self.last = Instant::now();\n',
+      },
+      common(['    }', '}']),
+    ],
+    sides: {
+      operation: 'rebase',
+      ours: { name: 'origin/main', oid: '55aa66bb', summary: 'Report polling errors' },
+      theirs: { name: 'main', oid: '77bb88cc', summary: 'Poll the network counters every second' },
+    },
+  };
+}
+
+export async function resolveConflict(path, file) {
+  await delay(150);
+  return resolved(path, file);
+}
+
+export async function takeConflictSide(path, file) {
+  await delay(150);
+  return resolved(path, file);
+}

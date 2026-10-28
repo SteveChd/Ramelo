@@ -45,6 +45,20 @@ export const rewordCommit = (path, oid, message) => invoke('reword_commit', { pa
 /** New content for a file of a commit of the current branch: { head, commit, snapshot }. */
 export const editCommitFile = (path, oid, file, content) => invoke('edit_commit_file', { path, oid, file, content });
 /** Combines a commit with the one before it, with `message` or, when null, its message: { head, commit, snapshot }. */
+/** Goes on with the operation in progress: { progress: 'done' | 'conflicts', snapshot }. */
+export const continueOperation = (path) => invoke('continue_operation', { path });
+/** Leaves out the commit a rebase or a cherry-pick stopped on: { progress, snapshot }. */
+export const skipCommit = (path) => invoke('skip_commit', { path });
+export const abortOperation = (path) => invoke('abort_operation', { path });
+/**
+ * A conflicted file: { path, ours, theirs, base, working, binary, segments: [{ kind: 'common', text }
+ * | { kind: 'conflict', ours, base, theirs }], sides: { operation, ours, theirs: { name, oid, summary } } }.
+ */
+export const conflictFile = (path, file) => invoke('conflict_file', { path, file });
+/** Marks a conflicted file resolved with `content`, or deleted when it is null: a snapshot. */
+export const resolveConflict = (path, file, content) => invoke('resolve_conflict', { path, file, content });
+/** Marks a conflicted file resolved with one side as it is: a snapshot. */
+export const takeConflictSide = (path, file, theirs) => invoke('take_conflict_side', { path, file, theirs });
 export const squashCommit = (path, oid, message) => invoke('squash_commit', { path, oid, message });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
 /** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */

@@ -10,6 +10,7 @@ import { fileKind } from '../../lib/file-kinds.js';
 import { layout } from '../../state/layout.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
+import { renderConflict } from './conflict-view.js';
 import { renderPreview } from './preview.js';
 
 function hunkActions(index) {
@@ -159,6 +160,10 @@ function splitLine([before, after]) {
 
 export function renderDiff(container) {
   const diff = repoStore.state.diff;
+  if (diff.kind === 'conflict') {
+    renderConflict(container);
+    return;
+  }
   const data = diff.data;
   const sideLabel = diff.kind === 'commit' ? t('diff.inCommit', { oid: diff.oid.slice(0, 7) }) : diff.staged ? t('diff.staged') : diff.untracked ? t('diff.untracked') : t('diff.unstaged');
   let body;
