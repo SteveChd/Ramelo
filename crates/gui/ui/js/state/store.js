@@ -5,6 +5,7 @@
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
+import { confirm } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
 
 const listeners = new Set();
@@ -149,6 +150,25 @@ export const store = {
   /** Pins a tab at the start of the tabs (opening it when closed), or unpins it. */
   async setPinned(path, pinned) {
     const snapshot = await run(() => backend.setRepositoryPinned(path, pinned));
+    if (snapshot) apply(snapshot);
+  },
+
+  /**
+   * Removes several repositories from the workspace (their folders are not touched), after asking:
+   * all of them, or `paths` when given (those the overview shows).
+   */
+  async removeMany(paths = null) {
+    const list = paths ?? state.repositories.map((r) => r.path);
+    if (!list.length) return;
+    const all = list.length === state.repositories.length;
+    const ok = await confirm({
+      title: all ? t('home.removeAllTitle') : tn('home.removeShownTitle', list.length),
+      message: tn(all ? 'home.removeAllText' : 'home.removeShownText', list.length),
+      confirmLabel: all ? t('home.removeAllConfirm') : tn('home.removeShownConfirm', list.length),
+      danger: true,
+    });
+    if (!ok) return;
+    const snapshot = await run(() => backend.removeRepositories(list));
     if (snapshot) apply(snapshot);
   },
 

@@ -35,6 +35,7 @@ const ACTIONS = {
   'repo.closeTab': { key: 'Ctrl+W', enabled: hasActive, run: () => store.close(store.active) },
   'repo.closeAllTabs': { key: 'Ctrl+Shift+W', enabled: () => store.tabs.some((r) => !r.pinned), run: () => store.closeAll() },
   'repo.pinTab': { enabled: hasActive, run: () => store.setPinned(store.active, !store.activeRepo?.pinned) },
+  'repo.removeAll': { enabled: hasRepos, run: () => store.removeMany() },
   'repo.remove': { enabled: hasActive, run: () => store.remove(store.active) },
   'view.home': { key: 'Ctrl+1', run: () => goToTab(1) },
   'view.nextTab': { key: 'Ctrl+Tab', enabled: hasTabs, run: () => cycleTab(1) },

@@ -60,6 +60,11 @@ export async function addRepositories(paths) {
   return { snapshot: snapshot(), added: fresh, existing: paths.length - fresh.length };
 }
 
+export async function removeRepositories(paths) {
+  for (const path of paths) await removeRepository(path);
+  return snapshot();
+}
+
 export async function removeRepository(path) {
   const index = repositories.findIndex((r) => r.path === path);
   if (index >= 0) repositories.splice(index, 1);

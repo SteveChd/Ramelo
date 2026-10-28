@@ -17,6 +17,7 @@ export const pickFolder = () => invoke('pick_folder');
 /** Returns { snapshot, added, existing }; folders that are not repositories are searched. */
 export const addRepositories = (paths) => invoke('add_repositories', { paths });
 export const removeRepository = (path) => invoke('remove_repository', { path });
+export const removeRepositories = (paths) => invoke('remove_repositories', { paths });
 /** `path` null: the overview of all repositories. */
 export const closeRepository = (path) => invoke('close_repository', { path });
 export const closeRepositories = (paths) => invoke('close_repositories', { paths });

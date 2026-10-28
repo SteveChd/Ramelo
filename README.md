@@ -20,7 +20,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   Tabs can be pinned: they stay at the start, always in view, without a close button. When the
   other tabs do not fit, they scroll (wheel or arrows) and a list of all open tabs finds one by name
   or path (Ctrl+Shift+A). The right click on a tab also closes the others, those to its right, or
-  all of them except the pinned ones (Ctrl+Shift+W).
+  all of them except the pinned ones (Ctrl+Shift+W). All the repositories can be removed from the
+  workspace at once (File menu, or the bin in the overview, which takes only those shown when a
+  filter or a search is on); their folders on disk are not touched.
 - The overview shows every repository at a glance: branch, commits to push or pull, changes,
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
   (name, path, branch, upstream, last commit; several words all have to match, case and accents are

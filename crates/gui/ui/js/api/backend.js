@@ -17,6 +17,7 @@ export const {
   pickFolder,
   addRepositories,
   removeRepository,
+  removeRepositories,
   closeRepository,
   closeRepositories,
   setRepositoryPinned,

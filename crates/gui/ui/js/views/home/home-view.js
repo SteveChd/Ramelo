@@ -105,6 +105,14 @@ export function renderHome(container) {
       search(),
       filterSwitch(),
       h('button', { type: 'button', class: 'btn', onclick: () => store.refresh(null) }, icon('refresh', 15), t('home.refreshAll')),
+      // With a filter or a search, only the repositories shown are offered for removal.
+      h('button', {
+        type: 'button',
+        class: 'icon-btn remove-all',
+        title: visible.length < repos.length ? tn('home.removeShown', visible.length) : t('home.removeAll'),
+        disabled: visible.length === 0,
+        onclick: () => store.removeMany(visible.length < repos.length ? visible.map((r) => r.path) : null),
+      }, icon('remove', 16)),
       h('button', { type: 'button', class: 'btn primary', onclick: () => store.add() }, icon('plus', 15), t('action.repo.add'))),
     visible.length
       ? h('div', { class: 'cards' }, visible.map(card))

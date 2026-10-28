@@ -27,6 +27,7 @@ fn main() {
             commands::workspace::pick_folder,
             commands::workspace::add_repositories,
             commands::workspace::remove_repository,
+            commands::workspace::remove_repositories,
             commands::workspace::close_repository,
             commands::workspace::close_repositories,
             commands::workspace::set_repository_pinned,

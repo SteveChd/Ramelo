@@ -127,6 +127,13 @@ impl Workspace {
         self.repositories.remove(index);
     }
 
+    /// Removes several repositories at once (all of them, or those the overview shows).
+    pub fn remove_many(&mut self, paths: &[PathBuf]) {
+        for path in paths {
+            self.remove(path);
+        }
+    }
+
     /// Sets the colour of a repository (`None`: back to the automatic one).
     pub fn set_color(&mut self, path: &Path, color: Option<String>) {
         if let Some(entry) = self.repositories.iter_mut().find(|r| r.path == path) {
@@ -255,6 +262,17 @@ mod tests {
         // Pinning a closed tab opens it again.
         w.set_pinned(Path::new("/b"), true);
         assert!(w.is_open(Path::new("/b")));
+    }
+
+    #[test]
+    fn removes_several_repositories() {
+        let mut w = workspace(&["/a", "/b", "/c"]);
+        w.active = Some(PathBuf::from("/b"));
+        w.remove_many(&[PathBuf::from("/a"), PathBuf::from("/b")]);
+        assert_eq!(w.repositories.len(), 1);
+        assert_eq!(w.active.as_deref(), Some(Path::new("/c")));
+        w.remove_many(&[PathBuf::from("/c")]);
+        assert!(w.repositories.is_empty() && w.active.is_none());
     }
 
     #[test]

@@ -105,6 +105,17 @@ pub fn remove_repository(state: State<'_, AppState>, path: String) -> CommandRes
     Ok(state.snapshot())
 }
 
+/// Removes several repositories from the workspace; their folders on disk are not touched.
+#[tauri::command]
+pub fn remove_repositories(state: State<'_, AppState>, paths: Vec<String>) -> CommandResult<Snapshot> {
+    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    state.edit_workspace(|workspace| workspace.remove_many(&paths))?;
+    for path in &paths {
+        state.forget(path);
+    }
+    Ok(state.snapshot())
+}
+
 /// Closes the tab of a repository; it stays in the overview.
 #[tauri::command]
 pub fn close_repository(state: State<'_, AppState>, path: String) -> CommandResult<Snapshot> {
