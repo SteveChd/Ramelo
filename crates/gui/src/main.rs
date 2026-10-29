@@ -23,6 +23,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::accounts::list_accounts,
+            commands::ssh::ssh_host_keys,
+            commands::ssh::trust_ssh_host,
             commands::accounts::add_account,
             commands::accounts::check_account,
             commands::accounts::remove_account,

@@ -5,6 +5,7 @@
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { choose, confirm } from '../components/dialog.js';
+import { withHostTrust } from '../components/host-trust.js';
 import { t } from '../i18n/i18n.js';
 import { pulls } from './pulls.js';
 import { repoStore } from './repo-store.js';
@@ -46,7 +47,7 @@ async function loadChanges() {
   state.changes = { loading: true, data: null, error: null };
   emit();
   try {
-    const data = await backend.pullRequestChanges(path, number);
+    const data = await withHostTrust(() => backend.pullRequestChanges(path, number));
     if (current(path, number)) state.changes = { loading: false, data, error: null };
   } catch (error) {
     if (current(path, number)) state.changes = { loading: false, data: null, error };

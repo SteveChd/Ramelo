@@ -7,6 +7,7 @@
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { choose, confirm, editText, prompt } from '../components/dialog.js';
+import { withHostTrust } from '../components/host-trust.js';
 import { t, tn } from '../i18n/i18n.js';
 import { defaultMode, fileKind } from '../lib/file-kinds.js';
 import { store } from './store.js';
@@ -55,7 +56,8 @@ function emit(topic) {
 /** Runs a backend call; returns { value } or { error } (the error is not shown). */
 async function attempt(call) {
   try {
-    return { value: await call() };
+    // A first connection to an ssh server asks whether to trust it, then runs the call again.
+    return { value: await withHostTrust(call) };
   } catch (error) {
     return { error };
   }

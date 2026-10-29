@@ -70,7 +70,7 @@ pub async fn clone_repository(
     let cancelled = || state.clone_cancelled.load(Ordering::SeqCst);
     let path = ramelo_core::clone(&state.git, &url, Path::new(&folder), &options, |p| {
         let _ = progress.send(p);
-    }, &cancelled)?;
+    }, &cancelled).map_err(|e| crate::commands::ssh::name_host_of(e, &url))?;
     Ok(path.display().to_string())
 }
 

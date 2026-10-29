@@ -96,9 +96,10 @@ pub async fn pull_request_changes(state: State<'_, AppState>, path: String, numb
     let root = PathBuf::from(&path);
     let hosting = required(&state, &root)?;
     let details = ramelo_hosting::pull_details(&hosting.account, &hosting.key, number)?;
-    let target = ramelo_core::fetch_commit(&state.git, &root, &hosting.remote, &format!("refs/heads/{}", details.pull.target_branch))?;
+    let named = |e| crate::commands::ssh::name_host(&state, e, &root);
+    let target = ramelo_core::fetch_commit(&state.git, &root, &hosting.remote, &format!("refs/heads/{}", details.pull.target_branch)).map_err(named)?;
     let (source, reference) = ramelo_hosting::fetch_source(hosting.provider, &details.pull);
-    let head = ramelo_core::fetch_commit(&state.git, &root, source.as_deref().unwrap_or(&hosting.remote), &reference)?;
+    let head = ramelo_core::fetch_commit(&state.git, &root, source.as_deref().unwrap_or(&hosting.remote), &reference).map_err(named)?;
     Ok(ramelo_core::range_changes(&state.git, &root, &target, &head)?)
 }
 

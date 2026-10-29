@@ -198,14 +198,14 @@ fn checked<S: AsRef<OsStr>>(args: &[S], out: Output) -> Result<Vec<u8>, GitError
 
 /// Without this flag, each git call would flash a console window on Windows.
 #[cfg(windows)]
-fn hide_console(command: &mut Command) {
+pub(crate) fn hide_console(command: &mut Command) {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     command.creation_flags(CREATE_NO_WINDOW);
 }
 
 #[cfg(not(windows))]
-fn hide_console(_: &mut Command) {}
+pub(crate) fn hide_console(_: &mut Command) {}
 
 fn describe<S: AsRef<OsStr>>(args: &[S]) -> String {
     args.iter().map(|a| a.as_ref().to_string_lossy().into_owned()).collect::<Vec<_>>().join(" ")

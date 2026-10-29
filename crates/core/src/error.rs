@@ -33,6 +33,10 @@ pub enum GitError {
     PushRejected(String),
     #[error("the remote refused the credentials: {0}")]
     AuthFailed(String),
+    /// ssh does not know the server yet, and cannot ask whether to trust it. The server, when ssh
+    /// names it (empty otherwise: the caller knows the address).
+    #[error("ssh does not know the server {0} yet")]
+    HostUnknown(String),
     #[error("branch « {0} » is not merged")]
     BranchNotMerged(String),
     #[error("« {0} » is not a valid branch name")]
@@ -90,6 +94,7 @@ impl GitError {
             Self::InvalidPattern(_) => "invalid_pattern",
             Self::PushRejected(_) => "push_rejected",
             Self::AuthFailed(_) => "auth_failed",
+            Self::HostUnknown(_) => "host_unknown",
             Self::BranchNotMerged(_) => "branch_not_merged",
             Self::InvalidBranchName(_) => "invalid_branch_name",
             Self::NothingToCommit => "nothing_to_commit",
@@ -115,7 +120,7 @@ impl GitError {
     pub fn subject(&self) -> Option<String> {
         match self {
             Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts | Self::OperationInProgress => None,
-            Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) => Some(detail.clone()),
+            Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) | Self::HostUnknown(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
             Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) => Some(name.clone()),
             Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution | Self::Cancelled => None,
@@ -146,6 +151,10 @@ pub(crate) fn classify(command: String, message: String, output: &str) -> GitErr
         GitError::Diverged
     } else if any(&["[rejected]", "non-fast-forward", "fetch first"]) {
         GitError::PushRejected(message)
+    } else if any(&["Host key verification failed"]) && !any(&["HAS CHANGED", "has changed"]) {
+        // « No ED25519 host key is known for host and you have requested strict checking. »
+        let host = output.split(" host key is known for ").nth(1).and_then(|r| r.split_whitespace().next()).unwrap_or_default();
+        GitError::HostUnknown(host.to_owned())
     } else if any(AUTH_FAILURES) {
         // The line that says why (from ssh, often), rather than git's « Could not read from remote ».
         let cause = output.lines().map(str::trim).find(|l| AUTH_FAILURES.iter().any(|n| l.contains(n)));
@@ -170,5 +179,14 @@ mod tests {
             GitError::AuthFailed(detail) => assert_eq!(detail, "git@bitbucket.org: Permission denied (publickey)."),
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn an_unknown_server_is_told_apart_from_a_changed_one() {
+        let unknown = "No ED25519 host key is known for ssh.bitbucket.org and you have requested strict checking.\nHost key verification failed.\nfatal: Could not read from remote repository.";
+        assert!(matches!(classify("clone".into(), String::new(), unknown), GitError::HostUnknown(h) if h == "ssh.bitbucket.org"));
+        assert!(matches!(classify("fetch".into(), String::new(), "Host key verification failed.\n"), GitError::HostUnknown(h) if h.is_empty()));
+        let changed = "@@@ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @@@\nHost key verification failed.\n";
+        assert!(matches!(classify("fetch".into(), String::new(), changed), GitError::AuthFailed(_)));
     }
 }

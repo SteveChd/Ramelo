@@ -18,6 +18,7 @@ mod repo;
 mod rewrite;
 mod scan;
 mod search;
+mod ssh;
 mod status;
 mod worktree;
 
@@ -36,6 +37,7 @@ pub use repo::{open, summary, CommitInfo, Operation, RepoLocation, RepoSummary};
 pub use rewrite::{edit_file, reword, rewrite_info, squash, RewriteInfo, Rewritten, SquashInfo};
 pub use scan::{scan, ScanLimits};
 pub use search::{search, SearchQuery, SearchResult, SearchScope};
+pub use ssh::{scan_host_keys, ssh_host, trust_host, HostKey};
 pub use status::{parse_status, ChangeKind, FileChange, Head, RepoStatus};
 pub use worktree::{apply_hunk, commit, discard, last_message, stage, stage_all, unstage, unstage_all, HunkAction};
 

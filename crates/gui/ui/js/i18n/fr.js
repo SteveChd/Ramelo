@@ -668,4 +668,10 @@ export default {
   'newPr.sameBranch': 'Les deux branches sont les mêmes.',
   'newPr.noBranches': 'Une pull request demande une branche locale et une branche sur {remote}.',
   'newPr.created': 'Pull request #{number} créée',
+  'ssh.title': 'Première connexion à {host}',
+  'ssh.text': 'ssh ne connaît pas encore ce serveur. Voici ses clés, telles qu\'il les donne :',
+  'ssh.reading': 'Lecture des clés du serveur…',
+  'ssh.check': 'Vérifie qu\'une empreinte est bien celle que ton service publie (dans sa documentation sur SSH) avant de lui faire confiance : elles sont alors ajoutées à tes serveurs connus, comme en répondant « yes » à ssh dans un terminal.',
+  'ssh.trust': 'Faire confiance à ce serveur',
+  'errors.host_unknown': 'ssh ne connaît pas encore le serveur {subject} : il n\'a pas été approuvé.',
 };

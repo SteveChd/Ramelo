@@ -7,6 +7,7 @@ import { t } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { openDialog } from './dialog.js';
+import { withHostTrust } from './host-trust.js';
 
 const FOLDER_KEY = 'ramelo.cloneFolder';
 
@@ -109,12 +110,12 @@ export function openCloneDialog({ near = null, address = '', find = null } = {})
       setRunning(true);
       try {
         const options = { branch: branch.value.trim() || null, submodules: submodules.checked };
-        const result = await backend.cloneRepository(url.value.trim(), path, options, (p) => {
+        const result = await withHostTrust(() => backend.cloneRepository(url.value.trim(), path, options, (p) => {
           phase.textContent = t(`clone.phase.${p.phase}`) === `clone.phase.${p.phase}` ? p.phase : t(`clone.phase.${p.phase}`);
           detail.textContent = p.percent === null ? '' : `${p.percent} %`;
           bar.classList.toggle('busy', p.percent === null);
           if (p.percent !== null) bar.style.width = `${p.percent}%`;
-        });
+        }));
         rememberFolder(folder.value.trim());
         running = false;
         close(result);

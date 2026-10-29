@@ -3058,9 +3058,11 @@ dependencies = [
 name = "ramelo-core"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "dunce",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror 2.0.21",
 ]

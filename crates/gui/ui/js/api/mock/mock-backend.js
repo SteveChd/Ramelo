@@ -293,7 +293,26 @@ export async function cloneRepository(url, folder, options, onProgress) {
     }
   }
   if (url.includes('fail')) throw { code: 'git_failed', subject: 'clone', message: `repository '${url}' not found` };
+  const host = url.match(/^[^/@]+@([^:/]+):/)?.[1];
+  if (host?.startsWith('ssh.') && !knownHosts.has(host)) throw { code: 'host_unknown', subject: host, message: `ssh does not know the server ${host} yet` };
   return folder;
+}
+
+/** ssh servers trusted in the design preview; those named « ssh.… » are unknown at first. */
+const knownHosts = new Set();
+
+export async function sshHostKeys(host) {
+  await delay(600);
+  return [
+    { kind: 'ssh-ed25519', fingerprint: 'SHA256:ybgmFkzwOSotHTHLJgHO0QN8L0xErw6vd0VhFA9m3SM' },
+    { kind: 'ecdsa-sha2-nistp256', fingerprint: 'SHA256:FC73VB6C4OQLSCrjEayhMp9UMxS97caD/Yyi2bhW/J0' },
+  ];
+}
+
+export async function trustSshHost(host) {
+  await delay(200);
+  knownHosts.add(host);
+  return 2;
 }
 
 export async function cancelClone() {

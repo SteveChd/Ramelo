@@ -76,6 +76,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   when the branch has diverged; push sets the upstream on the first push and offers to pull first or
   force with lease when it is rejected. Local changes are stashed and restored automatically.
 - Every repository is read again when the window regains focus, in parallel.
+- The first connection to an ssh server (clone, fetch, pull, push) shows the server's keys and
+  fingerprints and asks whether to trust it, as ssh would in a terminal; trusted keys go to
+  `~/.ssh/known_hosts` and the command runs again. A server whose key changed is never trusted this way.
 - Accounts on GitHub (github.com or Enterprise), GitLab (gitlab.com or self-hosted), Bitbucket Cloud
   and Bitbucket Data Center (File › Accounts…, Ctrl+,): a token is checked with the service before it
   is kept, in the system's credential store (Windows Credential Manager, the Secret Service on Linux),

@@ -39,6 +39,8 @@ export const {
   pickCloneFolder,
   cloneRepository,
   cancelClone,
+  sshHostKeys,
+  trustSshHost,
   closeRepositories,
   setRepositoryPinned,
   selectRepository,

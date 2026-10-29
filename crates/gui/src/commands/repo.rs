@@ -8,6 +8,7 @@ use ramelo_core::{self as core, refs, Carried, ConflictFile, Progress, Content, 
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
+use crate::commands::ssh::name_host;
 use crate::error::{CommandError, CommandResult};
 use crate::snapshot::Snapshot;
 use crate::state::AppState;
@@ -359,7 +360,7 @@ pub async fn delete_branch(state: State<'_, AppState>, path: String, name: Strin
 #[tauri::command]
 pub async fn fetch(state: State<'_, AppState>, path: String) -> CommandResult<Snapshot> {
     let root = PathBuf::from(path);
-    core::fetch(&state.git, &root)?;
+    core::fetch(&state.git, &root).map_err(|e| name_host(&state, e, &root))?;
     Ok(changed(&state, root))
 }
 
@@ -374,7 +375,7 @@ pub struct PullResult {
 #[tauri::command]
 pub async fn pull(state: State<'_, AppState>, path: String, mode: PullMode) -> CommandResult<PullResult> {
     let root = PathBuf::from(path);
-    let result = core::pull(&state.git, &root, mode);
+    let result = core::pull(&state.git, &root, mode).map_err(|e| name_host(&state, e, &root));
     // A pull that stops on conflicts still changed the repository.
     let snapshot = changed(&state, root);
     Ok(PullResult { outcome: result?, snapshot })
@@ -390,6 +391,6 @@ pub struct PushResult {
 #[tauri::command]
 pub async fn push(state: State<'_, AppState>, path: String, force: bool) -> CommandResult<PushResult> {
     let root = PathBuf::from(path);
-    let outcome = core::push(&state.git, &root, force)?;
+    let outcome = core::push(&state.git, &root, force).map_err(|e| name_host(&state, e, &root))?;
     Ok(PushResult { outcome, snapshot: changed(&state, root) })
 }

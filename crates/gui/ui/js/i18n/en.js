@@ -668,4 +668,10 @@ export default {
   'newPr.sameBranch': 'The two branches are the same.',
   'newPr.noBranches': 'A pull request needs a local branch and a branch on {remote}.',
   'newPr.created': 'Pull request #{number} created',
+  'ssh.title': 'First connection to {host}',
+  'ssh.text': 'ssh does not know this server yet. These are its keys, as it gives them:',
+  'ssh.reading': 'Reading the keys of the server…',
+  'ssh.check': 'Check that a fingerprint is the one your service publishes (in its documentation on SSH) before trusting it: they are then added to your known hosts, as answering « yes » to ssh in a terminal.',
+  'ssh.trust': 'Trust this server',
+  'errors.host_unknown': 'ssh does not know the server {subject} yet: it was not trusted.',
 };

@@ -49,6 +49,10 @@ export function cloneRepository(url, folder, options, onProgress) {
   return invoke('clone_repository', { url, folder, options, progress });
 }
 export const cancelClone = () => invoke('cancel_clone');
+/** The keys of an ssh server: [{ kind, fingerprint }]. */
+export const sshHostKeys = (host) => invoke('ssh_host_keys', { host });
+/** Adds the keys of `host` with these fingerprints to the known hosts. */
+export const trustSshHost = (host, fingerprints) => invoke('trust_ssh_host', { host, fingerprints });
 export const closeRepositories = (paths) => invoke('close_repositories', { paths });
 export const setRepositoryPinned = (path, pinned) => invoke('set_repository_pinned', { path, pinned });
 export const selectRepository = (path) => invoke('select_repository', { path });

@@ -7,8 +7,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+base64 = "0.22"
 dunce.workspace = true
 serde.workspace = true
+sha2 = "0.10"
 thiserror.workspace = true
 
 [dev-dependencies]
