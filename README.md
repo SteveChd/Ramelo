@@ -89,6 +89,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   (Markdown, answered from Ramelo), its changes, all together or commit by commit, with each file's
   diff below, and its commits; it can be merged (merge commit, squash or rebase, as the service
   allows) or closed. Its commits are fetched from the service, without adding a branch.
+- A pull request is opened from Ramelo (Repository › New pull request…, or the + of the list): from a
+  local branch to a branch of the remote, with a title, a Markdown description and the draft option;
+  the current branch is pushed first when the service does not have all its commits.
 - English (default) or French interface, light or dark theme, splash screen.
 
 ## Roadmap

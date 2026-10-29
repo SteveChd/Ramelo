@@ -2,10 +2,12 @@
 // what they do.
 
 import { openAccountsDialog } from '../components/accounts-dialog.js';
+import { openNewPullDialog } from '../components/new-pull-dialog.js';
 import { openTabList } from '../components/tabbar.js';
 import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
 import { layout } from '../state/layout.js';
+import { pulls } from '../state/pulls.js';
 import { repoStore } from '../state/repo-store.js';
 import { search } from '../state/search.js';
 import { store } from '../state/store.js';
@@ -54,6 +56,7 @@ const ACTIONS = {
   'repo.fetch': { key: 'Ctrl+Shift+F', enabled: () => Boolean(store.activeRepo?.summary?.remotes.length), run: () => repoStore.fetch() },
   'repo.pull': { key: 'Ctrl+Shift+L', enabled: () => Boolean(store.activeRepo?.summary?.upstream), run: () => repoStore.pull() },
   'repo.push': { key: 'Ctrl+Shift+P', enabled: () => Boolean(store.activeRepo?.summary?.head.branch), run: () => repoStore.push() },
+  'repo.newPull': { enabled: () => Boolean(store.active && pulls.of(store.active)?.hosting), run: () => openNewPullDialog(store.active) },
   'repo.newBranch': { key: 'Ctrl+B', enabled: hasActive, run: () => repoStore.createBranch() },
   'repo.stageAll': { key: 'Ctrl+Shift+S', enabled: hasActive, run: () => repoStore.stageAll() },
   // In a repository: its commits; on the overview: the repositories.

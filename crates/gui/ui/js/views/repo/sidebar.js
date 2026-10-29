@@ -7,6 +7,7 @@ import { describeError } from '../../app/errors.js';
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
+import { openNewPullDialog } from '../../components/new-pull-dialog.js';
 import { pullView } from '../../state/pull-view.js';
 import { pulls } from '../../state/pulls.js';
 import { repoStore } from '../../state/repo-store.js';
@@ -99,7 +100,8 @@ function pullSection(path) {
       class: 'icon-btn small',
       title: t('pr.openList'),
       onclick: () => backend.openUrl(entry.hosting.webUrl).catch(() => {}),
-    }, icon('external', 13)));
+    }, icon('external', 13)),
+    entry.hosting && h('button', { type: 'button', class: 'icon-btn small', title: t('action.repo.newPull'), onclick: () => openNewPullDialog(path) }, icon('plus', 14)));
   return section('pulls', t('pr.section'), list.length,
     entry.error && !list.length ? h('div', { class: 'sb-empty error', title: describeError(entry.error) }, t('pr.unreadable'))
       : list.length ? list.map((p) => pullItem(p, path))
