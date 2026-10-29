@@ -56,6 +56,7 @@ export default {
   'errors.login_not_email': '« {subject} » is not an e-mail address: give the one you sign in to Atlassian with (not the address of the workspace).',
   'errors.section_exists': 'A section is already named « {subject} », or the name is empty.',
   'errors.invalid_url': '« {subject} » is not a repository address.',
+  'errors.server_url_invalid': '« {subject} » is not the address of a server (https://…). Leave the field empty for github.com or gitlab.com.',
   'errors.target_exists': 'The folder « {subject} » already exists and is not empty: choose another name or folder.',
   'errors.cancelled': 'Stopped.',
   'action.repo.refresh': 'Refresh',

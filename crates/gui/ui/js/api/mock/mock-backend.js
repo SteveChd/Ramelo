@@ -33,7 +33,7 @@ let accounts = [
 export async function addAccount(provider, url, login, token) {
   await delay(500);
   const address = (url.trim() || DEFAULT_URLS[provider] || '').replace(/\/+$/, '');
-  if (!/^https?:\/\/./.test(address)) throw { code: 'invalid_url', subject: address, message: 'not a web address' };
+  if (!/^https?:\/\/[^@\s]+$/.test(address) && provider !== 'bitbucket') throw { code: 'server_url_invalid', subject: url.trim(), message: 'not a web address' };
   if (!token.trim()) throw { code: 'token_missing', subject: null, message: 'the token is empty' };
   if (provider === 'bitbucket' && !login?.trim()) throw { code: 'login_missing', subject: null, message: 'e-mail missing' };
   if (provider === 'bitbucket' && (!login.includes('@') || login.includes('/'))) throw { code: 'login_not_email', subject: login.trim(), message: 'not an e-mail' };

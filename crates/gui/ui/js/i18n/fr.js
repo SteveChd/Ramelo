@@ -56,6 +56,7 @@ export default {
   'errors.login_not_email': '« {subject} » n\'est pas une adresse e-mail : donne celle avec laquelle tu te connectes à Atlassian (pas l\'adresse du workspace).',
   'errors.section_exists': 'Une section s\'appelle déjà « {subject} », ou le nom est vide.',
   'errors.invalid_url': '« {subject} » n\'est pas une adresse de dépôt.',
+  'errors.server_url_invalid': '« {subject} » n\'est pas l\'adresse d\'un serveur (https://…). Laisse le champ vide pour github.com ou gitlab.com.',
   'errors.target_exists': 'Le dossier « {subject} » existe déjà et n\'est pas vide : choisis un autre nom ou un autre dossier.',
   'errors.cancelled': 'Arrêté.',
   'action.repo.refresh': 'Actualiser',

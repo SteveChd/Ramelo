@@ -19,7 +19,9 @@ pub fn normalize_url(provider: Provider, url: &str) -> Result<String, HostingErr
     let url = url.trim().trim_end_matches('/');
     let url = if url.is_empty() { provider.default_url().ok_or_else(|| HostingError::InvalidUrl(String::new()))? } else { url };
     let url = if url.contains("://") { url.to_owned() } else { format!("https://{url}") };
-    let valid = (url.starts_with("https://") || url.starts_with("http://")) && url.split("://").nth(1).is_some_and(|rest| !rest.is_empty() && !rest.contains(' '));
+    // A user in the address (« name@host », often an e-mail typed in the wrong field) is refused too.
+    let valid = (url.starts_with("https://") || url.starts_with("http://"))
+        && url.split("://").nth(1).is_some_and(|rest| !rest.is_empty() && !rest.contains(' ') && !rest.contains('@'));
     if !valid {
         return Err(HostingError::InvalidUrl(url));
     }
@@ -187,6 +189,7 @@ pub(crate) mod tests {
         assert_eq!(normalize_url(Provider::Bitbucket, "whatever").unwrap(), "https://bitbucket.org");
         assert!(normalize_url(Provider::BitbucketServer, "").is_err());
         assert!(normalize_url(Provider::GitLab, "ftp://x").is_err());
+        assert!(normalize_url(Provider::GitHub, "name@example.com").is_err());
         assert_eq!(api_base(Provider::GitHub, "https://github.com"), "https://api.github.com");
         assert_eq!(api_base(Provider::GitHub, "https://ghe.corp"), "https://ghe.corp/api/v3");
     }

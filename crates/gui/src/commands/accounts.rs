@@ -24,7 +24,8 @@ pub async fn add_account(
     login: Option<String>,
     token: String,
 ) -> CommandResult<Vec<Account>> {
-    let url = ramelo_hosting::normalize_url(provider, &url)?;
+    let url = ramelo_hosting::normalize_url(provider, &url)
+        .map_err(|_| CommandError::new("server_url_invalid", Some(url.trim().to_owned()), "this is not the web address of a server"))?;
     let token = token.trim();
     let login = login.map(|l| l.trim().to_owned()).filter(|l| !l.is_empty());
     if token.is_empty() {
