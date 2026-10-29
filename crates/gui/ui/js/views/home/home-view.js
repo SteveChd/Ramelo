@@ -99,6 +99,9 @@ export function renderHome(container) {
     return;
   }
   const visible = repos.filter(FILTERS[store.ui.filter]).filter((r) => matchesSearch(r, store.ui.search));
+  // Drawing again detaches the field, which takes its focus away: give it back, caret included.
+  const typing = searchField !== null && document.activeElement === searchField;
+  const caret = typing ? [searchField.selectionStart, searchField.selectionEnd, searchField.selectionDirection] : null;
   mount(container, h('div', { class: 'home' },
     h('div', { class: 'home-head' },
       h('h2', {}, t('home.title')),
@@ -121,4 +124,8 @@ export function renderHome(container) {
       ? h('div', { class: 'cards' }, visible.map(card))
       : h('div', { class: 'no-match' }, t('home.noMatch')),
   ));
+  if (typing) {
+    searchField.focus({ preventScroll: true });
+    searchField.setSelectionRange(...caret);
+  }
 }
