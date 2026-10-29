@@ -36,7 +36,8 @@ export async function addAccount(provider, url, login, token) {
   if (!/^https?:\/\/./.test(address)) throw { code: 'invalid_url', subject: address, message: 'not a web address' };
   if (!token.trim()) throw { code: 'token_missing', subject: null, message: 'the token is empty' };
   if (provider === 'bitbucket' && !login?.trim()) throw { code: 'login_missing', subject: null, message: 'e-mail missing' };
-  if (token.includes('bad')) throw { code: 'hosting_unauthorized', subject: null, message: 'the service refused the token' };
+  if (provider === 'bitbucket' && (!login.includes('@') || login.includes('/'))) throw { code: 'login_not_email', subject: login.trim(), message: 'not an e-mail' };
+  if (token.includes('bad')) throw { code: provider === 'bitbucket' ? 'bitbucket_unauthorized' : 'hosting_unauthorized', subject: null, message: 'the service refused the token' };
   const username = provider === 'bitbucket' ? login.split('@')[0] : 'steve';
   const id = `${username}@${address}`;
   accounts = accounts.filter((a) => a.id !== id).concat({ id, provider, url: provider === 'bitbucket' ? DEFAULT_URLS.bitbucket : address, username, name: 'Steve Chadaud', login: login?.trim() || null });

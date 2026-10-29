@@ -93,7 +93,7 @@ fn verify_with(provider: Provider, client: &Client) -> Result<Profile, HostingEr
         Provider::BitbucketServer => {
             // No « current user » resource: the server names the user of the request in a header.
             let answer = client.get("/application-properties")?;
-            let username = answer.header("x-ausername").map(str::to_owned).ok_or(HostingError::Unauthorized)?;
+            let username = answer.header("x-ausername").map(str::to_owned).ok_or_else(|| HostingError::Unauthorized(String::new()))?;
             #[derive(Deserialize)]
             #[serde(rename_all = "camelCase")]
             struct User { display_name: Option<String> }
@@ -177,7 +177,7 @@ pub(crate) mod tests {
         assert_eq!(requests.recv().unwrap().0, "GET /users/steve HTTP/1.1");
 
         let (base, _) = serve(vec![(401, vec![], r#"{"message":"401 Unauthorized"}"#.into())]);
-        assert!(matches!(verify_with(Provider::GitLab, &Client::new(&base, Auth::Bearer("bad".into()))), Err(HostingError::Unauthorized)));
+        assert!(matches!(verify_with(Provider::GitLab, &Client::new(&base, Auth::Bearer("bad".into()))), Err(HostingError::Unauthorized(_))));
     }
 
     #[test]

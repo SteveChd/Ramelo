@@ -6,8 +6,9 @@ use thiserror::Error;
 pub enum HostingError {
     #[error("the address « {0} » is not a web address (https://…)")]
     InvalidUrl(String),
-    #[error("the service refused the token: it is wrong, expired or revoked")]
-    Unauthorized,
+    /// With what the service said, when it said something (empty otherwise).
+    #[error("the service refused the token: it is wrong, expired or revoked ({0})")]
+    Unauthorized(String),
     #[error("the token does not allow this: {0}")]
     Forbidden(String),
     #[error("not found on the service: {0}")]
@@ -32,7 +33,7 @@ impl HostingError {
     pub fn code(&self) -> &'static str {
         match self {
             Self::InvalidUrl(_) => "invalid_url",
-            Self::Unauthorized => "hosting_unauthorized",
+            Self::Unauthorized(_) => "hosting_unauthorized",
             Self::Forbidden(_) => "hosting_forbidden",
             Self::NotFound(_) => "hosting_not_found",
             Self::RateLimited => "hosting_rate_limited",
@@ -49,7 +50,8 @@ impl HostingError {
         match self {
             Self::InvalidUrl(s) | Self::Forbidden(s) | Self::NotFound(s) | Self::Network(s) | Self::NoToken(s) | Self::Keyring(s) | Self::NoAccount(s) => Some(s.clone()),
             Self::Http { message, .. } => Some(message.clone()),
-            Self::Unauthorized | Self::RateLimited | Self::Format(_) => None,
+            Self::Unauthorized(m) => Some(m.clone()).filter(|m| !m.is_empty()),
+            Self::RateLimited | Self::Format(_) => None,
         }
     }
 }

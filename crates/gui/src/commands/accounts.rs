@@ -33,7 +33,17 @@ pub async fn add_account(
     if provider == Provider::Bitbucket && login.is_none() {
         return Err(CommandError::new("login_missing", None, "Bitbucket Cloud needs the e-mail address of the account"));
     }
-    let profile = ramelo_hosting::verify(provider, &url, login.as_deref(), token)?;
+    // An address of the service in place of the e-mail (easy to paste there) is refused before asking it.
+    if let Some(login) = login.as_deref().filter(|l| !l.contains('@') || l.contains('/')) {
+        return Err(CommandError::new("login_not_email", Some(login.to_owned()), "the login of a Bitbucket Cloud account is its e-mail address"));
+    }
+    let profile = ramelo_hosting::verify(provider, &url, login.as_deref(), token).map_err(|error| match error {
+        // On Bitbucket Cloud, the token alone does not say what is wrong: the usual causes are listed.
+        ramelo_hosting::HostingError::Unauthorized(said) if provider == Provider::Bitbucket => {
+            CommandError::new("bitbucket_unauthorized", Some(said).filter(|s| !s.is_empty()), "Bitbucket Cloud refused the e-mail address and token")
+        }
+        other => other.into(),
+    })?;
     let id = format!("{}@{url}", profile.username);
     ramelo_hosting::set_token(&id, token)?;
     let account = Account { id, provider, url, username: profile.username, name: profile.name, login };

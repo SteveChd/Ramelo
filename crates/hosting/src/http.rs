@@ -156,9 +156,10 @@ fn service_message(body: &str) -> Option<String> {
 }
 
 fn status_error(status: u16, body: &str, url: &str, limited: bool) -> HostingError {
-    let message = service_message(body).unwrap_or_else(|| format!("HTTP {status}"));
+    let said = service_message(body);
+    let message = said.clone().unwrap_or_else(|| format!("HTTP {status}"));
     match status {
-        401 => HostingError::Unauthorized,
+        401 => HostingError::Unauthorized(said.unwrap_or_default()),
         429 => HostingError::RateLimited,
         403 if limited => HostingError::RateLimited,
         403 => HostingError::Forbidden(message),
@@ -186,7 +187,7 @@ mod tests {
 
     #[test]
     fn sorts_errors_and_reads_messages() {
-        assert!(matches!(status_error(401, "", "u", false), HostingError::Unauthorized));
+        assert!(matches!(status_error(401, "", "u", false), HostingError::Unauthorized(m) if m.is_empty()));
         assert!(matches!(status_error(403, "", "u", true), HostingError::RateLimited));
         match status_error(403, r#"{"message":"Resource not accessible by personal access token"}"#, "u", false) {
             HostingError::Forbidden(m) => assert!(m.starts_with("Resource")),
