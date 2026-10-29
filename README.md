@@ -83,6 +83,12 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 - A repository can be found on an account (File › Find a repository…, Ctrl+Shift+N, or from the
   clone dialog): among the user's repositories or everything the service shows, with the README of
   the selected one formatted beside the list, then cloned over HTTPS or SSH.
+- Pull requests (merge requests on GitLab) of every repository whose remote is on an account: their
+  number on the overview cards, highlighted when the user's review is requested, and their list in
+  the repository's side panel. One opens in place of the graph with its description and comments
+  (Markdown, answered from Ramelo), its changes, all together or commit by commit, with each file's
+  diff below, and its commits; it can be merged (merge commit, squash or rebase, as the service
+  allows) or closed. Its commits are fetched from the service, without adding a branch.
 - English (default) or French interface, light or dark theme, splash screen.
 
 ## Roadmap
@@ -97,12 +103,12 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 
 | Folder | Role |
 | --- | --- |
-| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, cloning, repository discovery on disk. No dependency on the interface or the storage. |
+| `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, cloning, the changes between two commits (a pull request), repository discovery on disk. No dependency on the interface or the storage. |
 | `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order, the active one and the sections of the overview; and the accounts on hosting services (`accounts.json`, without their tokens). Files are written atomically. |
-| `crates/hosting` | Hosting services through their web API (GitHub, GitLab, Bitbucket Cloud and Data Center), and their tokens in the system's credential store. |
+| `crates/hosting` | Hosting services through their web API (GitHub, GitLab, Bitbucket Cloud and Data Center): accounts, repository search, pull requests; and their tokens in the system's credential store. |
 | `crates/gui` | Tauri 2 application: commands called by the interface (`src/commands`). |
 | `crates/gui/ui` | Interface in HTML, CSS and JavaScript (ES modules, no framework, no bundler). |
-| `crates/gui/ui/vendor` | Third-party code, kept as published: [marked](https://github.com/markedjs/marked) (MIT) for the Markdown preview. |
+| `crates/gui/ui/vendor` | Third-party code, kept as published: [marked](https://github.com/markedjs/marked) (MIT) for the Markdown preview and the pull request conversations. |
 
 The Rust side is the single source of truth: each command returns a snapshot (repositories and their
 state) that the interface displays without computing anything itself.

@@ -10,6 +10,7 @@ import { initTheme, onThemeChange } from './components/theme.js';
 import { toast } from './components/toast.js';
 import { language, onLanguageChange, t } from './i18n/i18n.js';
 import { h } from './lib/dom.js';
+import { pulls } from './state/pulls.js';
 import { store } from './state/store.js';
 import { renderHome } from './views/home/home-view.js';
 import { renderRepo } from './views/repo/repo-view.js';
@@ -32,6 +33,27 @@ function renderAll() {
   renderStatusbar($('statusbar'));
 }
 
+/** The pull requests of the repositories that have a remote, read in the background. */
+function refreshPulls(force = false) {
+  const paths = store.repositories.filter((r) => r.summary?.remotes.length).map((r) => r.path);
+  pulls.refresh(paths, { force }).catch(() => {});
+}
+
+/** New pull requests shown in the overview, drawn again once per frame at most. */
+function installPullIndicators() {
+  let pending = false;
+  pulls.subscribe((path) => {
+    // Accounts changed: everything is read again for them.
+    if (path === null) refreshPulls();
+    if (pending || store.activeRepo) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      if (!store.activeRepo) renderHome($('view-host'));
+    });
+  });
+}
+
 /** Folders dropped onto the window are added to the workspace. */
 function installDrop() {
   const overlay = h('div', { class: 'drop-overlay', hidden: true }, t('home.dropHere'));
@@ -52,6 +74,7 @@ function installFocusRefresh() {
     if (Date.now() - last < FOCUS_REFRESH_MS || store.repositories.length === 0) return;
     last = Date.now();
     store.refresh(null);
+    refreshPulls();
   });
 }
 
@@ -70,8 +93,12 @@ async function start() {
   installKeyboard();
   installDrop();
   installFocusRefresh();
+  installPullIndicators();
   store.subscribe((topic, _state, detail) => {
-    if (topic === 'workspace') renderAll();
+    if (topic === 'workspace') {
+      renderAll();
+      refreshPulls();
+    }
     if (topic === 'ui') renderView();
     if (topic === 'busy') renderStatusbar($('statusbar'));
     if (topic === 'notice') toast(detail, 3200);

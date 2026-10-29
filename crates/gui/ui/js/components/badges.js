@@ -4,6 +4,7 @@ import { describeError } from '../app/errors.js';
 import { t, tn } from '../i18n/i18n.js';
 import { h } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
+import { pulls } from '../state/pulls.js';
 
 /** Number of files with a change of any kind. */
 export function changeCount(summary) {
@@ -45,5 +46,11 @@ export function repoBadges(repo) {
   else if (!s.operation) list.push(badge('clean', 'check', t('badge.clean')));
   if (s.stashes) list.push(badge('', 'stash', String(s.stashes), tn('badge.stashes', s.stashes)));
   if (head.oid === null) list.push(badge('', null, t('badge.noCommit')));
+  const open = pulls.of(repo.path)?.pulls ?? [];
+  if (open.length) {
+    const asked = open.filter((p) => p.reviewRequested).length;
+    list.push(badge(`pulls${asked ? ' review' : ''}`, 'pullRequest', String(open.length),
+      [tn('badge.pulls', open.length), asked && tn('badge.reviews', asked)].filter(Boolean).join(' · ')));
+  }
   return list;
 }

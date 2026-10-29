@@ -10,9 +10,9 @@ use crate::{Git, GitError};
 
 /// Beyond this many lines, the lines of a file are not kept (the counts stay exact): a generated
 /// file or a minified bundle would otherwise flood the interface.
-const MAX_LINES_PER_FILE: usize = 8000;
+pub(crate) const MAX_LINES_PER_FILE: usize = 8000;
 /// Same limit, for all the files of a commit together.
-const MAX_LINES_PER_COMMIT: usize = 30000;
+pub(crate) const MAX_LINES_PER_COMMIT: usize = 30000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

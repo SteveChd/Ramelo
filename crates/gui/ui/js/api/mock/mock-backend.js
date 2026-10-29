@@ -99,6 +99,117 @@ export async function repositoryReadme(accountId, repo) {
   };
 }
 
+// ---------- Pull requests (on the sample account) ----------
+
+const hoursAgo = (n) => Math.floor(Date.now() / 1000) - n * 3600;
+const PULLS = new Map();
+
+/** The sample pull requests of a repository, made once; « waypoint » and « spektra » have some. */
+function pullsOf(path) {
+  if (!PULLS.has(path)) {
+    const name = nameOf(path);
+    const make = (number, title, author, source, extra = {}) => ({
+      number, title, author, state: 'open', draft: false, sourceBranch: source, targetBranch: 'main', sourceRepo: null, sourceCloneUrl: null,
+      headOid: null, created: hoursAgo(number * 7), updated: hoursAgo(number), webUrl: `https://github.com/steve-c/${name}/pull/${number}`,
+      comments: 2, reviewers: [], reviewRequested: false, ...extra,
+      body: `## What\n\n${title}.\n\n## Why\n\nThe old way was slow on large projects.\n\n- [x] Tests\n- [ ] Documentation`,
+      thread: [
+        { id: `${number}-1`, author: 'anna', body: 'Nice! Could you add a test for the **empty** case?', created: hoursAgo(number * 5), path: null, line: null },
+        { id: `${number}-2`, author: 'steve-c', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14 },
+      ],
+    });
+    const list = name === 'waypoint'
+      ? [
+        make(42, 'Export the Gantt chart with one column per day', 'steve-c', 'feature/gantt-export'),
+        make(41, 'Shade the weekends in the calendar', 'anna', 'calendar-weekends', { reviewers: ['steve-c'], reviewRequested: true }),
+        make(38, 'Draft: try a new layout engine', 'marc', 'layout-engine', { draft: true, sourceRepo: 'marc/waypoint' }),
+      ]
+      : name === 'spektra' ? [make(7, 'Faster spectrum smoothing', 'anna', 'smoothing', { reviewers: ['steve-c'], reviewRequested: true })] : [];
+    PULLS.set(path, list);
+  }
+  return PULLS.get(path);
+}
+
+const pullView = (pull) => ({
+  details: { ...pull, thread: undefined, mergeable: pull.state === 'open' && !pull.draft, conflicts: false, mergeMethods: ['merge', 'squash', 'rebase'] },
+  comments: structuredClone(pull.thread),
+});
+
+function findPull(path, number) {
+  const pull = pullsOf(path).find((p) => p.number === number);
+  if (!pull) throw { code: 'hosting_not_found', subject: `#${number}`, message: 'not found' };
+  return pull;
+}
+
+export async function repositoryHosting(path) {
+  const repo = repositories.find((r) => r.path === path);
+  if (!repo?.summary?.remotes.length) return null;
+  const name = nameOf(path);
+  return { accountId: accounts[0]?.id, provider: 'github', key: `steve-c/${name}`, webUrl: `https://github.com/steve-c/${name}`, remote: 'origin' };
+}
+
+export async function pullRequests(path, openOnly = true) {
+  await delay(500);
+  const hosting = await repositoryHosting(path);
+  if (!hosting || !accounts.length) return null;
+  const pulls = pullsOf(path).filter((p) => !openOnly || p.state === 'open').map((p) => { const { body, thread, ...rest } = p; return structuredClone(rest); });
+  return { hosting, pulls };
+}
+
+export async function pullRequest(path, number) {
+  await delay(350);
+  return pullView(findPull(path, number));
+}
+
+export async function pullRequestChanges(path, number) {
+  await delay(700);
+  findPull(path, number);
+  const commits = repo.history(path, 4).rows.slice(0, 3).map((c) => ({ oid: c.oid, summary: c.summary, author: c.author, time: c.time }));
+  const files = ['crates/export/src/gantt.rs', 'crates/export/src/calendar.rs', 'README.md'].map((p, i) => repo.diffFor(p, i === 1 ? 'added' : 'modified'));
+  return { base: 'b0b0b0b0', head: commits[0].oid, commits, files };
+}
+
+export async function rangeFileDiff(path, from, to, file) {
+  return repo.diffFor(file);
+}
+
+export async function commentPullRequest(path, number, body) {
+  await delay(300);
+  if (!body.trim()) throw { code: 'comment_empty', subject: null, message: 'empty' };
+  findPull(path, number).thread.push({ id: String(Date.now()), author: accounts[0]?.username ?? 'me', body, created: Math.floor(Date.now() / 1000), path: null, line: null });
+  return pullView(findPull(path, number));
+}
+
+export async function mergePullRequest(path, number) {
+  await delay(500);
+  const pull = findPull(path, number);
+  if (pull.draft) throw { code: 'hosting_http', subject: 'Pull request is in draft state', message: 'draft' };
+  pull.state = 'merged';
+  return pullView(pull);
+}
+
+export async function closePullRequest(path, number) {
+  await delay(300);
+  findPull(path, number).state = 'closed';
+  return pullView(findPull(path, number));
+}
+
+export async function createPullRequest(path, pull) {
+  await delay(500);
+  if (!pull.title.trim()) throw { code: 'title_missing', subject: null, message: 'empty' };
+  const list = pullsOf(path);
+  const number = Math.max(0, ...list.map((p) => p.number)) + 1;
+  const created = {
+    number, title: pull.title, author: accounts[0]?.username ?? 'me', state: 'open', draft: pull.draft, sourceBranch: pull.sourceBranch,
+    targetBranch: pull.targetBranch, sourceRepo: null, sourceCloneUrl: null, headOid: null, created: Math.floor(Date.now() / 1000),
+    updated: Math.floor(Date.now() / 1000), webUrl: `https://github.com/steve-c/${nameOf(path)}/pull/${number}`, comments: 0, reviewers: [],
+    reviewRequested: false, body: pull.body, thread: [],
+  };
+  list.unshift(created);
+  const { body, thread, ...rest } = created;
+  return structuredClone(rest);
+}
+
 export async function startup() {
   await delay(300);
   repositories = sampleWorkspace();

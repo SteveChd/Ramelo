@@ -540,3 +540,36 @@ fn clones_with_progress_and_cleans_up_after_a_failure() {
     assert!(!stopped.exists());
     assert!(matches!(clone(&g, " ", &stopped, &CloneOptions::default(), |_| {}, &|| false), Err(GitError::InvalidUrl(_))));
 }
+
+#[test]
+fn fetches_a_pull_request_and_reads_its_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let origin = new_repo(&dir.path().join("origin"));
+    commit_file(&origin, "a.txt", "one\n", "Start");
+    git(&origin, &["checkout", "-q", "-b", "feature"]);
+    commit_file(&origin, "a.txt", "one\ntwo\n", "Second line");
+    commit_file(&origin, "b.txt", "new\n", "Add b");
+    // The service publishes the pull request under its own reference; the branch itself goes.
+    git(&origin, &["update-ref", "refs/pull/1/head", "feature"]);
+    git(&origin, &["checkout", "-q", "main"]);
+    commit_file(&origin, "c.txt", "main moves on\n", "On main");
+    git(&origin, &["branch", "-q", "-D", "feature"]);
+
+    let clone = dir.path().join("clone");
+    git(dir.path(), &["clone", "-q", origin.to_str().unwrap(), clone.to_str().unwrap()]);
+    let remotes = ramelo_core::remote_urls(&Git::default(), &clone).unwrap();
+    assert_eq!(remotes, [("origin".to_owned(), origin.display().to_string())]);
+    assert!(ramelo_core::remote_urls(&Git::default(), &origin).unwrap().is_empty());
+
+    let head = ramelo_core::fetch_commit(&Git::default(), &clone, "origin", "refs/pull/1/head").unwrap();
+    assert_eq!(head.len(), 40);
+    assert!(git(&clone, &["for-each-ref", "refs/ramelo"]).is_empty());
+    let changes = ramelo_core::range_changes(&Git::default(), &clone, "origin/main", &head).unwrap();
+    let summaries: Vec<&str> = changes.commits.iter().map(|c| c.summary.as_str()).collect();
+    assert_eq!(summaries, ["Add b", "Second line"]);
+    let files: Vec<&str> = changes.files.iter().map(|f| f.path.as_str()).collect();
+    // What main did since is not part of it.
+    assert_eq!(files, ["a.txt", "b.txt"]);
+    let one = ramelo_core::range_file_diff(&Git::default(), &clone, &changes.base, &head, "a.txt").unwrap().unwrap();
+    assert_eq!(one.additions, 1);
+}

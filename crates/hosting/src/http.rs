@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use base64::Engine;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::HostingError;
 
@@ -47,6 +48,12 @@ impl Answer {
 
     pub fn json<T: DeserializeOwned>(&self) -> Result<T, HostingError> {
         serde_json::from_str(&self.body).map_err(|e| HostingError::Format(e.to_string()))
+    }
+
+    /// Like [`Answer::json`], an empty answer (« 204 No Content ») reading as `null`.
+    fn json_or_empty<T: DeserializeOwned>(&self) -> Result<T, HostingError> {
+        let body = if self.body.trim().is_empty() { "null" } else { &self.body };
+        serde_json::from_str(body).map_err(|e| HostingError::Format(e.to_string()))
     }
 }
 
@@ -103,6 +110,22 @@ impl Client {
     pub fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, HostingError> {
         self.get(path)?.json()
     }
+
+    pub fn post_json<T: DeserializeOwned>(&self, path: &str, body: &impl Serialize) -> Result<T, HostingError> {
+        self.send("POST", path, Some(to_value(body)?))?.json_or_empty()
+    }
+
+    pub fn put_json<T: DeserializeOwned>(&self, path: &str, body: &impl Serialize) -> Result<T, HostingError> {
+        self.send("PUT", path, Some(to_value(body)?))?.json_or_empty()
+    }
+
+    pub fn patch_json<T: DeserializeOwned>(&self, path: &str, body: &impl Serialize) -> Result<T, HostingError> {
+        self.send("PATCH", path, Some(to_value(body)?))?.json_or_empty()
+    }
+}
+
+fn to_value(body: &impl Serialize) -> Result<serde_json::Value, HostingError> {
+    serde_json::to_value(body).map_err(|e| HostingError::Format(e.to_string()))
 }
 
 /// Whether the proxy of the environment (HTTPS_PROXY…) is used for `base`: not for this machine, nor

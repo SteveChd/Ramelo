@@ -25,8 +25,9 @@ const state = {
   selection: 'wip',
   details: null,
   /**
-   * Diff shown below the graph: { kind: 'worktree' | 'commit', file, staged, untracked, oid, data,
-   * loading, mode: 'diff' | 'preview', versions }. `versions` (the file before and after, for an
+   * Diff shown below the graph: { kind: 'worktree' | 'commit' | 'range', file, staged, untracked, oid,
+   * base (for a range: where it starts, `oid` being where it ends), data, loading, mode: 'diff' |
+   * 'preview', versions }. `versions` (the file before and after, for an
    * image or a preview) is read when the preview is first shown.
    */
   diff: null,
@@ -134,7 +135,7 @@ async function reloadDiff() {
 }
 
 /** Which file and side a diff shows; a diff read again keeps it. */
-const diffKey = (d) => d && `${d.kind}\u0000${d.oid ?? ''}\u0000${Boolean(d.staged)}\u0000${d.file}`;
+const diffKey = (d) => d && `${d.kind}\u0000${d.base ?? ''}\u0000${d.oid ?? ''}\u0000${Boolean(d.staged)}\u0000${d.file}`;
 
 /** Reads the file before and after the change, for the preview of the open diff. */
 let versionsFor = null;
@@ -143,8 +144,9 @@ async function loadVersions() {
   const key = diffKey(diff);
   if (!diff || diff.versions || versionsFor === key) return;
   versionsFor = key;
-  const commit = diff.kind === 'commit' ? diff.oid : null;
-  const versions = await run(() => backend.fileVersions(state.path, diff.file, diff.data?.oldPath ?? null, commit, Boolean(diff.staged)));
+  const commit = diff.kind === 'commit' || diff.kind === 'range' ? diff.oid : null;
+  const base = diff.kind === 'range' ? diff.base : null;
+  const versions = await run(() => backend.fileVersions(state.path, diff.file, diff.data?.oldPath ?? null, commit, Boolean(diff.staged), base));
   if (versionsFor === key) versionsFor = null;
   if (diffKey(state.diff) !== key) return;
   state.diff = { ...state.diff, versions: versions ?? { before: null, after: null, failed: true } };
@@ -375,6 +377,25 @@ export const repoStore = {
     if (diff.mode === 'preview') loadVersions();
     if (!known?.truncated) return;
     const data = await run(() => backend.commitFileDiff(state.path, details.oid, file));
+    if (state.diff !== diff) return;
+    state.diff = { ...diff, data: data ?? known, loading: false };
+    emit('diff');
+  },
+
+  /**
+   * A file of a pull request: `known` is its diff as read with the others; `base` and `head` are
+   * where the changes start and end (a whole pull request), or `base` is null for one of its commits.
+   */
+  async openChangeDiff(known, head, base = null) {
+    const file = known.path;
+    const diff = base
+      ? { kind: 'range', file, base, oid: head, data: known, loading: known.truncated, mode: defaultMode(file), versions: null }
+      : { kind: 'commit', file, oid: head, pull: true, data: known, loading: known.truncated, mode: defaultMode(file), versions: null };
+    state.diff = diff;
+    emit('diff');
+    if (diff.mode === 'preview') loadVersions();
+    if (!known.truncated) return;
+    const data = await run(() => (base ? backend.rangeFileDiff(state.path, base, head, file) : backend.commitFileDiff(state.path, head, file)));
     if (state.diff !== diff) return;
     state.diff = { ...diff, data: data ?? known, loading: false };
     emit('diff');

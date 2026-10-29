@@ -1,9 +1,14 @@
-// Branches of the repository: local ones (with what they have to push or pull), remote ones grouped
-// by remote, and tags. A double click switches to a branch; a click shows its commit in the graph.
+// The open pull requests of the repository, when one of its remotes is on an account, then its
+// branches: local ones (with what they have to push or pull), remote ones grouped by remote, and
+// tags. A double click switches to a branch; a click shows its commit in the graph.
 
+import * as backend from '../../api/backend.js';
+import { describeError } from '../../app/errors.js';
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
+import { pullView } from '../../state/pull-view.js';
+import { pulls } from '../../state/pulls.js';
 import { repoStore } from '../../state/repo-store.js';
 
 /** Sections folded by the user, remembered while the application runs. */
@@ -63,6 +68,45 @@ function remoteItem(branch) {
     h('button', { type: 'button', class: 'icon-btn', title: t('branch.checkoutRemote'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name); } }, icon('swap', 14))));
 }
 
+function pullItem(pull, path) {
+  const shown = pullView.state.path === path && pullView.state.number === pull.number;
+  return h('div', {
+    class: `sb-item pull-item${shown ? ' shown' : ''}${pull.draft ? ' draft' : ''}`,
+    title: `#${pull.number} ${pull.title}\n${pull.sourceBranch} → ${pull.targetBranch} · ${pull.author}`,
+    onclick: () => (shown ? pullView.close() : pullView.open(path, pull.number)),
+  },
+  h('span', { class: 'pull-n' }, `#${pull.number}`),
+  h('span', { class: 'lbl' }, pull.title),
+  pull.reviewRequested && h('span', { class: 'review-mark', title: t('pr.reviewRequested') }),
+  pull.draft && h('span', { class: 'draft-mark' }, t('pr.state.draft')));
+}
+
+/** Nothing when the repository is on no account; the list, or why it cannot be read. */
+function pullSection(path) {
+  const entry = pulls.of(path);
+  if (!entry || (!entry.hosting && !entry.error)) return null;
+  const list = entry.pulls ?? [];
+  const tools = h('span', { class: 'sb-tools' },
+    h('button', {
+      type: 'button',
+      class: `icon-btn small${entry.loading ? ' spinning' : ''}`,
+      title: t('pr.refreshList'),
+      disabled: entry.loading,
+      onclick: () => pulls.reload(path),
+    }, icon('refresh', 13)),
+    entry.hosting && h('button', {
+      type: 'button',
+      class: 'icon-btn small',
+      title: t('pr.openList'),
+      onclick: () => backend.openUrl(entry.hosting.webUrl).catch(() => {}),
+    }, icon('external', 13)));
+  return section('pulls', t('pr.section'), list.length,
+    entry.error && !list.length ? h('div', { class: 'sb-empty error', title: describeError(entry.error) }, t('pr.unreadable'))
+      : list.length ? list.map((p) => pullItem(p, path))
+        : h('div', { class: 'sb-empty' }, entry.loading ? t('repo.loading') : t('pr.none')),
+    tools);
+}
+
 export function renderSidebar(container) {
   if (!container) return;
   const refs = repoStore.state.refs;
@@ -80,6 +124,7 @@ export function renderSidebar(container) {
   const local = [...refs.local].sort((a, b) => Number(b.isHead) - Number(a.isHead) || a.name.localeCompare(b.name));
   const sortedRemotes = [...byRemote.entries()].sort(([a], [b]) => a.localeCompare(b));
   mount(container,
+    pullSection(repoStore.state.path),
     section('local', t('branch.local'), local.length,
       local.length ? local.map(localItem) : h('div', { class: 'sb-empty' }, t('branch.noLocal')),
       h('button', { type: 'button', class: 'icon-btn small', title: t('repo.newBranch'), onclick: () => repoStore.createBranch() }, icon('plus', 14))),

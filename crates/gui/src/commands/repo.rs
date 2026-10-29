@@ -105,9 +105,11 @@ pub async fn file_versions(
     old_path: Option<String>,
     commit: Option<String>,
     staged: bool,
+    base: Option<String>,
 ) -> CommandResult<FileVersions> {
     let root = PathBuf::from(path);
-    let parent = commit.as_ref().map(|oid| format!("{oid}^"));
+    // A range (a pull request) starts from its base; a commit, from its parent.
+    let parent = commit.as_ref().map(|oid| base.clone().unwrap_or_else(|| format!("{oid}^")));
     let (before, after) = match (&commit, &parent) {
         (Some(oid), Some(parent)) => (Version::Revision(parent), Version::Revision(oid)),
         _ if staged => (Version::Revision("HEAD"), Version::Index),

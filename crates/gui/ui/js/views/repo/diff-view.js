@@ -25,7 +25,8 @@ function hunkActions(index) {
 function fileActions() {
   const diff = repoStore.state.diff;
   // A file of a past commit can be corrected there, unless the commit deleted it or it is binary.
-  if (diff.kind === 'commit') {
+  // A commit of a pull request is not in the local history: it cannot be edited from here.
+  if (diff.kind === 'commit' && !diff.pull) {
     if (!diff.data || diff.data.status === 'deleted' || diff.data.binary) return null;
     return h('button', { type: 'button', class: 'btn', title: t('rewrite.editHint'), onclick: () => repoStore.editCommitFile(diff.oid, diff.file) }, icon('edit', 14), t('rewrite.editFile'));
   }
@@ -165,7 +166,8 @@ export function renderDiff(container) {
     return;
   }
   const data = diff.data;
-  const sideLabel = diff.kind === 'commit' ? t('diff.inCommit', { oid: diff.oid.slice(0, 7) }) : diff.staged ? t('diff.staged') : diff.untracked ? t('diff.untracked') : t('diff.unstaged');
+  const sideLabel = diff.kind === 'commit' ? t('diff.inCommit', { oid: diff.oid.slice(0, 7) })
+    : diff.kind === 'range' ? t('diff.inRange', { base: diff.base.slice(0, 7), head: diff.oid.slice(0, 7) }) : diff.staged ? t('diff.staged') : diff.untracked ? t('diff.untracked') : t('diff.unstaged');
   let body;
   if (diff.mode === 'preview') body = renderPreview(diff, () => renderDiff(container));
   else if (diff.loading && !data) body = h('div', { class: 'diff-note' }, t('repo.loading'));

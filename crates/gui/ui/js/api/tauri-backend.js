@@ -15,6 +15,15 @@ export const checkAccount = (id) => invoke('check_account', { id });
 export const removeAccount = (id) => invoke('remove_account', { id });
 export const tokenPage = (provider, url) => invoke('token_page', { provider, url });
 export const openUrl = (url) => invoke('open_url', { url });
+export const repositoryHosting = (path) => invoke('repository_hosting', { path });
+export const pullRequests = (path, openOnly = true) => invoke('pull_requests', { path, openOnly });
+export const pullRequest = (path, number) => invoke('pull_request', { path, number });
+export const pullRequestChanges = (path, number) => invoke('pull_request_changes', { path, number });
+export const rangeFileDiff = (path, from, to, file) => invoke('range_file_diff', { path, from, to, file });
+export const commentPullRequest = (path, number, body) => invoke('comment_pull_request', { path, number, body });
+export const mergePullRequest = (path, number, method, message) => invoke('merge_pull_request', { path, number, method, message });
+export const closePullRequest = (path, number) => invoke('close_pull_request', { path, number });
+export const createPullRequest = (path, pull) => invoke('create_pull_request', { path, pull });
 export const searchRepositories = (accountId, query, scope) => invoke('search_repositories', { accountId, query, scope });
 export const repositoryReadme = (accountId, repo) => invoke('repository_readme', { accountId, repo });
 export const startup = () => invoke('startup');
@@ -96,7 +105,7 @@ export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { 
  * large) } or null when the file does not exist on that side. `commit`: an oid, or null for the
  * working copy (`staged` or not).
  */
-export const fileVersions = (path, file, oldPath, commit, staged) => invoke('file_versions', { path, file, oldPath, commit, staged });
+export const fileVersions = (path, file, oldPath, commit, staged, base = null) => invoke('file_versions', { path, file, oldPath, commit, staged, base });
 export const fileDiff = (path, file, staged, untracked) => invoke('file_diff', { path, file, staged, untracked });
 export const stage = (path, files) => invoke('stage', { path, files });
 export const stageAll = (path) => invoke('stage_all', { path });

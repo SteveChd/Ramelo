@@ -13,6 +13,8 @@ import { describeError } from '../../app/errors.js';
 import { shortcut } from '../../app/actions.js';
 import { splitter } from '../../components/splitter.js';
 import { layout } from '../../state/layout.js';
+import { pullView } from '../../state/pull-view.js';
+import { pulls } from '../../state/pulls.js';
 import { repoStore } from '../../state/repo-store.js';
 import { search } from '../../state/search.js';
 import { store } from '../../state/store.js';
@@ -20,6 +22,7 @@ import { renderDetailsPanel } from './details-panel.js';
 import { renderDiff } from './diff-view.js';
 import { diffKey } from './files.js';
 import { revealCommit, renderGraph, updateGraphSelection } from './graph.js';
+import { markPullFile, renderPull } from './pull-view.js';
 import { renderSearchBar } from './search-bar.js';
 import { renderSidebar } from './sidebar.js';
 import { renderToolbar } from './toolbar.js';
@@ -50,6 +53,7 @@ function build(container, repo) {
     search: h('div', { class: 'search-host', hidden: true }),
     sidebar: h('div', { class: 'panel-body sidebar' }),
     graph: h('div', { class: 'graph' }),
+    pull: h('div', { class: 'pull', hidden: true }),
     diff: h('div', { class: 'diff-panel', hidden: true }),
     side: h('div', { class: 'panel-body side' }),
   };
@@ -60,7 +64,7 @@ function build(container, repo) {
   parts.splitLeft = splitter({ name: 'left', axis: 'x', sign: 1, fold: 'leftCollapsed', title: t('panel.resize') });
   parts.splitRight = splitter({ name: 'right', axis: 'x', sign: -1, fold: 'rightCollapsed', title: t('panel.resize') });
   parts.splitDiff = splitter({ name: 'diff', axis: 'y', sign: -1, fold: 'diffCollapsed', title: t('panel.resize') });
-  parts.center = h('section', { class: 'center' }, parts.search, parts.graph, parts.splitDiff, parts.diff);
+  parts.center = h('section', { class: 'center' }, parts.search, parts.graph, parts.pull, parts.splitDiff, parts.diff);
   parts.main = h('div', { class: 'repo-main' }, parts.left, parts.splitLeft, parts.stripLeft, parts.center, parts.stripRight, parts.splitRight, parts.right);
   const root = h('div', { class: 'repo' }, parts.toolbar, parts.banner, parts.main);
   mount(container, root);
@@ -121,7 +125,24 @@ function renderBanner(repo) {
 }
 
 function renderGraphPart(repo) {
+  if (pullView.state.number !== null) return;
   renderGraph(view.graph, repo);
+}
+
+/** The pull request open in the centre takes the place of the graph and of the search. */
+function renderPullPart(repo) {
+  const open = pullView.state.number !== null && pullView.state.path === repo.path;
+  const was = !view.pull.hidden;
+  view.pull.hidden = !open;
+  view.graph.hidden = open;
+  view.center.classList.toggle('with-pull', open);
+  if (open) {
+    view.search.hidden = true;
+    renderPull(view.pull);
+  } else if (was) {
+    renderSearchBar(view.search);
+    renderGraph(view.graph, repo);
+  }
 }
 
 /** A file opened in a folded diff panel unfolds it: the user asked to see it. */
@@ -176,6 +197,7 @@ export function renderRepo(container, repo) {
   renderSearchBar(view.search);
   renderSidebar(view.sidebar);
   renderGraphPart(repo);
+  renderPullPart(repo);
   renderDiffPart();
   renderSide(repo);
 }
@@ -209,6 +231,7 @@ repoStore.subscribe((topic) => {
   if (topic === 'diff') {
     renderDiffPart();
     markOpenFile();
+    markPullFile(view.pull);
   }
   if (topic === 'reveal') revealCommit(view.graph, repoStore.state.reveal);
   if (topic === 'running') {
@@ -223,9 +246,24 @@ repoStore.subscribe((topic) => {
 const searchShown = (s) => `${search.active}${s.onlyMatches}${s.result?.oids.length}${s.query ? JSON.stringify(s.query) : ''}`;
 let lastSearch = searchShown(search.state);
 
+pullView.subscribe(() => {
+  const repo = store.activeRepo;
+  if (!view || !repo || repo.path !== view.path) return;
+  renderPullPart(repo);
+  renderSidebar(view.sidebar);
+});
+
+// The pull requests of the repository were read again: the list of the side panel follows.
+pulls.subscribe((path) => {
+  const repo = store.activeRepo;
+  if (!view || !repo || repo.path !== view.path || (path !== null && path !== repo.path)) return;
+  renderSidebar(view.sidebar);
+});
+
 search.subscribe((s) => {
   const repo = store.activeRepo;
   if (!view || !repo || repo.path !== view.path) return;
+  if (pullView.state.number !== null) return;
   renderSearchBar(view.search);
   const shown = searchShown(s);
   if (shown !== lastSearch) renderGraphPart(repo);

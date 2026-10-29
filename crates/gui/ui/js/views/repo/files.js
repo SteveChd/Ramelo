@@ -16,6 +16,7 @@ export function splitPath(path) {
 /** Identifies the diff a file row opens, to mark the open one without drawing the list again. */
 export function diffKey(diff) {
   if (!diff) return null;
+  if (diff.kind === 'range') return `range:${diff.base}:${diff.oid}:${diff.file}`;
   return diff.kind === 'commit' ? `commit:${diff.oid}:${diff.file}` : `worktree:${Boolean(diff.staged)}:${diff.file}`;
 }
 
