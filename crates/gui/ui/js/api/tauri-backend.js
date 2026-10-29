@@ -38,6 +38,12 @@ export const selectRepository = (path) => invoke('select_repository', { path });
 export const reorderRepository = (path, index) => invoke('reorder_repository', { path, index });
 /** `color`: « #rrggbb », or null for the automatic one. */
 export const setRepositoryColor = (path, color) => invoke('set_repository_color', { path, color });
+export const addSection = (name) => invoke('add_section', { name });
+export const renameSection = (name, newName) => invoke('rename_section', { name, newName });
+export const removeSection = (name) => invoke('remove_section', { name });
+export const moveSection = (name, index) => invoke('move_section', { name, index });
+export const setSectionCollapsed = (name, collapsed) => invoke('set_section_collapsed', { name, collapsed });
+export const setRepositoriesSection = (paths, section) => invoke('set_repositories_section', { paths, section });
 export const openFolder = (path) => invoke('open_folder', { path });
 
 // ---------- One repository ----------

@@ -1,7 +1,9 @@
 // Overview of all repositories: a card per repository with its branch, what is left to push or pull,
-// its changes and its last commit. A click opens the repository's tab.
+// its changes and its last commit. A click opens the repository's tab. Repositories can be filed
+// under sections (a team, a product…), each folded or not; a card is dragged from one to another.
 
 import { needsSync, repoBadges, repoState } from '../../components/badges.js';
+import { openContextMenu } from '../../components/context-menu.js';
 import { openRepoMenu } from '../../components/repo-menu.js';
 import { avatar } from '../../components/tabbar.js';
 import { describeError } from '../../app/errors.js';
@@ -48,7 +50,14 @@ function emptyState() {
 function card(repo) {
   const s = repo.summary;
   const attention = ['conflict', 'error'].includes(repoState(repo));
-  return h('article', { class: `card${attention ? ' attention' : ''}`, style: { '--repo': repoColor(repo) }, oncontextmenu: (event) => openRepoMenu(event, repo) },
+  return h('article', {
+    class: `card${attention ? ' attention' : ''}`,
+    style: { '--repo': repoColor(repo) },
+    oncontextmenu: (event) => openRepoMenu(event, repo),
+    onpointerdown: (event) => {
+      if (!event.target.closest('.card-actions')) startDrag(event, { repo: repo.path, label: repo.name });
+    },
+  },
     h('button', { type: 'button', class: 'card-open', 'aria-label': t('home.open', { name: repo.name }), onclick: () => store.select(repo.path) }),
     h('div', { class: 'card-head' },
       avatar(repo, 'avatar large'),
@@ -79,6 +88,128 @@ function filterSwitch() {
         onclick: () => store.setFilter(name),
       }, t(`home.filters.${name}`), name !== 'all' && count > 0 ? ` ${count}` : '');
     }));
+}
+
+/** Beyond this distance in pixels, a press on a card or a section header becomes a drag. */
+const DRAG_THRESHOLD = 5;
+
+/**
+ * Drags a repository card to another section (`what.repo`), or a section by its header before another
+ * one (`what.section`). Pointer events rather than HTML drag and drop, which the window keeps for
+ * folders dropped from the file manager. A label follows the pointer; the group under it is lit.
+ */
+function startDrag(event, what) {
+  if (event.button !== 0) return;
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let ghost = null;
+  let target = null;
+
+  const accepts = (group) => group && (what.repo || !group.classList.contains('others'));
+  const move = (e) => {
+    if (!ghost && Math.hypot(e.clientX - startX, e.clientY - startY) < DRAG_THRESHOLD) return;
+    if (!ghost) {
+      ghost = h('div', { class: 'drag-ghost' }, icon(what.repo ? 'folder' : 'layers', 14), what.label);
+      document.body.append(ghost);
+      document.body.classList.add('dragging-home');
+    }
+    ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 10}px)`;
+    const group = document.elementFromPoint(e.clientX, e.clientY)?.closest('.group');
+    const next = accepts(group) ? group : null;
+    if (next !== target) {
+      target?.classList.remove('drop-target');
+      next?.classList.add('drop-target');
+      target = next;
+    }
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('keydown', cancel, true);
+    if (!ghost) return;
+    ghost.remove();
+    document.body.classList.remove('dragging-home');
+    target?.classList.remove('drop-target');
+    // The click that ends a drag does not open the card or fold the section.
+    const swallow = (e) => { e.stopPropagation(); e.preventDefault(); };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+    if (!target) return;
+    const name = target.dataset.section ?? null;
+    if (what.repo) {
+      const repo = store.repositories.find((r) => r.path === what.repo);
+      if (repo && (repo.section ?? null) !== name) store.setSection([what.repo], name);
+    } else if (name !== null && name !== what.section) {
+      store.moveSection(what.section, store.sections.findIndex((s) => s.name === name));
+    }
+  };
+  const cancel = (e) => {
+    if (e.key !== 'Escape') return;
+    e.stopPropagation();
+    target?.classList.remove('drop-target');
+    target = null;
+    up();
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('keydown', cancel, true);
+}
+
+function sectionMenu(event, name) {
+  const index = store.sections.findIndex((s) => s.name === name);
+  openContextMenu(event, [
+    { label: t('sections.rename'), icon: 'edit', run: () => store.renameSection(name) },
+    { label: t('sections.moveUp'), icon: 'arrowUp', disabled: index <= 0, run: () => store.moveSection(name, index - 1) },
+    { label: t('sections.moveDown'), icon: 'arrowDown', disabled: index >= store.sections.length - 1, run: () => store.moveSection(name, index + 1) },
+    '-',
+    { label: t('sections.new'), icon: 'plus', run: () => store.newSection() },
+    '-',
+    { label: t('sections.remove'), icon: 'remove', danger: true, run: () => store.removeSection(name) },
+  ]);
+}
+
+/**
+ * One section and its cards (`name` null: the repositories in no section). `shown` are its
+ * repositories that pass the filter and the search, `total` how many it holds.
+ */
+function group(name, shown, total, collapsed) {
+  const others = name === null;
+  const title = others ? t('sections.others') : name;
+  const head = h('div', {
+    class: 'group-head',
+    oncontextmenu: others ? null : (event) => sectionMenu(event, name),
+    onpointerdown: others ? null : (event) => {
+      if (!event.target.closest('.group-actions')) startDrag(event, { section: name, label: name });
+    },
+  },
+  h('button', { type: 'button', class: 'group-toggle', 'aria-expanded': String(!collapsed), onclick: () => store.toggleSection(name) },
+    icon('chevron', 14, 2.2),
+    h('span', { class: 'group-name' }, title),
+    h('span', { class: 'n' }, shown.length < total ? `${shown.length} / ${total}` : String(total))),
+  !others && h('div', { class: 'group-actions' },
+    h('button', { type: 'button', class: 'icon-btn', title: t('sections.rename'), onclick: () => store.renameSection(name) }, icon('edit', 14)),
+    h('button', { type: 'button', class: 'icon-btn', title: t('sections.remove'), onclick: () => store.removeSection(name) }, icon('remove', 14))));
+  const body = collapsed ? null
+    : shown.length ? h('div', { class: 'cards' }, shown.map(card))
+      : h('div', { class: 'group-empty' }, t('sections.emptyHint'));
+  return h('section', { class: `group${collapsed ? ' collapsed' : ''}${others ? ' others' : ''}`, 'data-section': others ? null : name }, head, body);
+}
+
+/** The cards, in their sections when there are some. A section with nothing to show is left out
+ * while a filter or a search is on; a search unfolds the sections, so that no match stays hidden. */
+function cardList(repos, visible) {
+  if (store.sections.length === 0) {
+    return visible.length ? h('div', { class: 'cards' }, visible.map(card)) : h('div', { class: 'no-match' }, t('home.noMatch'));
+  }
+  const narrowed = visible.length < repos.length;
+  const searching = store.ui.search.trim() !== '';
+  const names = new Set(store.sections.map((s) => s.name));
+  const of = (name) => (r) => (name === null ? !names.has(r.section) : r.section === name);
+  const groups = [...store.sections.map((s) => [s.name, s.collapsed]), [null, store.othersCollapsed]]
+    .map(([name, collapsed]) => ({ name, collapsed: Boolean(collapsed) && !searching, shown: visible.filter(of(name)), total: repos.filter(of(name)).length }))
+    .filter((g) => (g.name === null ? g.total > 0 : true) && (!narrowed || g.shown.length > 0));
+  if (narrowed && visible.length === 0) return h('div', { class: 'no-match' }, t('home.noMatch'));
+  return h('div', { class: 'groups' }, groups.map((g) => group(g.name, g.shown, g.total, g.collapsed)));
 }
 
 /** Search field kept between renders, so that typing is never interrupted. */
@@ -118,11 +249,10 @@ export function renderHome(container) {
         disabled: visible.length === 0,
         onclick: () => store.removeMany(visible.length < repos.length ? visible.map((r) => r.path) : null),
       }, icon('remove', 16)),
+      h('button', { type: 'button', class: 'icon-btn new-section', title: t('sections.new'), onclick: () => store.newSection() }, icon('layers', 16)),
       h('button', { type: 'button', class: 'btn', onclick: () => store.clone() }, icon('fetch', 15), t('clone.short')),
       h('button', { type: 'button', class: 'btn primary', onclick: () => store.add() }, icon('plus', 15), t('action.repo.add'))),
-    visible.length
-      ? h('div', { class: 'cards' }, visible.map(card))
-      : h('div', { class: 'no-match' }, t('home.noMatch')),
+    cardList(repos, visible),
   ));
   if (typing) {
     searchField.focus({ preventScroll: true });

@@ -50,9 +50,28 @@ export function openRepoMenu(at, repo) {
     '-',
     { label: t('action.repo.openFolder'), icon: 'folder', run: () => store.openFolder(repo.path) },
     { label: t('action.repo.refresh'), icon: 'refresh', run: () => store.refresh(repo.path) },
+    { label: t('sections.fileUnder'), icon: 'layers', run: () => sectionMenu(at, repo) },
     '-',
     tabItems(repo),
     { label: t('action.repo.remove'), icon: 'remove', run: () => store.remove(repo.path) },
+  ].flat());
+}
+
+/** The sections a repository can be filed under, opened where its menu was. */
+function sectionMenu(at, repo) {
+  const where = at instanceof Event ? new MouseEvent('contextmenu', { clientX: at.clientX, clientY: at.clientY }) : at;
+  const current = repo.section ?? null;
+  openContextMenu(where, [
+    h('div', { class: 'menu-title' }, t('sections.fileUnder')),
+    store.sections.map((s) => ({
+      label: s.name,
+      icon: current === s.name ? 'check' : null,
+      disabled: current === s.name,
+      run: () => store.setSection([repo.path], s.name),
+    })),
+    store.sections.length > 0 && '-',
+    { label: t('sections.newWith'), icon: 'plus', run: () => store.newSection([repo.path]) },
+    current !== null && { label: t('sections.none'), icon: 'close', run: () => store.setSection([repo.path], null) },
   ].flat());
 }
 

@@ -6,7 +6,7 @@
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { openCloneDialog } from '../components/clone-dialog.js';
-import { confirm } from '../components/dialog.js';
+import { confirm, prompt } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
 
 const listeners = new Set();
@@ -15,6 +15,9 @@ const state = {
   repositories: [],
   /** Path of the repository shown; null for the overview. */
   active: null,
+  /** Sections of the overview, in order ({ name, collapsed }), and whether the others are folded. */
+  sections: [],
+  othersCollapsed: false,
   ui: {
     /** Number of backend calls in progress. */
     busy: 0,
@@ -37,6 +40,8 @@ function emit(topic, detail) {
 function apply(snapshot) {
   state.repositories = snapshot.repositories;
   state.active = snapshot.active ?? null;
+  state.sections = snapshot.sections ?? [];
+  state.othersCollapsed = Boolean(snapshot.othersCollapsed);
   emit('workspace');
 }
 
@@ -195,6 +200,80 @@ export const store = {
   /** `color`: « #rrggbb », or null for the colour derived from the name. */
   async setColor(path, color) {
     const snapshot = await run(() => backend.setRepositoryColor(path, color));
+    if (snapshot) apply(snapshot);
+  },
+
+  /** Sections of the overview, in order: { name, collapsed }. */
+  get sections() { return state.sections; },
+
+  get othersCollapsed() { return state.othersCollapsed; },
+
+  /**
+   * Asks for the name of a new section; with `paths`, those repositories are filed under it. Resolves
+   * with the name, or null.
+   */
+  async newSection(paths = []) {
+    const taken = (name) => state.sections.some((s) => s.name === name.trim());
+    const answer = await prompt({
+      title: t('sections.newTitle'),
+      message: paths.length ? tn('sections.newText', paths.length) : null,
+      label: t('sections.name'),
+      placeholder: t('sections.namePlaceholder'),
+      confirmLabel: t('sections.create'),
+      validate: (name) => (!name.trim() ? t('sections.nameEmpty') : taken(name) ? t('sections.nameTaken') : null),
+    });
+    if (!answer) return null;
+    const name = answer.value.trim();
+    const snapshot = await run(() => (paths.length ? backend.setRepositoriesSection(paths, name) : backend.addSection(name)));
+    if (snapshot) apply(snapshot);
+    return snapshot ? name : null;
+  },
+
+  async renameSection(name) {
+    const taken = (value) => value.trim() !== name && state.sections.some((s) => s.name === value.trim());
+    const answer = await prompt({
+      title: t('sections.renameTitle'),
+      label: t('sections.name'),
+      value: name,
+      confirmLabel: t('sections.rename'),
+      validate: (value) => (!value.trim() ? t('sections.nameEmpty') : taken(value) ? t('sections.nameTaken') : null),
+    });
+    if (!answer || answer.value.trim() === name) return;
+    const snapshot = await run(() => backend.renameSection(name, answer.value));
+    if (snapshot) apply(snapshot);
+  },
+
+  /** Removes a section after asking when it holds repositories; they go back with the others. */
+  async removeSection(name) {
+    const count = state.repositories.filter((r) => r.section === name).length;
+    if (count > 0) {
+      const ok = await confirm({
+        title: t('sections.removeTitle', { name }),
+        message: tn('sections.removeText', count),
+        confirmLabel: t('sections.remove'),
+      });
+      if (!ok) return;
+    }
+    const snapshot = await run(() => backend.removeSection(name));
+    if (snapshot) apply(snapshot);
+  },
+
+  async moveSection(name, index) {
+    const snapshot = await run(() => backend.moveSection(name, index));
+    if (snapshot) apply(snapshot);
+  },
+
+  /** Folds or unfolds a section; null is the group of repositories in no section. */
+  async toggleSection(name) {
+    const collapsed = name === null ? state.othersCollapsed : Boolean(state.sections.find((s) => s.name === name)?.collapsed);
+    const snapshot = await run(() => backend.setSectionCollapsed(name, !collapsed));
+    if (snapshot) apply(snapshot);
+  },
+
+  /** Files repositories under a section (null: under none). */
+  async setSection(paths, name) {
+    if (!paths.length) return;
+    const snapshot = await run(() => backend.setRepositoriesSection(paths, name));
     if (snapshot) apply(snapshot);
   },
 

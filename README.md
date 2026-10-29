@@ -30,6 +30,10 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   conflicts, operation left in progress (rebase, merge…), stashes and last commit. It can be searched
   (name, path, branch, upstream, last commit; several words all have to match, case and accents are
   ignored) and filtered (changes, to sync, needs attention).
+  Repositories can be filed under sections (a team, a product…): right click on a card or a tab ›
+  Section, or drag a card from one section to another. Sections fold, are renamed, removed (their
+  repositories stay, in no section) and reordered by dragging their header. A search unfolds them so
+  that no match stays hidden.
 - The repository tab shows the history of every branch, remote branch and tag as a commit graph,
   with a working-copy row on top. Selecting a commit shows its message, author and files; selecting
   a file shows its diff in a panel below the graph, which can be folded or enlarged to the whole

@@ -23,6 +23,18 @@ pub struct RepoEntry {
     /// The tab is pinned: it stays at the start of the tabs, always in view.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub pinned: bool,
+    /// Section of the overview the repository is filed under; `None`: with the others, at the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub section: Option<String>,
+}
+
+/// A group of repositories in the overview (a team, a product…), folded or not.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Section {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub collapsed: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,6 +43,12 @@ pub struct Workspace {
     pub repositories: Vec<RepoEntry>,
     /// Repository shown at startup; `None` shows the overview of all repositories.
     pub active: Option<PathBuf>,
+    /// Sections of the overview, in the user's order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sections: Vec<Section>,
+    /// The repositories in no section are folded (they only form a group when sections exist).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub others_collapsed: bool,
 }
 
 impl Workspace {
@@ -40,6 +58,7 @@ impl Workspace {
             .ok()
             .and_then(|text| serde_json::from_str(text.strip_prefix('\u{feff}').unwrap_or(&text)).ok())
             .unwrap_or_default();
+        workspace.tidy_sections();
         if workspace.active.as_ref().is_some_and(|a| !workspace.is_open(a)) {
             workspace.active = None;
         }
@@ -68,7 +87,7 @@ impl Workspace {
             self.open(&path);
             return false;
         }
-        self.repositories.push(RepoEntry { path, color: None, closed: false, pinned: false });
+        self.repositories.push(RepoEntry { path, color: None, closed: false, pinned: false, section: None });
         true
     }
 
@@ -138,6 +157,86 @@ impl Workspace {
     pub fn set_color(&mut self, path: &Path, color: Option<String>) {
         if let Some(entry) = self.repositories.iter_mut().find(|r| r.path == path) {
             entry.color = color;
+        }
+    }
+
+    /// Drops sections listed twice or without a name, and files under no section the repositories
+    /// whose section is no longer listed (a file edited by hand).
+    fn tidy_sections(&mut self) {
+        let mut seen = std::collections::HashSet::new();
+        self.sections.retain(|s| !s.name.trim().is_empty() && seen.insert(s.name.clone()));
+        for entry in &mut self.repositories {
+            if entry.section.as_ref().is_some_and(|name| !seen.contains(name)) {
+                entry.section = None;
+            }
+        }
+    }
+
+    fn has_section(&self, name: &str) -> bool {
+        self.sections.iter().any(|s| s.name == name)
+    }
+
+    /// Adds an empty section at the end; returns false when the name is empty or already taken.
+    pub fn add_section(&mut self, name: &str) -> bool {
+        let name = name.trim();
+        if name.is_empty() || self.has_section(name) {
+            return false;
+        }
+        self.sections.push(Section { name: name.to_owned(), collapsed: false });
+        true
+    }
+
+    /// Renames a section, its repositories following; returns false when the new name is empty or
+    /// taken by another section.
+    pub fn rename_section(&mut self, old: &str, new: &str) -> bool {
+        let new = new.trim();
+        if new.is_empty() || (new != old && self.has_section(new)) {
+            return false;
+        }
+        let Some(section) = self.sections.iter_mut().find(|s| s.name == old) else { return false };
+        section.name = new.to_owned();
+        for entry in self.repositories.iter_mut().filter(|r| r.section.as_deref() == Some(old)) {
+            entry.section = Some(new.to_owned());
+        }
+        true
+    }
+
+    /// Removes a section; its repositories go back with those in no section.
+    pub fn remove_section(&mut self, name: &str) {
+        self.sections.retain(|s| s.name != name);
+        for entry in self.repositories.iter_mut().filter(|r| r.section.as_deref() == Some(name)) {
+            entry.section = None;
+        }
+    }
+
+    /// Moves a section to `index` (clamped to the number of sections).
+    pub fn move_section(&mut self, name: &str, index: usize) {
+        let Some(from) = self.sections.iter().position(|s| s.name == name) else { return };
+        let section = self.sections.remove(from);
+        self.sections.insert(index.min(self.sections.len()), section);
+    }
+
+    /// Folds or unfolds a section; `None` is the group of repositories in no section.
+    pub fn set_section_collapsed(&mut self, name: Option<&str>, collapsed: bool) {
+        match name {
+            None => self.others_collapsed = collapsed,
+            Some(name) => {
+                if let Some(section) = self.sections.iter_mut().find(|s| s.name == name) {
+                    section.collapsed = collapsed;
+                }
+            }
+        }
+    }
+
+    /// Files repositories under a section, created at the end when it does not exist yet (`None`:
+    /// under no section).
+    pub fn set_section(&mut self, paths: &[PathBuf], section: Option<&str>) {
+        let section = section.map(str::trim).filter(|s| !s.is_empty());
+        if let Some(name) = section {
+            self.add_section(name);
+        }
+        for entry in self.repositories.iter_mut().filter(|r| paths.contains(&r.path)) {
+            entry.section = section.map(str::to_owned);
         }
     }
 
@@ -280,6 +379,46 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join(FILE_NAME), r#"{"repositories":[{"path":"/a","closed":true}],"active":"/a"}"#).unwrap();
         assert_eq!(Workspace::load(dir.path()).active, None);
+    }
+
+    #[test]
+    fn files_repositories_under_sections() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut w = workspace(&["/a", "/b", "/c"]);
+        let sections = |w: &Workspace| w.sections.iter().map(|s| s.name.clone()).collect::<Vec<_>>();
+        let of = |w: &Workspace, i: usize| w.repositories[i].section.clone();
+        assert!(w.add_section("Team A"));
+        assert!(!w.add_section(" Team A ") && !w.add_section("  "));
+        // Filing under a section that does not exist creates it.
+        w.set_section(&[PathBuf::from("/a"), PathBuf::from("/c")], Some("Team B"));
+        assert_eq!(sections(&w), ["Team A", "Team B"]);
+        assert_eq!(of(&w, 2).as_deref(), Some("Team B"));
+
+        assert!(!w.rename_section("Team B", "Team A"));
+        assert!(w.rename_section("Team B", "Platform"));
+        assert_eq!(of(&w, 0).as_deref(), Some("Platform"));
+        w.move_section("Platform", 0);
+        assert_eq!(sections(&w), ["Platform", "Team A"]);
+        w.set_section_collapsed(Some("Platform"), true);
+        w.set_section_collapsed(None, true);
+
+        w.save(dir.path()).unwrap();
+        assert_eq!(Workspace::load(dir.path()), w);
+
+        w.remove_section("Platform");
+        assert_eq!(sections(&w), ["Team A"]);
+        assert!(w.repositories.iter().all(|r| r.section.is_none()));
+    }
+
+    #[test]
+    fn forgets_sections_that_are_not_listed() {
+        let dir = tempfile::tempdir().unwrap();
+        let text = r#"{"repositories":[{"path":"/a","section":"Gone"},{"path":"/b","section":"Kept"}],"sections":[{"name":"Kept"},{"name":"Kept"},{"name":""}]}"#;
+        fs::write(dir.path().join(FILE_NAME), text).unwrap();
+        let w = Workspace::load(dir.path());
+        assert_eq!(w.sections.len(), 1);
+        assert_eq!(w.repositories[0].section, None);
+        assert_eq!(w.repositories[1].section.as_deref(), Some("Kept"));
     }
 
     #[test]

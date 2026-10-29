@@ -8,13 +8,17 @@ const delay = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
 const nameOf = (path) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 let repositories = [];
+let sections = [];
+let othersCollapsed = false;
 let active = null;
 let added = 0;
 
 function snapshot() {
   return structuredClone({
-    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), pinned: Boolean(r.pinned), summary: r.summary ?? null, error: r.error ?? null })),
+    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), pinned: Boolean(r.pinned), section: r.section ?? null, summary: r.summary ?? null, error: r.error ?? null })),
     active,
+    sections,
+    othersCollapsed,
   });
 }
 
@@ -147,6 +151,55 @@ export async function reorderRepository(path, index) {
 export async function setRepositoryColor(path, color) {
   const repo = repositories.find((r) => r.path === path);
   if (repo) repo.color = color;
+  return snapshot();
+}
+
+const sectionTaken = (name) => ({ code: 'section_exists', subject: name.trim(), message: 'a section already has this name' });
+const hasSection = (name) => sections.some((s) => s.name === name);
+
+export async function addSection(name) {
+  const clean = name.trim();
+  if (!clean || hasSection(clean)) throw sectionTaken(name);
+  sections.push({ name: clean });
+  return snapshot();
+}
+
+export async function renameSection(name, newName) {
+  const clean = newName.trim();
+  if (!clean || (clean !== name && hasSection(clean))) throw sectionTaken(newName);
+  const section = sections.find((s) => s.name === name);
+  if (section) section.name = clean;
+  for (const r of repositories) if (r.section === name) r.section = clean;
+  return snapshot();
+}
+
+export async function removeSection(name) {
+  sections = sections.filter((s) => s.name !== name);
+  for (const r of repositories) if (r.section === name) r.section = null;
+  return snapshot();
+}
+
+export async function moveSection(name, index) {
+  const from = sections.findIndex((s) => s.name === name);
+  if (from < 0) return snapshot();
+  const [section] = sections.splice(from, 1);
+  sections.splice(Math.min(index, sections.length), 0, section);
+  return snapshot();
+}
+
+export async function setSectionCollapsed(name, collapsed) {
+  if (name === null) othersCollapsed = collapsed;
+  else {
+    const section = sections.find((s) => s.name === name);
+    if (section) section.collapsed = collapsed;
+  }
+  return snapshot();
+}
+
+export async function setRepositoriesSection(paths, section) {
+  const clean = section?.trim() || null;
+  if (clean && !hasSection(clean)) sections.push({ name: clean });
+  for (const r of repositories) if (paths.includes(r.path)) r.section = clean;
   return snapshot();
 }
 

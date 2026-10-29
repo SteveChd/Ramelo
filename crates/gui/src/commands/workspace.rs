@@ -215,6 +215,57 @@ pub fn set_repository_color(state: State<'_, AppState>, path: String, color: Opt
     Ok(state.snapshot())
 }
 
+fn section_taken(name: &str) -> CommandError {
+    CommandError::new("section_exists", Some(name.trim().to_owned()), "a section already has this name, or the name is empty")
+}
+
+/// Adds an empty section at the end of the overview.
+#[tauri::command]
+pub fn add_section(state: State<'_, AppState>, name: String) -> CommandResult<Snapshot> {
+    if !state.edit_workspace(|workspace| workspace.add_section(&name))? {
+        return Err(section_taken(&name));
+    }
+    Ok(state.snapshot())
+}
+
+/// Renames a section; its repositories follow.
+#[tauri::command]
+pub fn rename_section(state: State<'_, AppState>, name: String, new_name: String) -> CommandResult<Snapshot> {
+    if !state.edit_workspace(|workspace| workspace.rename_section(&name, &new_name))? {
+        return Err(section_taken(&new_name));
+    }
+    Ok(state.snapshot())
+}
+
+/// Removes a section; its repositories go back with those in no section.
+#[tauri::command]
+pub fn remove_section(state: State<'_, AppState>, name: String) -> CommandResult<Snapshot> {
+    state.edit_workspace(|workspace| workspace.remove_section(&name))?;
+    Ok(state.snapshot())
+}
+
+/// Moves a section to position `index`.
+#[tauri::command]
+pub fn move_section(state: State<'_, AppState>, name: String, index: usize) -> CommandResult<Snapshot> {
+    state.edit_workspace(|workspace| workspace.move_section(&name, index))?;
+    Ok(state.snapshot())
+}
+
+/// Folds or unfolds a section (`None`: the repositories in no section).
+#[tauri::command]
+pub fn set_section_collapsed(state: State<'_, AppState>, name: Option<String>, collapsed: bool) -> CommandResult<Snapshot> {
+    state.edit_workspace(|workspace| workspace.set_section_collapsed(name.as_deref(), collapsed))?;
+    Ok(state.snapshot())
+}
+
+/// Files repositories under a section, created if needed (`None`: under no section).
+#[tauri::command]
+pub fn set_repositories_section(state: State<'_, AppState>, paths: Vec<String>, section: Option<String>) -> CommandResult<Snapshot> {
+    let paths: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    state.edit_workspace(|workspace| workspace.set_section(&paths, section.as_deref()))?;
+    Ok(state.snapshot())
+}
+
 /// Opens the folder in the system file manager.
 #[tauri::command]
 pub fn open_folder(path: String) -> CommandResult<()> {

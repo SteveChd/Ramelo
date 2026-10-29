@@ -6,4 +6,4 @@ mod error;
 mod workspace;
 
 pub use error::StorageError;
-pub use workspace::{RepoEntry, Workspace};
+pub use workspace::{RepoEntry, Section, Workspace};

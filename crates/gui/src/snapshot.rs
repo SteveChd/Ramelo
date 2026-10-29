@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ramelo_core::{CommitInfo, FileChange, Head, Operation, RepoSummary};
-use ramelo_storage::Workspace;
+use ramelo_storage::{Section, Workspace};
 use serde::Serialize;
 
 use crate::error::CommandError;
@@ -22,6 +22,10 @@ pub struct Snapshot {
     pub repositories: Vec<RepoView>,
     /// Path of the repository shown; `None` for the overview.
     pub active: Option<String>,
+    /// Sections of the overview, in order.
+    pub sections: Vec<Section>,
+    /// The group of repositories in no section is folded.
+    pub others_collapsed: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,6 +39,8 @@ pub struct RepoView {
     pub closed: bool,
     /// The tab is pinned at the start of the tabs.
     pub pinned: bool,
+    /// Section of the overview; `None`: in no section.
+    pub section: Option<String>,
     /// `None` until the repository was read, or when it could not be.
     pub summary: Option<SummaryView>,
     pub error: Option<CommandError>,
@@ -94,11 +100,17 @@ impl Snapshot {
                     color: entry.color.clone(),
                     closed: entry.closed,
                     pinned: entry.pinned,
+                    section: entry.section.clone(),
                     summary: state.and_then(|s| s.as_ref().ok()).map(SummaryView::from),
                     error: state.and_then(|s| s.as_ref().err()).cloned(),
                 }
             })
             .collect();
-        Self { repositories, active: workspace.active.as_ref().map(|p| p.display().to_string()) }
+        Self {
+            repositories,
+            active: workspace.active.as_ref().map(|p| p.display().to_string()),
+            sections: workspace.sections.clone(),
+            others_collapsed: workspace.others_collapsed,
+        }
     }
 }

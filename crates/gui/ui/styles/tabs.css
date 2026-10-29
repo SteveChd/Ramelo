@@ -83,7 +83,7 @@
 
 /* Colour of a repository, in the repository menu. */
 .color-picker { padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 8px; }
-.color-title { font-size: 11.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.color-title, .menu-title { font-size: 11.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .swatches { display: grid; grid-template-columns: repeat(6, 28px); gap: 7px; }
 .swatch {
   width: 28px; height: 28px; border-radius: 8px; border: 0; color: #FFFFFF; display: inline-grid; place-items: center;
@@ -100,3 +100,4 @@
 
 /* Tabs cut by the edges of the scrolling part fade out. */
 .tabbar.overflow .tabs-scroll { mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); }
+.menu-title { padding: 6px 10px 4px; }
