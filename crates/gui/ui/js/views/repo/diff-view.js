@@ -1,16 +1,21 @@
 // Diff of one file, in the panel below the graph: its hunks with old and new line numbers, in one
 // column or side by side (before on the left, after on the right). For the working copy,
-// each hunk can be staged, unstaged or discarded on its own, and the whole file as well.
+// each hunk can be staged, unstaged or discarded on its own, and the whole file as well. For the
+// changes of a pull request, each line can be commented, and the comments are shown under their line.
 
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { shortcut } from '../../app/actions.js';
 import { fileKind } from '../../lib/file-kinds.js';
+import { markdown } from '../../lib/markdown.js';
+import { relativeTime } from '../../lib/time.js';
 import { layout } from '../../state/layout.js';
+import { pullView } from '../../state/pull-view.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
 import { renderConflict } from './conflict-view.js';
+import { diffKey } from './files.js';
 import { renderPreview } from './preview.js';
 
 function hunkActions(index) {
@@ -99,6 +104,94 @@ function stats(data) {
   return h('span', { class: 'stats' }, h('span', { class: 'add' }, `+${data.additions}`), ' ', h('span', { class: 'del' }, `−${data.deletions}`));
 }
 
+// ---------- Comments of a pull request on its lines ----------
+
+/** The comment being written on a line: { key, text }, kept while other things are drawn. */
+let composer = null;
+
+/**
+ * The pull request whose whole changes this diff shows, with its comments on this file; null for
+ * any other diff (a commit of the pull request has other line numbers).
+ */
+function review(diff) {
+  const s = pullView.state;
+  const data = s.changes?.data;
+  if (diff.kind !== 'range' || s.number === null || !s.view || !data || diff.base !== data.base || diff.oid !== data.head) return null;
+  return {
+    comments: s.view.comments.filter((c) => c.path === diff.file && c.line && !c.outdated),
+    open: s.view.details.state === 'open',
+  };
+}
+
+const lineKey = (l) => `${l.old ?? ''}:${l.new ?? ''}`;
+
+/** A comment is on the side it was written on: the old line numbers for a removed line. */
+function isOn(comment, l) {
+  return comment.oldSide ? l.kind !== 'added' && l.old === comment.line : l.kind !== 'deleted' && l.new === comment.line;
+}
+
+function commentButton(l, rerender) {
+  return h('button', {
+    type: 'button',
+    class: 'line-comment-btn',
+    title: t('pr.commentLine'),
+    onclick: () => {
+      composer = { key: lineKey(l), text: '' };
+      rerender();
+    },
+  }, icon('plus', 12, 2.6));
+}
+
+function lineComposer(l, data, rerender) {
+  const busy = pullView.state.busy === 'line';
+  const area = h('textarea', { class: 'pull-reply', placeholder: t('pr.commentPlaceholder'), spellcheck: 'true', disabled: busy });
+  area.value = composer.text;
+  const send = async () => {
+    if (!area.value.trim() || pullView.state.busy) return;
+    const sent = await pullView.commentLine({
+      path: data.path,
+      oldPath: data.oldPath ?? null,
+      oldLine: l.kind === 'added' ? null : l.old,
+      newLine: l.kind === 'deleted' ? null : l.new,
+      body: area.value,
+    });
+    if (sent) composer = null;
+    rerender();
+  };
+  area.addEventListener('input', () => { composer.text = area.value; });
+  area.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      send();
+    }
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      composer = null;
+      rerender();
+    }
+  });
+  setTimeout(() => area.focus(), 0);
+  return h('div', { class: 'line-thread composing' },
+    area,
+    h('div', { class: 'pull-composer-foot' },
+      h('span', { class: 'hint' }, 'Ctrl+Enter'),
+      h('button', { type: 'button', class: 'btn small', disabled: busy, onclick: () => { composer = null; rerender(); } }, t('dialog.cancel')),
+      h('button', { type: 'button', class: 'btn small primary', disabled: busy, onclick: send }, busy ? t('pr.sending') : t('pr.comment'))));
+}
+
+/** What follows a line: its comments, and the box to write one when it is open. */
+function lineExtras(lines, rv, data, rerender) {
+  if (!rv) return null;
+  const comments = rv.comments.filter((c) => lines.some((l) => l && isOn(c, l)));
+  const target = lines.find((l) => l && composer?.key === lineKey(l));
+  return [
+    comments.length > 0 && h('div', { class: 'line-thread' }, comments.map((c) => h('div', { class: 'line-comment' },
+      h('header', {}, h('span', { class: 'who' }, icon('user', 12), c.author), c.created && h('time', {}, relativeTime(c.created))),
+      markdown(c.body)))),
+    target && lineComposer(target, data, rerender),
+  ];
+}
+
 function line(l) {
   const sign = { added: '+', deleted: '−', context: '', noNewline: '' }[l.kind];
   return h('div', { class: `dline ${l.kind}` },
@@ -159,6 +252,24 @@ function splitLine([before, after]) {
   return h('div', { class: 'sline' }, half(before, 'old'), half(after, 'new'));
 }
 
+/** A line of the unified diff, with what a pull request adds to it. */
+function reviewedLine(l, rv, data, rerender) {
+  const row = line(l);
+  if (!rv || l.kind === 'noNewline') return row;
+  if (rv.open) row.append(commentButton(l, rerender));
+  return [row, lineExtras([l], rv, data, rerender)];
+}
+
+/** A row of the side by side diff: a comment goes on its line after the changes, or before when removed. */
+function reviewedRow(pair, rv, data, rerender) {
+  const row = splitLine(pair);
+  const [before, after] = pair;
+  const target = after?.kind !== 'noNewline' && after ? after : before?.kind !== 'noNewline' ? before : null;
+  if (!rv || !target) return row;
+  if (rv.open) row.append(commentButton(target, rerender));
+  return [row, lineExtras(before === after ? [before] : [before, after], rv, data, rerender)];
+}
+
 export function renderDiff(container) {
   const diff = repoStore.state.diff;
   if (diff.kind === 'conflict') {
@@ -166,6 +277,13 @@ export function renderDiff(container) {
     return;
   }
   const data = diff.data;
+  const rv = review(diff);
+  const rerender = () => renderDiff(container);
+  // Drawn again for the same file (a comment sent): the place in the diff is kept.
+  const key = diffKey(diff);
+  const previous = container.querySelector('.diff-body');
+  const scroll = container.dataset.key === key && previous ? [previous.scrollTop, previous.scrollLeft] : [0, 0];
+  container.dataset.key = key ?? '';
   const sideLabel = diff.kind === 'commit' ? t('diff.inCommit', { oid: diff.oid.slice(0, 7) })
     : diff.kind === 'range' ? t('diff.inRange', { base: diff.base.slice(0, 7), head: diff.oid.slice(0, 7) }) : diff.staged ? t('diff.staged') : diff.untracked ? t('diff.untracked') : t('diff.unstaged');
   let body;
@@ -178,7 +296,9 @@ export function renderDiff(container) {
   else {
     body = data.hunks.map((hunk, index) => [
       h('div', { class: 'hunk-head' }, h('span', { class: 'h' }, hunk.header), hunkActions(index)),
-      layout.state.diffSplit ? splitRows(hunk.lines).map(splitLine) : hunk.lines.map(line),
+      layout.state.diffSplit
+        ? splitRows(hunk.lines).map((pair) => reviewedRow(pair, rv, data, rerender))
+        : hunk.lines.map((l) => reviewedLine(l, rv, data, rerender)),
     ]);
   }
   mount(container, h('div', { class: 'diff' },
@@ -198,5 +318,7 @@ export function renderDiff(container) {
       h('div', { class: 'vsep' }),
       panelButtons(),
       h('button', { type: 'button', class: 'icon-btn', title: t('diff.close'), onclick: () => repoStore.closeDiff() }, icon('close', 16))),
-    h('div', { class: `diff-body${diff.mode === 'preview' ? ' preview' : ''}${layout.state.diffSplit ? ' split' : ''}` }, body)));
+    h('div', { class: `diff-body${diff.mode === 'preview' ? ' preview' : ''}${layout.state.diffSplit ? ' split' : ''}${rv ? ' reviewed' : ''}` }, body)));
+  const shown = container.querySelector('.diff-body');
+  if (shown) [shown.scrollTop, shown.scrollLeft] = scroll;
 }

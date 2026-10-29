@@ -251,6 +251,8 @@ pullView.subscribe(() => {
   if (!view || !repo || repo.path !== view.path) return;
   renderPullPart(repo);
   renderSidebar(view.sidebar);
+  // The comments under the lines of the open file follow the pull request.
+  if (repoStore.state.diff?.kind === 'range') renderDiff(view.diff);
 });
 
 // The pull requests of the repository were read again: the list of the side panel follows.

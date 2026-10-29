@@ -21,6 +21,8 @@ export const pullRequest = (path, number) => invoke('pull_request', { path, numb
 export const pullRequestChanges = (path, number) => invoke('pull_request_changes', { path, number });
 export const rangeFileDiff = (path, from, to, file) => invoke('range_file_diff', { path, from, to, file });
 export const commentPullRequest = (path, number, body) => invoke('comment_pull_request', { path, number, body });
+/** `comment`: { path, oldPath, oldLine, newLine, body }; a removed line has no `newLine`, an added one no `oldLine`. */
+export const commentPullRequestLine = (path, number, comment) => invoke('comment_pull_request_line', { path, number, comment });
 export const mergePullRequest = (path, number, method, message) => invoke('merge_pull_request', { path, number, method, message });
 export const closePullRequest = (path, number) => invoke('close_pull_request', { path, number });
 export const createPullRequest = (path, pull) => invoke('create_pull_request', { path, pull });

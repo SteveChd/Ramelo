@@ -38,6 +38,7 @@ fn main() {
             commands::pulls::pull_request_changes,
             commands::pulls::range_file_diff,
             commands::pulls::comment_pull_request,
+            commands::pulls::comment_pull_request_line,
             commands::pulls::merge_pull_request,
             commands::pulls::close_pull_request,
             commands::pulls::create_pull_request,

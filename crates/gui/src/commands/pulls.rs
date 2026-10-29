@@ -109,6 +109,17 @@ pub async fn range_file_diff(state: State<'_, AppState>, path: String, from: Str
     Ok(ramelo_core::range_file_diff(&state.git, Path::new(&path), &from, &to, &file)?)
 }
 
+/// Comments one line of the changes of a pull request.
+#[tauri::command]
+pub async fn comment_pull_request_line(state: State<'_, AppState>, path: String, number: u64, comment: ramelo_hosting::LineComment) -> CommandResult<PullView> {
+    let hosting = required(&state, Path::new(&path))?;
+    if comment.body.trim().is_empty() {
+        return Err(CommandError::new("comment_empty", None, "the comment is empty"));
+    }
+    ramelo_hosting::add_line_comment(&hosting.account, &hosting.key, number, &comment)?;
+    pull_request(state, path, number).await
+}
+
 #[tauri::command]
 pub async fn comment_pull_request(state: State<'_, AppState>, path: String, number: u64, body: String) -> CommandResult<PullView> {
     let hosting = required(&state, Path::new(&path))?;

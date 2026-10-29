@@ -25,6 +25,7 @@ export const {
   pullRequestChanges,
   rangeFileDiff,
   commentPullRequest,
+  commentPullRequestLine,
   mergePullRequest,
   closePullRequest,
   createPullRequest,

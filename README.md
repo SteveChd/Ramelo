@@ -90,7 +90,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   number on the overview cards, highlighted when the user's review is requested, and their list in
   the repository's side panel. One opens in place of the graph with its description and comments
   (Markdown, answered from Ramelo), its changes, all together or commit by commit, with each file's
-  diff below, and its commits; it can be merged (merge commit, squash or rebase, as the service
+  diff below (where any line of the whole changes can be commented, the comments shown under their
+  line), and its commits; it can be merged (merge commit, squash or rebase, as the service
   allows) or closed. Its commits are fetched from the service, without adding a branch.
 - A pull request is opened from Ramelo (Repository › New pull request…, or the + of the list): from a
   local branch to a branch of the remote, with a title, a Markdown description and the draft option;

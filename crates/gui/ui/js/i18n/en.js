@@ -623,6 +623,7 @@ export default {
   'pr.tab.commits': 'Commits',
   'pr.noDescription': 'No description.',
   'pr.commentPlaceholder': 'Write a comment (Markdown)…',
+  'pr.commentLine': 'Comment this line',
   'pr.comment': 'Comment',
   'pr.sending': 'Sending…',
   'pr.readingChanges': 'Fetching the changes of the pull request…',

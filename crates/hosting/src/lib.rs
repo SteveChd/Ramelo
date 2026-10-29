@@ -14,8 +14,8 @@ mod time;
 pub use api::{api_base, normalize_url, token_page, verify, Profile};
 pub use error::HostingError;
 pub use pulls::{
-    add_comment, close_pull, create_pull, fetch_source, list_pulls, merge_pull, pull_comments, pull_details, pull_ref, repo_key, repo_web_url,
-    MergeMethod, NewPull, PullComment, PullDetails, PullRequest, PullState,
+    add_comment, add_line_comment, close_pull, create_pull, fetch_source, list_pulls, merge_pull, pull_comments, pull_details, pull_ref, repo_key, repo_web_url,
+    LineComment, MergeMethod, NewPull, PullComment, PullDetails, PullRequest, PullState,
 };
 pub use remote_url::{parse as parse_remote, RemoteLocation};
 pub use repos::{readme, search_repositories, Readme, RemoteRepo, SearchScope};

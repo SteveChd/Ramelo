@@ -29,7 +29,7 @@ const state = {
   commit: null,
   /** Details of that commit (with its files), once read. */
   commitDetails: null,
-  /** What is being sent: 'comment', 'merge' or 'close'. */
+  /** What is being sent: 'comment', 'line', 'merge' or 'close'. */
   busy: null,
 };
 
@@ -188,6 +188,13 @@ export const pullView = {
       // The target branch moved on the remote: fetched, so that the graph shows the merge.
       repoStore.fetch();
     }
+  },
+
+  /** Comments one line of the changes; true when sent. */
+  async commentLine(comment) {
+    if (state.busy) return false;
+    const { path, number } = state;
+    return send('line', () => backend.commentPullRequestLine(path, number, comment));
   },
 
   async closePull() {

@@ -116,7 +116,7 @@ function pullsOf(path) {
       body: `## What\n\n${title}.\n\n## Why\n\nThe old way was slow on large projects.\n\n- [x] Tests\n- [ ] Documentation`,
       thread: [
         { id: `${number}-1`, author: 'anna', body: 'Nice! Could you add a test for the **empty** case?', created: hoursAgo(number * 5), path: null, line: null },
-        { id: `${number}-2`, author: 'steve-c', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14 },
+        { id: `${number}-2`, author: 'steve-c', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14, oldSide: false, outdated: false },
       ],
     });
     const list = name === 'waypoint'
@@ -178,6 +178,17 @@ export async function commentPullRequest(path, number, body) {
   await delay(300);
   if (!body.trim()) throw { code: 'comment_empty', subject: null, message: 'empty' };
   findPull(path, number).thread.push({ id: String(Date.now()), author: accounts[0]?.username ?? 'me', body, created: Math.floor(Date.now() / 1000), path: null, line: null });
+  return pullView(findPull(path, number));
+}
+
+export async function commentPullRequestLine(path, number, comment) {
+  await delay(300);
+  if (!comment.body.trim()) throw { code: 'comment_empty', subject: null, message: 'empty' };
+  const oldSide = comment.newLine === null;
+  findPull(path, number).thread.push({
+    id: String(Date.now()), author: accounts[0]?.username ?? 'me', body: comment.body, created: Math.floor(Date.now() / 1000),
+    path: comment.path, line: oldSide ? comment.oldLine : comment.newLine, oldSide, outdated: false,
+  });
   return pullView(findPull(path, number));
 }
 

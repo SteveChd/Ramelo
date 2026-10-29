@@ -147,3 +147,23 @@
 .conflict-whole { padding: 18px 14px; display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
 .conflict-whole p { margin: 0; }
 .conflict-whole .picks { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Comments of a pull request on its lines. */
+.diff-body.reviewed { container-type: inline-size; }
+.diff-body.reviewed .dline, .diff-body.reviewed .sline { position: relative; }
+.line-comment-btn {
+  position: absolute; left: 92px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 0; border-radius: 5px;
+  background: var(--accent); color: var(--on-accent); display: none; align-items: center; justify-content: center; padding: 0; z-index: 1;
+}
+.sline .line-comment-btn { left: 50%; margin-left: 47px; }
+.dline:hover .line-comment-btn, .sline:hover .line-comment-btn { display: inline-flex; }
+.line-thread {
+  position: sticky; left: 0; width: min(760px, calc(100cqw - 124px)); margin: 4px 0 6px 104px; display: flex; flex-direction: column; gap: 6px;
+  font-family: var(--font); white-space: normal;
+}
+.line-comment { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); overflow: hidden; }
+.line-comment header { display: flex; align-items: center; gap: 8px; padding: 4px 10px; background: var(--row-alt); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.line-comment .who { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; }
+.line-comment .markdown { padding: 6px 10px; font-size: 13px; }
+.line-thread.composing { padding: 8px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: var(--radius-sm); background: var(--panel); }
+.line-thread .pull-reply { min-height: 64px; }

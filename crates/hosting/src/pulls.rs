@@ -85,6 +85,22 @@ pub struct PullComment {
     /// The file and line it is about, for a comment on the changes.
     pub path: Option<String>,
     pub line: Option<u32>,
+    /// The line is on the side before the changes (a removed line).
+    pub old_side: bool,
+    /// The line changed since: the comment is no longer on the changes as they are.
+    pub outdated: bool,
+}
+
+/// A comment on one line of the changes of a pull request. A line both sides have (unchanged) has
+/// both numbers; a removed line only `old_line`, an added one only `new_line`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LineComment {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub old_line: Option<u32>,
+    pub new_line: Option<u32>,
+    pub body: String,
 }
 
 /// What is asked to open a pull request.
@@ -397,6 +413,9 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     created: text(&c["created_at"]).and_then(|d| parse_iso(&d)),
                     path: text(&c["path"]),
                     line: c["line"].as_u64().or(c["original_line"].as_u64()).map(|l| l as u32),
+                    old_side: c["side"] == "LEFT",
+                    // A review comment whose line is gone from the current changes keeps only its original line.
+                    outdated: c["path"].is_string() && c["line"].is_null(),
                 })
                 .collect()
         }
@@ -413,6 +432,8 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     created: text(&n["created_at"]).and_then(|d| parse_iso(&d)),
                     path: text(&n["position"]["new_path"]).or_else(|| text(&n["position"]["old_path"])),
                     line: n["position"]["new_line"].as_u64().or(n["position"]["old_line"].as_u64()).map(|l| l as u32),
+                    old_side: n["position"]["new_line"].is_null() && n["position"]["old_line"].is_u64(),
+                    outdated: false,
                 })
                 .collect()
         }
@@ -428,6 +449,8 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     created: text(&c["created_on"]).and_then(|d| parse_iso(&d)),
                     path: text(&c["inline"]["path"]),
                     line: c["inline"]["to"].as_u64().or(c["inline"]["from"].as_u64()).map(|l| l as u32),
+                    old_side: c["inline"]["to"].is_null() && c["inline"]["from"].is_u64(),
+                    outdated: c["inline"]["outdated"].as_bool().unwrap_or(false),
                 })
                 .collect()
         }
@@ -445,6 +468,8 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                         created: millis(&c["createdDate"]),
                         path: text(&a["commentAnchor"]["path"]),
                         line: a["commentAnchor"]["line"].as_u64().map(|l| l as u32),
+                        old_side: a["commentAnchor"]["fileType"] == "FROM",
+                        outdated: a["commentAnchor"]["orphaned"].as_bool().unwrap_or(false),
                     }
                 })
                 .collect()
@@ -466,6 +491,59 @@ fn add_comment_with(provider: Provider, client: &Client, key: &str, number: u64,
         Provider::GitLab => client.post_json(&format!("{url}/notes"), &json!({ "body": body }))?,
         Provider::Bitbucket => client.post_json(&format!("{url}/comments"), &json!({ "content": { "raw": body } }))?,
         Provider::BitbucketServer => client.post_json(&format!("{url}/comments"), &json!({ "text": body }))?,
+    };
+    Ok(())
+}
+
+/// Comments one line of the changes of a pull request, as they are on the service now.
+pub fn add_line_comment(account: &Account, key: &str, number: u64, comment: &LineComment) -> Result<(), HostingError> {
+    line_comment_with(account.provider, &client(account)?, key, number, comment)
+}
+
+fn line_comment_with(provider: Provider, client: &Client, key: &str, number: u64, c: &LineComment) -> Result<(), HostingError> {
+    let url = format!("{}/{number}", base(provider, key));
+    let on_new = c.new_line.is_some();
+    let line = c.new_line.or(c.old_line).ok_or_else(|| HostingError::Format("a line comment needs a line".into()))?;
+    let _: Value = match provider {
+        Provider::GitHub => {
+            // The line is counted in the changes up to the last commit of the pull request.
+            let pull: Value = client.get_json(&url)?;
+            let commit = text(&pull["head"]["sha"]).ok_or_else(|| HostingError::Format("no head commit".into()))?;
+            let side = if on_new { "RIGHT" } else { "LEFT" };
+            client.post_json(&format!("{url}/comments"), &json!({ "body": c.body, "commit_id": commit, "path": c.path, "line": line, "side": side }))?
+        }
+        Provider::GitLab => {
+            let request: Value = client.get_json(&url)?;
+            let refs = &request["diff_refs"];
+            let mut position = json!({
+                "position_type": "text",
+                "base_sha": refs["base_sha"], "start_sha": refs["start_sha"], "head_sha": refs["head_sha"],
+                "new_path": c.path, "old_path": c.old_path.as_deref().unwrap_or(&c.path),
+            });
+            if let Some(n) = c.new_line {
+                position["new_line"] = json!(n);
+            }
+            if let Some(n) = c.old_line {
+                position["old_line"] = json!(n);
+            }
+            client.post_json(&format!("{url}/discussions"), &json!({ "body": c.body, "position": position }))?
+        }
+        Provider::Bitbucket => {
+            let inline = if on_new { json!({ "path": c.path, "to": line }) } else { json!({ "path": c.path, "from": line }) };
+            client.post_json(&format!("{url}/comments"), &json!({ "content": { "raw": c.body }, "inline": inline }))?
+        }
+        Provider::BitbucketServer => {
+            let line_type = match (c.old_line, c.new_line) {
+                (Some(_), Some(_)) => "CONTEXT",
+                (None, Some(_)) => "ADDED",
+                _ => "REMOVED",
+            };
+            let mut anchor = json!({ "path": c.path, "line": line, "lineType": line_type, "fileType": if on_new { "TO" } else { "FROM" }, "diffType": "EFFECTIVE" });
+            if let Some(old) = &c.old_path {
+                anchor["srcPath"] = json!(old);
+            }
+            client.post_json(&format!("{url}/comments"), &json!({ "text": c.body, "anchor": anchor }))?
+        }
     };
     Ok(())
 }
@@ -660,6 +738,39 @@ mod tests {
         assert_eq!((body["merge_method"].as_str(), body["commit_title"].as_str(), body["commit_message"].as_str()), (Some("squash"), Some("Title"), Some("Body")));
         close_with(&github, &client, "o/r", 5).unwrap();
         assert_eq!(requests.recv().unwrap().0, "PATCH /repos/o/r/pulls/5 HTTP/1.1");
+    }
+
+    #[test]
+    fn comments_a_line_of_the_changes() {
+        let removed = LineComment { path: "src/a.rs".into(), old_path: None, old_line: Some(7), new_line: None, body: "Why?".into() };
+        let unchanged = LineComment { old_line: Some(3), new_line: Some(4), ..removed.clone() };
+
+        let (base, requests) = serve(vec![(200, vec![], r#"{"head":{"sha":"abc"}}"#.into()), (201, vec![], "{}".into())]);
+        line_comment_with(Provider::GitHub, &bearer(&base), "o/r", 5, &removed).unwrap();
+        requests.recv().unwrap();
+        let (line, _, body) = requests.recv().unwrap();
+        let body: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(line, "POST /repos/o/r/pulls/5/comments HTTP/1.1");
+        assert_eq!((body["commit_id"].as_str(), body["line"].as_u64(), body["side"].as_str()), (Some("abc"), Some(7), Some("LEFT")));
+
+        let refs = r#"{"diff_refs":{"base_sha":"b","start_sha":"s","head_sha":"h"}}"#;
+        let (base, requests) = serve(vec![(200, vec![], refs.into()), (201, vec![], "{}".into())]);
+        line_comment_with(Provider::GitLab, &bearer(&base), "t/a", 3, &unchanged).unwrap();
+        requests.recv().unwrap();
+        let (line, _, body) = requests.recv().unwrap();
+        let body: Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(line, "POST /projects/t%2Fa/merge_requests/3/discussions HTTP/1.1");
+        assert_eq!((body["position"]["old_line"].as_u64(), body["position"]["new_line"].as_u64(), body["position"]["head_sha"].as_str()), (Some(3), Some(4), Some("h")));
+
+        let (base, requests) = serve(vec![(201, vec![], "{}".into())]);
+        line_comment_with(Provider::Bitbucket, &bearer(&base), "ws/r", 2, &removed).unwrap();
+        let body: Value = serde_json::from_str(&requests.recv().unwrap().2).unwrap();
+        assert_eq!((body["inline"]["from"].as_u64(), body["inline"]["to"].is_null()), (Some(7), true));
+
+        let (base, requests) = serve(vec![(201, vec![], "{}".into())]);
+        line_comment_with(Provider::BitbucketServer, &bearer(&base), "PLAT/tool", 2, &unchanged).unwrap();
+        let body: Value = serde_json::from_str(&requests.recv().unwrap().2).unwrap();
+        assert_eq!((body["anchor"]["line"].as_u64(), body["anchor"]["lineType"].as_str(), body["anchor"]["fileType"].as_str()), (Some(4), Some("CONTEXT"), Some("TO")));
     }
 
     #[test]
