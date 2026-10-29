@@ -159,6 +159,8 @@ export default {
   'accounts.check': 'Vérifier',
   'accounts.checking': 'Vérification…',
   'accounts.valid': 'Le jeton fonctionne',
+  'accounts.replaceToken': 'Changer le token',
+  'accounts.replaceTitle': 'Nouveau token pour « {name} »',
   'accounts.remove': 'Retirer le compte',
   'accounts.removeTitle': 'Retirer le compte « {name} » ?',
   'accounts.removeText': 'Son jeton est effacé du coffre d\'identifiants. Tu peux aussi le révoquer sur {service}.',

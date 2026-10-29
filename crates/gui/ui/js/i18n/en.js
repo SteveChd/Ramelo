@@ -159,6 +159,8 @@ export default {
   'accounts.check': 'Check',
   'accounts.checking': 'Checking…',
   'accounts.valid': 'The token works',
+  'accounts.replaceToken': 'Change the token',
+  'accounts.replaceTitle': 'New token for « {name} »',
   'accounts.remove': 'Remove the account',
   'accounts.removeTitle': 'Remove the account « {name} »?',
   'accounts.removeText': 'Its token is deleted from the credential store. You can still revoke it on {service}.',

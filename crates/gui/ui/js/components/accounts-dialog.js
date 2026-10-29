@@ -14,7 +14,7 @@ export function providerMark(provider, size = '') {
   return h('span', { class: `provider-mark ${provider} ${size}`, 'aria-hidden': 'true' }, t(`accounts.mark.${provider}`));
 }
 
-function accountRow(account, redraw) {
+function accountRow(account, redraw, showForm) {
   const status = h('span', { class: 'account-status' });
   const check = async (button) => {
     button.disabled = true;
@@ -57,6 +57,13 @@ function accountRow(account, redraw) {
       status),
     h('div', { class: 'account-actions' },
       checkButton,
+      // The form for the same service, address and login: the account is found again and its token replaced.
+      h('button', {
+        type: 'button',
+        class: 'icon-btn',
+        title: t('accounts.replaceToken'),
+        onclick: () => showForm({ provider: account.provider, url: account.provider === 'bitbucket' ? '' : account.url, login: account.login, replacing: account }),
+      }, icon('lock', 16)),
       h('button', { type: 'button', class: 'icon-btn', title: t('accounts.remove'), onclick: remove }, icon('remove', 16))));
 }
 
@@ -67,12 +74,12 @@ function listView(box, close, showForm) {
     dialogHead(t('accounts.title'), close),
     h('p', { class: 'dialog-text' }, t('accounts.intro')),
     list.length
-      ? h('ul', { class: 'accounts' }, list.map((a) => accountRow(a, redraw)))
+      ? h('ul', { class: 'accounts' }, list.map((a) => accountRow(a, redraw, showForm)))
       : h('div', { class: 'accounts-empty' }, t('accounts.none')),
     h('div', { class: 'dialog-foot' },
       h('span', { class: 'hint' }, icon('lock', 13), t('accounts.storeHint')),
       h('button', { type: 'button', class: 'btn', onclick: () => close(null) }, t('dialog.close')),
-      h('button', { type: 'button', class: 'btn primary', autofocus: true, onclick: () => showForm() }, icon('plus', 15), t('accounts.add'))));
+      h('button', { type: 'button', class: 'btn primary', autofocus: true, onclick: () => showForm({}) }, icon('plus', 15), t('accounts.add'))));
   (box.querySelector('[autofocus]'))?.focus();
 }
 
@@ -138,8 +145,9 @@ function formView(box, close, back, state) {
   for (const input of [url, login, token]) input.addEventListener('keydown', (event) => { if (event.key === 'Enter') run(); });
 
   mount(box,
-    dialogHead(t('accounts.addTitle'), close),
-    h('div', { class: 'field' }, h('span', { class: 'label' }, t('accounts.service')), tabs),
+    dialogHead(state.replacing ? t('accounts.replaceTitle', { name: state.replacing.username }) : t('accounts.addTitle'), close),
+    // A new token keeps the service of the account.
+    !state.replacing && h('div', { class: 'field' }, h('span', { class: 'label' }, t('accounts.service')), tabs),
     urlField,
     loginField,
     h('label', { class: 'field' }, h('span', { class: 'label' }, t('accounts.token')), token),
@@ -158,7 +166,7 @@ export async function openAccountsDialog({ add = false } = {}) {
   return openDialog((box, close) => {
     box.classList.add('medium', 'accounts-dialog');
     const showList = () => listView(box, close, showForm);
-    const showForm = () => formView(box, close, showList, {});
+    const showForm = (state = {}) => formView(box, close, showList, state);
     if (add) showForm(); else showList();
   });
 }
