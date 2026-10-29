@@ -152,10 +152,12 @@
 .diff-body.reviewed { container-type: inline-size; }
 .diff-body.reviewed .dline, .diff-body.reviewed .sline { position: relative; }
 .line-comment-btn {
-  position: absolute; left: 92px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 0; border-radius: 5px;
+  position: absolute; left: 104px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 0; border-radius: 5px;
   background: var(--accent); color: var(--on-accent); display: none; align-items: center; justify-content: center; padding: 0; z-index: 1;
 }
-.sline .line-comment-btn { left: 50%; margin-left: 47px; }
+/* Over the sign, beside the line numbers rather than over them. */
+.sline .line-comment-btn { left: 50%; margin-left: 48px; width: 16px; }
+.sline .line-comment-btn.before { left: 48px; margin-left: 0; }
 .dline:hover .line-comment-btn, .sline:hover .line-comment-btn { display: inline-flex; }
 .line-thread {
   position: sticky; left: 0; width: min(760px, calc(100cqw - 124px)); margin: 4px 0 6px 104px; display: flex; flex-direction: column; gap: 6px;

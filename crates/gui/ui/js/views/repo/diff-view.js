@@ -130,10 +130,10 @@ function isOn(comment, l) {
   return comment.oldSide ? l.kind !== 'added' && l.old === comment.line : l.kind !== 'deleted' && l.new === comment.line;
 }
 
-function commentButton(l, rerender) {
+function commentButton(l, rerender, side = '') {
   return h('button', {
     type: 'button',
-    class: 'line-comment-btn',
+    class: `line-comment-btn ${side}`,
     title: t('pr.commentLine'),
     onclick: () => {
       composer = { key: lineKey(l), text: '' };
@@ -266,7 +266,7 @@ function reviewedRow(pair, rv, data, rerender) {
   const [before, after] = pair;
   const target = after?.kind !== 'noNewline' && after ? after : before?.kind !== 'noNewline' ? before : null;
   if (!rv || !target) return row;
-  if (rv.open) row.append(commentButton(target, rerender));
+  if (rv.open) row.append(commentButton(target, rerender, target === after ? '' : 'before'));
   return [row, lineExtras(before === after ? [before] : [before, after], rv, data, rerender)];
 }
 
