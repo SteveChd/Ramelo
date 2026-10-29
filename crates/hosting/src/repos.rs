@@ -86,12 +86,7 @@ fn search_with(provider: Provider, client: &Client, query: &str, scope: SearchSc
             let list: Value = client.get_json(&format!("/projects?order_by=last_activity_at&per_page=50{membership}{search}"))?;
             items(&list).iter().map(gitlab_repo).collect()
         }
-        (Provider::Bitbucket, _) => {
-            // Bitbucket Cloud has no search across workspaces: always the user's repositories.
-            let filter = if query.is_empty() { String::new() } else { format!("&q={}", encode(&format!("name ~ \"{}\"", query.replace('"', "")))) };
-            let page: Value = client.get_json(&format!("/repositories?role=member&sort=-updated_on&pagelen=50{filter}"))?;
-            items(&page["values"]).iter().map(bitbucket_repo).collect()
-        }
+        (Provider::Bitbucket, _) => bitbucket_search(client, query)?,
         (Provider::BitbucketServer, scope) => {
             let permission = if scope == SearchScope::Mine { "&permission=REPO_WRITE" } else { "" };
             let name = if query.is_empty() { String::new() } else { format!("&name={q}") };
@@ -100,6 +95,35 @@ fn search_with(provider: Provider, client: &Client, query: &str, scope: SearchSc
         }
     };
     repos.truncate(LIMIT);
+    Ok(repos)
+}
+
+/// Workspaces of a Bitbucket Cloud user read at most, one request each.
+const BITBUCKET_WORKSPACES: usize = 12;
+
+/// Bitbucket Cloud no longer searches across workspaces: the user's workspaces are listed, then each
+/// one is searched. A query that names a workspace lists all its repositories.
+fn bitbucket_search(client: &Client, query: &str) -> Result<Vec<RemoteRepo>, HostingError> {
+    let listing: Value = match client.get_json("/user/workspaces?pagelen=100") {
+        Err(HostingError::NotFound(_)) => client.get_json("/workspaces?role=member&pagelen=100")?,
+        other => other?,
+    };
+    let mut slugs: Vec<String> = items(&listing["values"])
+        .iter()
+        .filter_map(|v| v["workspace"]["slug"].as_str().or_else(|| v["slug"].as_str()).map(str::to_owned))
+        .collect();
+    let wanted = query.to_lowercase();
+    // The workspace named by the query first, so that it is not left out by the limit.
+    slugs.sort_by_key(|slug| !(!wanted.is_empty() && slug.to_lowercase().contains(&wanted)));
+    let name_filter = format!("&q={}", encode(&format!("name ~ \"{}\"", query.replace('"', ""))));
+    let mut repos = Vec::new();
+    for slug in slugs.iter().take(BITBUCKET_WORKSPACES) {
+        let whole = query.is_empty() || slug.to_lowercase().contains(&wanted);
+        let filter = if whole { "" } else { &name_filter };
+        let page: Value = client.get_json(&format!("/repositories/{}?sort=-updated_on&pagelen=50{filter}", encode(slug)))?;
+        repos.extend(items(&page["values"]).iter().map(bitbucket_repo));
+    }
+    repos.sort_by_key(|r| std::cmp::Reverse(r.updated));
     Ok(repos)
 }
 
@@ -304,11 +328,21 @@ mod tests {
         let page = r#"{"values":[{"full_name":"ws/repo","is_private":true,"links":{"html":{"href":"https://bitbucket.org/ws/repo"},
             "clone":[{"name":"https","href":"https://steve@bitbucket.org/ws/repo.git"},{"name":"ssh","href":"git@bitbucket.org:ws/repo.git"}]},
             "mainbranch":{"name":"master"},"updated_on":"2026-10-01T10:00:00.123456+00:00"}]}"#;
-        let (base, requests) = serve(vec![(200, vec![], page.into())]);
+        let workspaces = r#"{"values":[{"workspace":{"slug":"ws"}},{"workspace":{"slug":"acme"}}]}"#;
+        let (base, requests) = serve(vec![(200, vec![], workspaces.into()), (200, vec![], page.into()), (200, vec![], r#"{"values":[]}"#.into())]);
         let repos = search_with(Provider::Bitbucket, &bearer(&base), "repo", SearchScope::All).unwrap();
         assert_eq!(repos[0].clone_ssh.as_deref(), Some("git@bitbucket.org:ws/repo.git"));
         assert_eq!(repos[0].default_branch.as_deref(), Some("master"));
-        assert!(requests.recv().unwrap().0.contains("&q=name%20~%20%22repo%22"));
+        assert!(requests.recv().unwrap().0.starts_with("GET /user/workspaces"));
+        assert!(requests.recv().unwrap().0.contains("/repositories/ws?sort=-updated_on&pagelen=50&q=name%20~%20%22repo%22"));
+        assert!(requests.recv().unwrap().0.contains("/repositories/acme?"));
+
+        // A query naming a workspace lists all its repositories, that workspace first.
+        let (base, requests) = serve(vec![(200, vec![], workspaces.into()), (200, vec![], page.into()), (200, vec![], r#"{"values":[]}"#.into())]);
+        search_with(Provider::Bitbucket, &bearer(&base), "acme", SearchScope::Mine).unwrap();
+        requests.recv().unwrap();
+        let first = requests.recv().unwrap().0;
+        assert!(first.contains("/repositories/acme?") && !first.contains("&q="), "{first}");
 
         let page = r#"{"values":[{"slug":"tool","project":{"key":"PLAT"},"public":false,"links":{"self":[{"href":"https://bb.corp/projects/PLAT/repos/tool/browse"}],
             "clone":[{"name":"http","href":"https://bb.corp/scm/plat/tool.git"},{"name":"ssh","href":"ssh://git@bb.corp:7999/plat/tool.git"}]}}]}"#;
