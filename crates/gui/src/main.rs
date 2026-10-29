@@ -28,6 +28,8 @@ fn main() {
             commands::accounts::remove_account,
             commands::accounts::token_page,
             commands::accounts::open_url,
+            commands::accounts::search_repositories,
+            commands::accounts::repository_readme,
             commands::workspace::startup,
             commands::workspace::refresh,
             commands::workspace::pick_folder,

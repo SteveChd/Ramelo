@@ -65,6 +65,40 @@ export async function openUrl(url) {
   window.open(url, '_blank', 'noopener');
 }
 
+const REMOTE_REPOS = [
+  ['steve-c/ramelo', 'Desktop git client for people who juggle many repositories', 'Rust', 12, false],
+  ['steve-c/dotfiles', 'Shell, editor and terminal settings', 'Shell', 0, false],
+  ['acme/device-ui', 'User interface of the device', 'TypeScript', 0, true],
+  ['acme/firmware-tools', 'Tools to flash and inspect the firmware', 'Python', 2, true],
+  ['acme/pipeline', null, 'Kotlin', 0, true],
+  ['rust-lang/rust', 'Empowering everyone to build reliable and efficient software.', 'Rust', 99000, false],
+];
+
+/** « fail » in the search fails, as a service out of reach would. */
+export async function searchRepositories(accountId, query, scope) {
+  await delay(450);
+  if (query.includes('fail')) throw { code: 'hosting_network', subject: 'connection refused', message: 'cannot reach' };
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const now = Math.floor(Date.now() / 1000);
+  return REMOTE_REPOS
+    .filter(([name]) => scope === 'all' || !name.startsWith('rust-lang/'))
+    .filter(([name, description]) => words.every((w) => `${name} ${description ?? ''}`.toLowerCase().includes(w)))
+    .map(([name, description, language, stars, priv], i) => ({
+      key: name, fullName: name, description, private: priv, fork: name.endsWith('dotfiles'),
+      webUrl: `https://github.com/${name}`, cloneHttps: `https://github.com/${name}.git`, cloneSsh: `git@github.com:${name}.git`,
+      defaultBranch: 'main', updated: now - i * 86400 * 3, stars, language, readmePath: null,
+    }));
+}
+
+export async function repositoryReadme(accountId, repo) {
+  await delay(300);
+  if (repo.fullName.endsWith('pipeline')) return null;
+  return {
+    name: 'README.md',
+    text: `# ${repo.fullName.split('/').pop()}\n\n${repo.description ?? ''}\n\n## Build\n\n\`\`\`sh\ncargo build --release\n\`\`\`\n\n- Fast\n- Friendly\n\n> Note: this README is a sample of the design preview.\n`,
+  };
+}
+
 export async function startup() {
   await delay(300);
   repositories = sampleWorkspace();

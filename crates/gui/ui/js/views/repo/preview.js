@@ -78,7 +78,8 @@ function themeCss() {
   `;
 }
 
-function documentHtml(kind, text) {
+/** A whole page for a sandboxed frame: HTML as it is, Markdown formatted in the colours of the theme. */
+export function documentHtml(kind, text) {
   if (kind === 'html') return text;
   return `<!doctype html><html><head><meta charset="utf-8"><style>${themeCss()}</style></head><body>${marked.parse(text)}</body></html>`;
 }

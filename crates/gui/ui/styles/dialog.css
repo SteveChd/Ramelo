@@ -112,3 +112,42 @@
   display: inline-block; animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Finding a repository on an account. */
+.dialog.finder { gap: 10px; }
+.finder-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.finder-bar .finder-search {
+  flex: 1 1 260px; height: 34px; border: 1px solid var(--ctl); background: var(--panel); border-radius: var(--radius-sm);
+  padding: 0 10px; outline: none; user-select: text;
+}
+.finder-bar .finder-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.finder-account { height: 34px; max-width: 320px; border: 1px solid var(--ctl); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); padding: 0 8px; }
+.finder-account.single { display: flex; align-items: center; gap: 8px; border: 0; padding: 0 4px; font-weight: 600; font-size: 13px; }
+.finder-status { color: var(--err); font-size: 12.5px; }
+.finder-status:empty { display: none; }
+.finder-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(260px, 38%) 1fr; gap: 12px; }
+.finder-list { overflow: auto; border: 1px solid var(--border); border-radius: 10px; padding: 4px; transition: opacity .15s; }
+.finder-list.busy { opacity: .6; }
+.finder-row { padding: 8px 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+.finder-row:hover { background: var(--hover); }
+.finder-row.selected { background: var(--a-soft); }
+.finder-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.finder-name .full { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.finder-row.selected .finder-name .full { color: var(--a-ink); }
+.finder-name .tag { flex: 0 0 auto; display: inline-flex; align-items: center; font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; height: 18px; }
+.finder-desc { font-size: 12.5px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.finder-meta { display: flex; gap: 10px; font-size: 11.5px; color: var(--muted); }
+.finder-note { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.finder-note.error { color: var(--err); }
+.finder-preview { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.finder-head { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.finder-title { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.finder-title h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+.finder-title p { margin: 0; font-size: 12.5px; color: var(--ink2); }
+.finder-address code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.finder-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.finder-readme-name { padding: 6px 14px; font-size: 11.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.finder-preview .doc-frame { flex: 1 1 auto; }
+.finder-plain { flex: 1 1 auto; margin: 0; padding: 14px 18px; overflow: auto; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; }
+.finder-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); text-align: center; }
+.find-link { align-self: flex-start; font-size: 12.5px; margin-top: 2px; }

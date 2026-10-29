@@ -46,13 +46,15 @@ function parentOf(path) {
 
 /**
  * Asks for the clone and runs it; resolves with the path of the new repository, or null.
- * `near`: a repository path whose folder is offered when no folder was used before.
+ * `near`: a repository path whose folder is offered when no folder was used before; `address`: the
+ * address to clone, when it was chosen elsewhere (a repository found on an account). `find`: called
+ * by the link that searches the accounts instead, after this dialog is closed.
  */
-export function openCloneDialog({ near = null } = {}) {
+export function openCloneDialog({ near = null, address = '', find = null } = {}) {
   let running = false;
   return openDialog((box, close) => {
     box.classList.add('medium', 'clone-dialog');
-    const url = h('input', { type: 'text', autofocus: true, spellcheck: 'false', placeholder: t('clone.urlPlaceholder') });
+    const url = h('input', { type: 'text', autofocus: !address, spellcheck: 'false', value: address, placeholder: t('clone.urlPlaceholder') });
     const folder = h('input', { type: 'text', spellcheck: 'false', value: lastFolder(near ? parentOf(near) : ''), placeholder: t('clone.folderPlaceholder') });
     const name = h('input', { type: 'text', spellcheck: 'false' });
     const branch = h('input', { type: 'text', spellcheck: 'false', placeholder: t('clone.branchPlaceholder') });
@@ -132,7 +134,10 @@ export function openCloneDialog({ near = null } = {}) {
       h('div', { class: 'dialog-head' },
         h('h2', {}, t('clone.title')),
         h('button', { type: 'button', class: 'icon-btn', title: t('dialog.cancel'), onclick: () => (running ? backend.cancelClone() : close(null)) }, icon('close', 16))),
-      h('label', { class: 'field' }, h('span', { class: 'label' }, t('clone.url')), url),
+      h('label', { class: 'field' },
+        h('span', { class: 'label' }, t('clone.url')),
+        url,
+        find && h('button', { type: 'button', class: 'link find-link', onclick: () => { if (!running) { close(null); find(); } } }, icon('search', 13), t('finder.fromClone'))),
       h('div', { class: 'field' },
         h('span', { class: 'label' }, t('clone.folder')),
         h('div', { class: 'with-button' }, folder,
@@ -147,6 +152,8 @@ export function openCloneDialog({ near = null } = {}) {
       error,
       h('div', { class: 'dialog-foot' }, cancel, submit));
     update();
+    // An address chosen elsewhere: the folder is what is left to check.
+    if (address) setTimeout(() => submit.focus(), 0);
   }, () => {
     // Escape or a click outside while cloning stops the clone instead of hiding it.
     if (running) backend.cancelClone();

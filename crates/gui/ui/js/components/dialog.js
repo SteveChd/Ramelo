@@ -22,7 +22,8 @@ export function openDialog(build, guard = () => true) {
       resolve(answer);
     };
     const onKey = (event) => {
-      if (event.key === 'Escape') {
+      // With a dialog opened from another one, Escape closes only the one on top.
+      if (event.key === 'Escape' && [...document.querySelectorAll('.backdrop')].pop() === backdrop) {
         event.preventDefault();
         event.stopPropagation();
         if (guard()) close(null);

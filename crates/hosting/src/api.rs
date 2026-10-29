@@ -57,7 +57,6 @@ fn auth(provider: Provider, login: Option<&str>, token: &str) -> Auth {
 }
 
 /// Client for an account set up earlier, with its token from the credential store.
-#[allow(dead_code)]
 pub(crate) fn client(account: &Account) -> Result<Client, HostingError> {
     let token = crate::secrets::token(&account.id)?;
     Ok(Client::new(&api_base(account.provider, &account.url), auth(account.provider, account.login.as_deref(), &token)))

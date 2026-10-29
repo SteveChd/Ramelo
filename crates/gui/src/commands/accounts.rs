@@ -1,7 +1,7 @@
 //! Accounts on hosting services: adding one checks its token with the service and keeps it in the
 //! system's credential store; the accounts file only names them.
 
-use ramelo_hosting::HostingError;
+use ramelo_hosting::{HostingError, Readme, RemoteRepo, SearchScope};
 use ramelo_storage::{Account, Provider};
 use tauri::State;
 
@@ -44,7 +44,7 @@ pub async fn add_account(
 /// Checks that the token of an account is still accepted.
 #[tauri::command]
 pub async fn check_account(state: State<'_, AppState>, id: String) -> CommandResult<()> {
-    let account = state.accounts().get(&id).cloned().ok_or_else(|| HostingError::NoAccount(id.clone()))?;
+    let account = account(&state, &id)?;
     let token = ramelo_hosting::token(&account.id)?;
     ramelo_hosting::verify(account.provider, &account.url, account.login.as_deref(), &token)?;
     Ok(())
@@ -73,4 +73,22 @@ pub fn open_url(url: String) -> CommandResult<()> {
         return Err(HostingError::InvalidUrl(url).into());
     }
     open::that_detached(&url).map_err(|e| CommandError::new("open_failed", Some(url), e.to_string()))
+}
+
+fn account(state: &AppState, id: &str) -> CommandResult<Account> {
+    Ok(state.accounts().get(id).cloned().ok_or_else(|| HostingError::NoAccount(id.to_owned()))?)
+}
+
+/// Repositories of an account whose name matches `query` (empty: the most recently active ones).
+#[tauri::command]
+pub async fn search_repositories(state: State<'_, AppState>, account_id: String, query: String, scope: SearchScope) -> CommandResult<Vec<RemoteRepo>> {
+    let account = account(&state, &account_id)?;
+    Ok(ramelo_hosting::search_repositories(&account, &query, scope)?)
+}
+
+/// The README of a repository found on an account; `None` when it has none.
+#[tauri::command]
+pub async fn repository_readme(state: State<'_, AppState>, account_id: String, repo: RemoteRepo) -> CommandResult<Option<Readme>> {
+    let account = account(&state, &account_id)?;
+    Ok(ramelo_hosting::readme(&account, &repo)?)
 }

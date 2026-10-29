@@ -18,6 +18,8 @@ export const {
   removeAccount,
   tokenPage,
   openUrl,
+  searchRepositories,
+  repositoryReadme,
   startup,
   refresh,
   pickFolder,

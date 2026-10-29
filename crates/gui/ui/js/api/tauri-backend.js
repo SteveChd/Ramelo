@@ -15,6 +15,8 @@ export const checkAccount = (id) => invoke('check_account', { id });
 export const removeAccount = (id) => invoke('remove_account', { id });
 export const tokenPage = (provider, url) => invoke('token_page', { provider, url });
 export const openUrl = (url) => invoke('open_url', { url });
+export const searchRepositories = (accountId, query, scope) => invoke('search_repositories', { accountId, query, scope });
+export const repositoryReadme = (accountId, repo) => invoke('repository_readme', { accountId, repo });
 export const startup = () => invoke('startup');
 /** Reads again one repository, or all of them when `path` is null. */
 export const refresh = (path = null) => invoke('refresh', { path });

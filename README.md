@@ -80,6 +80,9 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   and Bitbucket Data Center (File › Accounts…, Ctrl+,): a token is checked with the service before it
   is kept, in the system's credential store (Windows Credential Manager, the Secret Service on Linux),
   never in a file. A link opens the page of the service where the token is created.
+- A repository can be found on an account (File › Find a repository…, Ctrl+Shift+N, or from the
+  clone dialog): among the user's repositories or everything the service shows, with the README of
+  the selected one formatted beside the list, then cloned over HTTPS or SSH.
 - English (default) or French interface, light or dark theme, splash screen.
 
 ## Roadmap

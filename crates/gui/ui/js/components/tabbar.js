@@ -238,6 +238,7 @@ export function renderTabbar(container) {
         onclick: (event) => openContextMenu(event.currentTarget, [
           { label: t('action.repo.add'), icon: 'folder', hint: 'Ctrl+O', run: () => store.add() },
           { label: t('action.repo.clone'), icon: 'fetch', hint: 'Ctrl+Shift+O', run: () => store.clone() },
+          { label: t('action.repo.find'), icon: 'search', hint: 'Ctrl+Shift+N', run: () => store.find() },
         ]),
       }, icon('plus', 16))),
   );
