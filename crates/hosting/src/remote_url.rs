@@ -32,8 +32,18 @@ pub fn parse(url: &str) -> Option<RemoteLocation> {
     if hostname.is_empty() || path.is_empty() {
         return None;
     }
-    Some(RemoteLocation { hostname: hostname.to_ascii_lowercase(), path: path.to_owned() })
+    let hostname = hostname.to_ascii_lowercase();
+    let hostname = SSH_HOSTS.iter().find(|(ssh, _)| *ssh == hostname).map_or(hostname, |(_, web)| (*web).to_owned());
+    Some(RemoteLocation { hostname, path: path.to_owned() })
 }
+
+/// Servers that the public services use for ssh only, with the name of the service they belong to.
+const SSH_HOSTS: &[(&str, &str)] = &[
+    ("ssh.bitbucket.org", "bitbucket.org"),
+    ("altssh.bitbucket.org", "bitbucket.org"),
+    ("ssh.github.com", "github.com"),
+    ("altssh.gitlab.com", "gitlab.com"),
+];
 
 #[cfg(test)]
 mod tests {
@@ -53,6 +63,8 @@ mod tests {
         assert_eq!(at("ssh://git@GitHub.com:22/steve/ramelo"), gh);
         assert_eq!(at("https://gitlab.example.com:8443/group/sub/project.git"), ("gitlab.example.com".into(), "group/sub/project".into()));
         assert_eq!(at("ssh://git@bitbucket.example.com:7999/proj/repo.git"), ("bitbucket.example.com".into(), "proj/repo".into()));
+        assert_eq!(at("git@ssh.bitbucket.org:acme/tool.git"), ("bitbucket.org".into(), "acme/tool".into()));
+        assert_eq!(at("ssh://git@ssh.github.com:443/steve/ramelo.git"), gh);
         assert!(parse("C:\\Users\\steve\\repo").is_none());
         assert!(parse("/home/steve/repo").is_none());
         assert!(parse("file:///home/steve/repo").is_none());
