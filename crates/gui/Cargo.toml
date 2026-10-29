@@ -12,6 +12,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 ramelo-core.workspace = true
 ramelo-storage.workspace = true
+ramelo-hosting.workspace = true
 base64 = "0.22"
 open = "5"
 rfd = "0.15"

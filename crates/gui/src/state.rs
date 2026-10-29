@@ -1,5 +1,5 @@
-//! State shared by the commands: the workspace, the last known state of each repository and the
-//! language of the interface.
+//! State shared by the commands: the workspace, the last known state of each repository, the
+//! accounts on hosting services and the language of the interface.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -8,7 +8,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use ramelo_core::{Git, RepoSummary};
-use ramelo_storage::Workspace;
+use ramelo_storage::{Accounts, Workspace};
 
 use crate::error::{CommandError, CommandResult};
 use crate::snapshot::Snapshot;
@@ -21,6 +21,7 @@ pub struct AppState {
     data_dir: PathBuf,
     pub git: Git,
     workspace: Mutex<Workspace>,
+    accounts: Mutex<Accounts>,
     states: Mutex<HashMap<PathBuf, RepoState>>,
     language: Mutex<String>,
     /// Set to stop the clone in progress.
@@ -34,10 +35,12 @@ impl AppState {
 
     pub fn with_git(data_dir: PathBuf, git: Git) -> Self {
         let workspace = Workspace::load(&data_dir);
+        let accounts = Accounts::load(&data_dir);
         Self {
             data_dir,
             git,
             workspace: Mutex::new(workspace),
+            accounts: Mutex::new(accounts),
             states: Mutex::new(HashMap::new()),
             language: Mutex::new("en".to_owned()),
             clone_cancelled: AtomicBool::new(false),
@@ -47,6 +50,19 @@ impl AppState {
     /// Exclusive access to the workspace; a lock poisoned by a panic stays usable.
     pub fn workspace(&self) -> MutexGuard<'_, Workspace> {
         self.workspace.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// The accounts on hosting services.
+    pub fn accounts(&self) -> MutexGuard<'_, Accounts> {
+        self.accounts.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Applies `change` to the accounts and saves them.
+    pub fn edit_accounts<T>(&self, change: impl FnOnce(&mut Accounts) -> T) -> CommandResult<T> {
+        let mut accounts = self.accounts();
+        let result = change(&mut accounts);
+        accounts.save(&self.data_dir)?;
+        Ok(result)
     }
 
     fn states(&self) -> MutexGuard<'_, HashMap<PathBuf, RepoState>> {

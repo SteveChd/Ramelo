@@ -76,6 +76,10 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   when the branch has diverged; push sets the upstream on the first push and offers to pull first or
   force with lease when it is rejected. Local changes are stashed and restored automatically.
 - Every repository is read again when the window regains focus, in parallel.
+- Accounts on GitHub (github.com or Enterprise), GitLab (gitlab.com or self-hosted), Bitbucket Cloud
+  and Bitbucket Data Center (File › Accounts…, Ctrl+,): a token is checked with the service before it
+  is kept, in the system's credential store (Windows Credential Manager, the Secret Service on Linux),
+  never in a file. A link opens the page of the service where the token is created.
 - English (default) or French interface, light or dark theme, splash screen.
 
 ## Roadmap
@@ -91,7 +95,8 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
 | Folder | Role |
 | --- | --- |
 | `crates/core` | Runs git and reads repositories: status (porcelain v2), history and graph layout, diffs, file contents, staging and commits, branches, fetch / pull / push, history search, cloning, repository discovery on disk. No dependency on the interface or the storage. |
-| `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order and the active one, written atomically. |
+| `crates/storage` | The workspace (`workspace.json` in the user's data folder): repositories in tab order, the active one and the sections of the overview; and the accounts on hosting services (`accounts.json`, without their tokens). Files are written atomically. |
+| `crates/hosting` | Hosting services through their web API (GitHub, GitLab, Bitbucket Cloud and Data Center), and their tokens in the system's credential store. |
 | `crates/gui` | Tauri 2 application: commands called by the interface (`src/commands`). |
 | `crates/gui/ui` | Interface in HTML, CSS and JavaScript (ES modules, no framework, no bundler). |
 | `crates/gui/ui/vendor` | Third-party code, kept as published: [marked](https://github.com/markedjs/marked) (MIT) for the Markdown preview. |

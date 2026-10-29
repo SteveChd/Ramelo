@@ -12,6 +12,12 @@ export const isDesktop = tauri.available;
 const impl = isDesktop ? tauri : mock;
 
 export const {
+  listAccounts,
+  addAccount,
+  checkAccount,
+  removeAccount,
+  tokenPage,
+  openUrl,
   startup,
   refresh,
   pickFolder,

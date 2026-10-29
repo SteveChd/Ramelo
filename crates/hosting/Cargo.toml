@@ -1,0 +1,16 @@
+[package]
+name = "ramelo-hosting"
+description = "Ramelo: git hosting services (GitHub, GitLab, Bitbucket) through their web API"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ramelo-storage.workspace = true
+base64 = "0.22"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ureq = { version = "2", default-features = false, features = ["tls", "native-certs", "json", "gzip"] }

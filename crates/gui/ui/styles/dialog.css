@@ -75,3 +75,40 @@
 .clone-progress .bar.busy { width: 30% !important; animation: clone-busy 1.1s ease-in-out infinite alternate; }
 @keyframes clone-busy { from { margin-left: 0; } to { margin-left: 70%; } }
 .field input:disabled { opacity: .6; }
+
+/* Accounts on hosting services. */
+.provider-mark {
+  flex: 0 0 auto; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+  font-size: 12px; font-weight: 750; letter-spacing: .02em; color: #FFFFFF; background: var(--muted);
+}
+.provider-mark.small { width: 20px; height: 20px; border-radius: 5px; font-size: 9px; }
+.provider-mark.github { background: #24292f; }
+.provider-mark.gitlab { background: #e2432a; }
+.provider-mark.bitbucket { background: #0c66e4; }
+.provider-mark.bitbucketServer { background: #1d4b9a; }
+.accounts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.account { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.account-who { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.account-name { font-weight: 600; font-size: 13.5px; }
+.account-name .login { font-weight: 400; color: var(--muted); }
+.account-where { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-status { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.account-status:empty { display: none; }
+.account-status.ok { color: var(--ok, #2f9e44); }
+.account-status.bad { color: var(--err); }
+.account-status.busy { color: var(--muted); }
+.account-actions { display: flex; align-items: center; gap: 4px; }
+.accounts-empty { padding: 22px; text-align: center; color: var(--muted); border: 1px dashed var(--ctl); border-radius: 10px; }
+.dialog-foot .hint { display: inline-flex; align-items: center; gap: 6px; }
+.provider-seg { flex-wrap: wrap; align-self: flex-start; }
+.provider-seg button { display: inline-flex; align-items: center; gap: 6px; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.field[hidden] { display: none; }
+.token-help { font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.link:hover { text-decoration: underline; }
+.spinner {
+  width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+  display: inline-block; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

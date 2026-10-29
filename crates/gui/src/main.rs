@@ -22,6 +22,12 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::accounts::list_accounts,
+            commands::accounts::add_account,
+            commands::accounts::check_account,
+            commands::accounts::remove_account,
+            commands::accounts::token_page,
+            commands::accounts::open_url,
             commands::workspace::startup,
             commands::workspace::refresh,
             commands::workspace::pick_folder,

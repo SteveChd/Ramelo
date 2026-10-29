@@ -2,6 +2,7 @@
 //! (a folder, a git command…), and an English fallback message.
 
 use ramelo_core::GitError;
+use ramelo_hosting::HostingError;
 use ramelo_storage::StorageError;
 use serde::Serialize;
 
@@ -26,6 +27,12 @@ impl From<GitError> for CommandError {
 
 impl From<StorageError> for CommandError {
     fn from(error: StorageError) -> Self {
+        Self { code: error.code(), subject: error.subject(), message: error.to_string() }
+    }
+}
+
+impl From<HostingError> for CommandError {
+    fn from(error: HostingError) -> Self {
         Self { code: error.code(), subject: error.subject(), message: error.to_string() }
     }
 }

@@ -22,6 +22,49 @@ function snapshot() {
   });
 }
 
+// ---------- Accounts on hosting services ----------
+
+const DEFAULT_URLS = { github: 'https://github.com', gitlab: 'https://gitlab.com', bitbucket: 'https://bitbucket.org' };
+let accounts = [
+  { id: 'steve@https://github.com', provider: 'github', url: 'https://github.com', username: 'steve-c', name: 'Steve Chadaud' },
+];
+
+/** A token containing « bad » is refused, as a service would. */
+export async function addAccount(provider, url, login, token) {
+  await delay(500);
+  const address = (url.trim() || DEFAULT_URLS[provider] || '').replace(/\/+$/, '');
+  if (!/^https?:\/\/./.test(address)) throw { code: 'invalid_url', subject: address, message: 'not a web address' };
+  if (!token.trim()) throw { code: 'token_missing', subject: null, message: 'the token is empty' };
+  if (provider === 'bitbucket' && !login?.trim()) throw { code: 'login_missing', subject: null, message: 'e-mail missing' };
+  if (token.includes('bad')) throw { code: 'hosting_unauthorized', subject: null, message: 'the service refused the token' };
+  const username = provider === 'bitbucket' ? login.split('@')[0] : 'steve';
+  const id = `${username}@${address}`;
+  accounts = accounts.filter((a) => a.id !== id).concat({ id, provider, url: provider === 'bitbucket' ? DEFAULT_URLS.bitbucket : address, username, name: 'Steve Chadaud', login: login?.trim() || null });
+  return structuredClone(accounts);
+}
+
+export async function listAccounts() {
+  return structuredClone(accounts);
+}
+
+export async function checkAccount(id) {
+  await delay(400);
+  if (!accounts.some((a) => a.id === id)) throw { code: 'hosting_no_account', subject: id, message: 'no account' };
+}
+
+export async function removeAccount(id) {
+  accounts = accounts.filter((a) => a.id !== id);
+  return structuredClone(accounts);
+}
+
+export async function tokenPage(provider, url) {
+  return `${url || DEFAULT_URLS[provider] || ''}/settings/tokens`;
+}
+
+export async function openUrl(url) {
+  window.open(url, '_blank', 'noopener');
+}
+
 export async function startup() {
   await delay(300);
   repositories = sampleWorkspace();

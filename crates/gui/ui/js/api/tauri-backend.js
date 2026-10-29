@@ -9,6 +9,12 @@ const invoke = (command, args) => tauri.core.invoke(command, args);
 
 // ---------- Workspace ----------
 /** Workspace of the last session, with the state of every repository read again. */
+export const listAccounts = () => invoke('list_accounts');
+export const addAccount = (provider, url, login, token) => invoke('add_account', { provider, url, login, token });
+export const checkAccount = (id) => invoke('check_account', { id });
+export const removeAccount = (id) => invoke('remove_account', { id });
+export const tokenPage = (provider, url) => invoke('token_page', { provider, url });
+export const openUrl = (url) => invoke('open_url', { url });
 export const startup = () => invoke('startup');
 /** Reads again one repository, or all of them when `path` is null. */
 export const refresh = (path = null) => invoke('refresh', { path });

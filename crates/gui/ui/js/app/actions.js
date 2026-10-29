@@ -1,6 +1,7 @@
 // Commands of the interface, shared by the menus and the keyboard: label, shortcut, availability and
 // what they do.
 
+import { openAccountsDialog } from '../components/accounts-dialog.js';
 import { openTabList } from '../components/tabbar.js';
 import { toggleTheme } from '../components/theme.js';
 import { t } from '../i18n/i18n.js';
@@ -28,6 +29,7 @@ function goToTab(n) {
 }
 
 const ACTIONS = {
+  'app.accounts': { key: 'Ctrl+,', run: () => openAccountsDialog() },
   'repo.add': { key: 'Ctrl+O', run: () => store.add() },
   'repo.clone': { key: 'Ctrl+Shift+O', run: () => store.clone() },
   'repo.refresh': { key: 'F5', enabled: hasRepos, run: () => store.refresh(store.activeRepo?.path ?? null) },
