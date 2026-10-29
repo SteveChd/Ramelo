@@ -177,7 +177,7 @@ let lastHistory = null;
 export function renderGraph(container, repo) {
   const { history, selection } = repoStore.state;
   if (!history) {
-    mount(container, h('div', { class: 'loading' }, t('repo.loading')));
+    mount(container, h('div', { class: 'loading' }, h('span', { class: 'spinner' }), t('repo.loading')));
     lastHistory = null;
     return;
   }

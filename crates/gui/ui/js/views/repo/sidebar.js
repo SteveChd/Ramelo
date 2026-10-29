@@ -105,7 +105,8 @@ function pullSection(path) {
   return section('pulls', t('pr.section'), list.length,
     entry.error && !list.length ? h('div', { class: 'sb-empty error', title: describeError(entry.error) }, t('pr.unreadable'))
       : list.length ? list.map((p) => pullItem(p, path))
-        : h('div', { class: 'sb-empty' }, entry.loading ? t('repo.loading') : t('pr.none')),
+        : entry.loading ? h('div', { class: 'sb-empty waiting' }, h('span', { class: 'spinner' }), t('repo.loading'))
+          : h('div', { class: 'sb-empty' }, t('pr.none')),
     tools);
 }
 
@@ -113,7 +114,7 @@ export function renderSidebar(container) {
   if (!container) return;
   const refs = repoStore.state.refs;
   if (!refs) {
-    mount(container, h('div', { class: 'loading' }, t('repo.loading')));
+    mount(container, h('div', { class: 'loading' }, h('span', { class: 'spinner' }), t('repo.loading')));
     return;
   }
   const byRemote = new Map();

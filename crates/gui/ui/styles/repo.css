@@ -158,7 +158,8 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .details .link:hover { text-decoration: underline; }
 .details .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .details .actions .btn { height: 28px; font-size: 12.5px; }
-.loading { padding: 20px 14px; color: var(--muted); font-size: 13px; }
+.loading { padding: 20px 14px; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+.loading .spinner { width: 14px; height: 14px; }
 
 /* ---------- Pull requests ---------- */
 .sb-tools { display: inline-flex; margin-left: auto; flex: 0 0 auto; }
@@ -238,3 +239,6 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .markdown table { border-collapse: collapse; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 3px 8px; }
 .markdown hr { border: 0; border-top: 1px solid var(--border); }
+.pull-note.waiting, .sb-empty.waiting { display: flex; align-items: center; gap: 10px; }
+.sb-empty.waiting .spinner { width: 12px; height: 12px; }
+.pull-note.waiting .spinner { width: 16px; height: 16px; color: var(--accent); }

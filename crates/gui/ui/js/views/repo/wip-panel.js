@@ -104,7 +104,7 @@ let box = null;
 export function renderWipPanel(container, repo) {
   const s = repo.summary;
   if (!s) {
-    mount(container, h('div', { class: 'loading' }, t('repo.loading')));
+    mount(container, h('div', { class: 'loading' }, h('span', { class: 'spinner' }), t('repo.loading')));
     return;
   }
   if (fields.path !== repo.path || !scroll) {

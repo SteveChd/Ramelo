@@ -112,6 +112,11 @@ function note(text, kind = '') {
   return h('div', { class: `pull-note ${kind}` }, text);
 }
 
+/** Something is read from the service: a turning wheel with what it is. */
+function waiting(text) {
+  return h('div', { class: 'pull-note waiting' }, h('span', { class: 'spinner' }), text);
+}
+
 function stats(f) {
   return h('span', { class: 'stats' },
     f.binary ? t('diff.binaryShort')
@@ -129,7 +134,7 @@ function fileKey(file) {
 
 function changesTab() {
   const { changes, commit, commitDetails } = pullView.state;
-  if (!changes || changes.loading) return note(t('pr.readingChanges'));
+  if (!changes || changes.loading) return waiting(t('pr.readingChanges'));
   if (changes.error) return note(describeError(changes.error), 'error');
   const { commits, files: all } = changes.data;
   const picker = h('select', {
@@ -146,7 +151,7 @@ function changesTab() {
       picker,
       commit && h('button', { type: 'button', class: 'btn small', onclick: () => pullView.showCommit(null) }, t('pr.allChangesShort')),
       files && h('span', { class: 'muted' }, tn('details.files', files.length))),
-    !files ? note(t('repo.loading'))
+    !files ? waiting(t('repo.loading'))
       : files.length === 0 ? note(t('pr.noChanges'))
         : h('div', { class: 'pull-files' }, files.map((f) => fileRow({
           path: f.path,
@@ -161,7 +166,7 @@ function changesTab() {
 
 function commitsTab() {
   const { changes } = pullView.state;
-  if (!changes || changes.loading) return note(t('pr.readingChanges'));
+  if (!changes || changes.loading) return waiting(t('pr.readingChanges'));
   if (changes.error) return note(describeError(changes.error), 'error');
   return h('div', { class: 'pull-commits' }, changes.data.commits.map((c) => h('div', {
     class: 'pull-commit',
@@ -185,7 +190,7 @@ export function renderPull(container) {
       h('div', { class: 'pull-top' },
         h('button', { type: 'button', class: 'btn pull-back', onclick: () => pullView.close() }, icon('chevron', 14, 2.2), t('pr.back')),
         h('h2', { class: 'pull-title' }, h('span', { class: 'pull-number' }, `#${number}`)))),
-    error ? note(describeError(error), 'error') : note(t('repo.loading')));
+    error ? note(describeError(error), 'error') : waiting(t('repo.loading')));
     return;
   }
   mount(container,

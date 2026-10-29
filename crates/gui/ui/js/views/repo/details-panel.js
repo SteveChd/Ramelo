@@ -10,7 +10,7 @@ import { diffKey, fileRow } from './files.js';
 export function renderDetailsPanel(container) {
   const { details, diff } = repoStore.state;
   if (!details) {
-    mount(container, h('div', { class: 'loading' }, t('repo.loading')));
+    mount(container, h('div', { class: 'loading' }, h('span', { class: 'spinner' }), t('repo.loading')));
     return;
   }
   const [summary, ...rest] = details.message.split('\n');
