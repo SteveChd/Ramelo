@@ -131,6 +131,9 @@ impl GitError {
     }
 }
 
+/// What git or ssh says when the remote refuses the user.
+const AUTH_FAILURES: &[&str] = &["Authentication failed", "could not read Username", "Permission denied (publickey", "terminal prompts disabled", "Host key verification failed"];
+
 /// Turns git's message for a failed command into a precise error when it is a well-known situation
 /// that the interface can explain or offer to fix.
 pub(crate) fn classify(command: String, message: String, output: &str) -> GitError {
@@ -143,13 +146,29 @@ pub(crate) fn classify(command: String, message: String, output: &str) -> GitErr
         GitError::Diverged
     } else if any(&["[rejected]", "non-fast-forward", "fetch first"]) {
         GitError::PushRejected(message)
-    } else if any(&["Authentication failed", "could not read Username", "Permission denied (publickey", "terminal prompts disabled", "Host key verification failed"]) {
-        GitError::AuthFailed(message)
+    } else if any(AUTH_FAILURES) {
+        // The line that says why (from ssh, often), rather than git's « Could not read from remote ».
+        let cause = output.lines().map(str::trim).find(|l| AUTH_FAILURES.iter().any(|n| l.contains(n)));
+        GitError::AuthFailed(cause.map_or(message, |l| l.trim_start_matches("fatal: ").to_owned()))
     } else if let Some(path) = ["is already used by worktree at '", "is already checked out at '"].iter().find_map(|n| output.split(n).nth(1)) {
         GitError::BranchInWorktree(path.split('\'').next().unwrap_or_default().to_owned())
     } else if let Some(name) = output.split("branch '").nth(1).filter(|_| output.contains("is not fully merged")) {
         GitError::BranchNotMerged(name.split('\'').next().unwrap_or_default().to_owned())
     } else {
         GitError::Failed { command, message }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_refused_remote_says_why() {
+        let output = "Cloning into 'x'...\ngit@bitbucket.org: Permission denied (publickey).\nfatal: Could not read from remote repository.\n";
+        match classify("clone".into(), "Could not read from remote repository.".into(), output) {
+            GitError::AuthFailed(detail) => assert_eq!(detail, "git@bitbucket.org: Permission denied (publickey)."),
+            other => panic!("{other:?}"),
+        }
     }
 }
