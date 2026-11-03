@@ -108,14 +108,25 @@ pub async fn pull_request(state: State<'_, AppState>, path: String, number: u64)
 pub async fn pull_request_changes(state: State<'_, AppState>, path: String, number: u64) -> CommandResult<RangeChanges> {
     let root = PathBuf::from(&path);
     let hosting = required(&state, &root)?;
-    let details = ramelo_hosting::pull_details(&hosting.account, &hosting.key, number)?;
+    // The branches come from the conversation kept when there is one: one request less to the service.
+    let pull = match cached_pull(&state, &root, number) {
+        Some(pull) => pull,
+        None => ramelo_hosting::pull_details(&hosting.account, &hosting.key, number)?.pull,
+    };
     let named = |e| crate::commands::ssh::name_host(&state, e, &root);
-    let target = ramelo_core::fetch_commit(&state.git, &root, &hosting.remote, &format!("refs/heads/{}", details.pull.target_branch)).map_err(named)?;
-    let (source, reference) = ramelo_hosting::fetch_source(hosting.provider, &details.pull);
+    let target = ramelo_core::fetch_commit(&state.git, &root, &hosting.remote, &format!("refs/heads/{}", pull.target_branch)).map_err(named)?;
+    let (source, reference) = ramelo_hosting::fetch_source(hosting.provider, &pull);
     let head = ramelo_core::fetch_commit(&state.git, &root, source.as_deref().unwrap_or(&hosting.remote), &reference).map_err(named)?;
     let changes = ramelo_core::range_changes(&state.git, &root, &target, &head)?;
     let _ = state.pull_cache.put_changes(&root, number, &changes, &changes.head);
     Ok(changes)
+}
+
+/// The pull request as its conversation kept on disk shows it. The list read again tells the
+/// interface when it changed, and the conversation is then read again before the changes.
+fn cached_pull(state: &AppState, root: &Path, number: u64) -> Option<PullRequest> {
+    let kept = state.pull_cache.view(root, number)?;
+    serde_json::from_value(kept.data.get("details")?.clone()).ok()
 }
 
 /// What is kept on disk of the pull requests of a repository: when each was read, and what it was.

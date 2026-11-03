@@ -7,7 +7,7 @@ import * as backend from '../api/backend.js';
 import { accounts } from './accounts.js';
 
 /** A list younger than this is not read again, unless asked. */
-const FRESH_MS = 3 * 60 * 1000;
+const FRESH_MS = 5 * 60 * 1000;
 /** Repositories read at the same time. */
 const PARALLEL = 4;
 

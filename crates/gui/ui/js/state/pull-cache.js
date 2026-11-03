@@ -184,6 +184,7 @@ store.subscribe((topic) => {
   if (topic === 'workspace') prefetch(store.active);
 });
 
+// Only while the window is in front: coming back to it reads the lists again anyway.
 setInterval(() => {
-  if (store.active) pulls.refresh([store.active]).catch(() => {});
+  if (store.active && document.hasFocus()) pulls.refresh([store.active]).catch(() => {});
 }, LIST_EVERY_MS);

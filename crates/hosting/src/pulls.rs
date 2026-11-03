@@ -20,7 +20,7 @@ pub enum PullState {
     Closed,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequest {
     /// The number shown on the service (« #12 », « !12 » on GitLab).
@@ -783,6 +783,15 @@ mod tests {
         requests.recv().unwrap();
         requests.recv().unwrap();
         assert_eq!(requests.recv().unwrap().0, "POST /projects/PLAT/repos/tool/pull-requests/9/decline?version=4 HTTP/1.1");
+    }
+
+    #[test]
+    fn reads_back_a_pull_request_kept_with_its_details() {
+        let v = json!({ "id": 7, "title": "T", "state": "OPEN", "author": { "nickname": "anna" }, "source": { "branch": { "name": "feat" }, "commit": { "hash": "abc" } }, "destination": { "branch": { "name": "main" } }, "updated_on": "2026-11-03T10:00:00Z", "links": { "html": { "href": "https://bitbucket.org/ws/r/pull-requests/7" } } });
+        let details = PullDetails { pull: bitbucket_pull(&v, "me", "ws/r"), body: "B".into(), mergeable: None, conflicts: false, merge_methods: vec![MergeMethod::Merge], version: None };
+        let kept = serde_json::to_value(&details).unwrap();
+        let pull: PullRequest = serde_json::from_value(kept).unwrap();
+        assert_eq!(pull, details.pull);
     }
 
     #[test]
