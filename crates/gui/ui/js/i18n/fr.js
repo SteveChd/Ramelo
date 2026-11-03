@@ -4,6 +4,7 @@ export default {
   'splash.engine': 'Démarrage du moteur…',
   'splash.ui': 'Préparation de l\'interface…',
   'splash.repos': 'Lecture de tes dépôts…',
+  'splash.reading': 'Lecture de tes dépôts… {done} / {n}',
   'splash.render': 'Affichage de {n} dépôts…',
   'splash.ready': 'Prêt',
 

@@ -4,6 +4,7 @@ export default {
   'splash.engine': 'Starting the engine…',
   'splash.ui': 'Preparing the interface…',
   'splash.repos': 'Reading your repositories…',
+  'splash.reading': 'Reading your repositories… {done} / {n}',
   'splash.render': 'Showing {n} repositories…',
   'splash.ready': 'Ready',
 

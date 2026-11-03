@@ -34,8 +34,8 @@ function badge(kind, iconName, text, title) {
 export function repoBadges(repo) {
   if (repo.error) return [badge('error', 'warning', t('badge.unreadable'), describeError(repo.error))];
   const s = repo.summary;
-  // Not read yet in this session: what was known of it, with a turning wheel.
-  const reading = !s || repo.stale ? h('span', { class: 'badge reading', title: t('badge.reading') }, h('span', { class: 'spinner' }), h('span', { class: 'lbl' }, t('badge.reading'))) : null;
+  // Not read yet (a repository just added): a turning wheel.
+  const reading = !s ? h('span', { class: 'badge reading', title: t('badge.reading') }, h('span', { class: 'spinner' }), h('span', { class: 'lbl' }, t('badge.reading'))) : null;
   if (!s) return [reading];
   const head = s.head;
   const branch = head.branch ?? t('badge.detached', { oid: (head.oid ?? '').slice(0, 7) });
@@ -54,6 +54,5 @@ export function repoBadges(repo) {
     list.push(badge(`pulls${asked ? ' review' : ''}`, 'pullRequest', String(open.length),
       [tn('badge.pulls', open.length), asked && tn('badge.reviews', asked)].filter(Boolean).join(' · ')));
   }
-  if (reading) list.push(reading);
   return list;
 }

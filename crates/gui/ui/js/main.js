@@ -105,16 +105,16 @@ async function start() {
     if (topic === 'error') toast(detail, 6000);
   });
 
-  splashStep(t('splash.repos'), 0.6);
+  splashStep(t('splash.repos'), 0.45);
   const snapshot = await backend.startup().catch((error) => {
     toast(String(error?.message ?? error), 6000);
     return { repositories: [], active: null };
   });
-  splashStep(t('splash.render', { n: snapshot.repositories.length }), 0.85);
   store.load(snapshot);
+  // Each repository read moves the bar forward, the one shown first.
+  await store.readAll((done, total) => splashStep(t('splash.reading', { done, n: total }), 0.45 + (0.5 * done) / total));
+  splashStep(t('splash.render', { n: snapshot.repositories.length }), 0.97);
   await hideSplash(t('splash.ready'));
-  // The repositories are read once the window shows: what was known of them is shown meanwhile.
-  store.readAll();
 }
 
 start();
