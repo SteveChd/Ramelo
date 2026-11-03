@@ -31,6 +31,7 @@ button { cursor: pointer; }
 .btn:disabled { opacity: .5; cursor: default; background: var(--panel); }
 .btn.primary { border: 0; background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .btn.primary:hover { background: var(--accent-hover); }
+.btn.primary:disabled { opacity: 1; background: var(--hover); color: var(--muted); border: 1px solid var(--border); }
 .btn.large { height: 40px; padding: 0 18px; font-size: 14px; }
 .btn svg { flex: 0 0 auto; }
 
