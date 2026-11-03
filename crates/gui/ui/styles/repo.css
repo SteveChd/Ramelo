@@ -47,12 +47,18 @@
 
 /* Strip along each side panel: a click folds or unfolds it, the arrow shows which way. */
 .strip {
-  flex: 0 0 16px; width: 16px; border: 0; padding: 0; background: var(--bg); color: var(--accent);
+  flex: 0 0 20px; width: 20px; border: 0; padding: 0; background: var(--bg); color: var(--accent);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+/* The arrow sits on a tab, so that the strip is seen as a button. */
+.strip .strip-tab {
+  display: flex; align-items: center; justify-content: center; width: 16px; height: 44px; border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.strip:hover .strip-tab { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .strip.left { border-right: 1px solid var(--border); }
 .strip.right { border-left: 1px solid var(--border); }
-.strip:hover { background: var(--hover); color: var(--ink); }
+.strip:hover { background: var(--hover); }
 .strip svg { transition: transform .12s; }
 .strip.left svg { transform: rotate(90deg); }
 .strip.left.folded svg { transform: rotate(-90deg); }

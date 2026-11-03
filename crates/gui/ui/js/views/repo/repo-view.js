@@ -35,7 +35,8 @@ let view = null;
  * clicked (into the edge to fold it, out of it to unfold it).
  */
 function strip(side) {
-  return h('button', { type: 'button', class: `strip ${side}`, onclick: () => layout.toggle(`${side}Collapsed`) }, icon('chevron', 14, 2.4));
+  return h('button', { type: 'button', class: `strip ${side}`, onclick: () => layout.toggle(`${side}Collapsed`) },
+    h('span', { class: 'strip-tab' }, icon('chevron', 14, 2.4)));
 }
 
 function updateStrip(el, side, action) {
