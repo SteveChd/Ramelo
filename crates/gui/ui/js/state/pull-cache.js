@@ -9,16 +9,17 @@
 import * as backend from '../api/backend.js';
 import { pulls } from './pulls.js';
 import { repoStore } from './repo-store.js';
+import { settings } from './settings.js';
 import { store } from './store.js';
 
 /** A conversation younger than this is shown without asking the service again. */
 const VIEW_FRESH_MS = 2 * 60 * 1000;
 /** Changes are read again after this, even when the list shows no new commit. */
 const CHANGES_FRESH_MS = 15 * 60 * 1000;
-/** A pull request is read in the background at most this often, unless it changed. */
-const PREFETCH_EVERY_MS = 10 * 60 * 1000;
-/** The list of the repository shown is read again this often, which reads in turn what changed. */
-const LIST_EVERY_MS = 5 * 60 * 1000;
+/** Minutes between two readings in the background (settings); 0: none. */
+const paceMinutes = () => settings.state.pullRefreshMinutes;
+/** How often it is checked whether the list of the repository shown is due again. */
+const TICK_MS = 60 * 1000;
 /** Pull requests read in the background, the most recently updated first. */
 const PREFETCH_MAX = 8;
 
@@ -137,7 +138,7 @@ let prefetching = false;
 
 /** Reads in the background the open pull requests of `path` that changed or were not read for long. */
 async function prefetch(path) {
-  if (prefetching || !path || path !== store.active) return;
+  if (prefetching || !path || path !== store.active || !paceMinutes()) return;
   prefetching = true;
   try {
     const list = pulls.of(path)?.pulls?.filter((p) => p.state === 'open') ?? [];
@@ -151,7 +152,7 @@ async function prefetch(path) {
         // Changed since read: read again now. Never read, or without its changes: not more often than that.
         if (changedSince(meta, path, p.number)) return true;
         const missing = !meta?.viewAt || !changesCurrent(meta, path, p.number);
-        return missing && now - (prefetched.get(keyOf(path, p.number)) ?? 0) > PREFETCH_EVERY_MS;
+        return missing && now - (prefetched.get(keyOf(path, p.number)) ?? 0) > paceMinutes() * 60 * 1000;
       });
     if (!due.length) return;
     for (const pull of due) {
@@ -184,7 +185,8 @@ store.subscribe((topic) => {
   if (topic === 'workspace') prefetch(store.active);
 });
 
-// Only while the window is in front: coming back to it reads the lists again anyway.
+// The list of the repository shown is read again at the pace of the settings (the list itself is not
+// read again before), only while the window is in front: coming back to it reads the lists anyway.
 setInterval(() => {
-  if (store.active && document.hasFocus()) pulls.refresh([store.active]).catch(() => {});
-}, LIST_EVERY_MS);
+  if (paceMinutes() && store.active && document.hasFocus()) pulls.refresh([store.active]).catch(() => {});
+}, TICK_MS);

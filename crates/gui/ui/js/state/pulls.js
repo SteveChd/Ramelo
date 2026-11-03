@@ -5,9 +5,10 @@
 
 import * as backend from '../api/backend.js';
 import { accounts } from './accounts.js';
+import { settings } from './settings.js';
 
-/** A list younger than this is not read again, unless asked. */
-const FRESH_MS = 5 * 60 * 1000;
+/** A list younger than this is not read again, unless asked: the pace chosen in the settings. */
+const freshMs = () => (settings.state.pullRefreshMinutes || 15) * 60 * 1000;
 /** Repositories read at the same time. */
 const PARALLEL = 4;
 
@@ -65,7 +66,7 @@ export const pulls = {
     for (const path of paths) {
       const entry = entries.get(path);
       if (entry?.loading || queue.includes(path)) continue;
-      if (!force && entry && now - entry.at < FRESH_MS) continue;
+      if (!force && entry && now - entry.at < freshMs()) continue;
       queue.push(path);
     }
     pump();
