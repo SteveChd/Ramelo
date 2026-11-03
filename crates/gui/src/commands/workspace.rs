@@ -17,10 +17,10 @@ use crate::error::{CommandError, CommandResult};
 use crate::snapshot::Snapshot;
 use crate::state::AppState;
 
-/// Workspace saved at the last session; the state of every repository is read again.
+/// Workspace saved at the last session, at once: the state of the repositories is read afterwards,
+/// one by one (`refresh`), so that a slow disk does not hold the window back.
 #[tauri::command]
 pub async fn startup(state: State<'_, AppState>) -> CommandResult<Snapshot> {
-    state.refresh(&state.repository_paths());
     Ok(state.snapshot())
 }
 

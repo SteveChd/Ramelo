@@ -12,6 +12,33 @@ import { t, tn } from '../i18n/i18n.js';
 
 const listeners = new Set();
 
+/** Last state read of each repository, kept between sessions (without the file lists) and shown,
+ * marked `stale`, until the repository is read again. */
+const KNOWN_KEY = 'ramelo.known';
+/** Repositories read at the same time at startup. */
+const PARALLEL_READS = 4;
+let known = {};
+try {
+  known = JSON.parse(localStorage.getItem(KNOWN_KEY) ?? '{}') ?? {};
+} catch {
+  // Nothing known: the cards stay empty until read.
+}
+let saveTimer = null;
+
+function remember(repositories) {
+  for (const repo of repositories) {
+    if (repo.summary && !repo.stale) known[repo.path] = { ...repo.summary, files: [] };
+    else if (repo.error) delete known[repo.path];
+  }
+  for (const path of Object.keys(known)) {
+    if (!repositories.some((r) => r.path === path)) delete known[path];
+  }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(KNOWN_KEY, JSON.stringify(known)); } catch { /* not remembered */ }
+  }, 1000);
+}
+
 const state = {
   repositories: [],
   /** Path of the repository shown; null for the overview. */
@@ -39,7 +66,11 @@ function emit(topic, detail) {
 }
 
 function apply(snapshot) {
-  state.repositories = snapshot.repositories;
+  // A repository not read yet in this session shows what was known of it, until it is read.
+  state.repositories = snapshot.repositories.map((repo) => (repo.summary || repo.error || !known[repo.path]
+    ? repo
+    : { ...repo, summary: known[repo.path], stale: true }));
+  remember(state.repositories);
   state.active = snapshot.active ?? null;
   state.sections = snapshot.sections ?? [];
   state.othersCollapsed = Boolean(snapshot.othersCollapsed);
@@ -91,6 +122,33 @@ export const store = {
     emit('workspace');
     const snapshot = await run(() => backend.selectRepository(path));
     if (snapshot) apply(snapshot);
+  },
+
+  /**
+   * At startup: reads every repository, the one shown first, a few at a time, each shown as soon
+   * as it is read.
+   */
+  async readAll() {
+    const paths = state.repositories.map((r) => r.path);
+    const order = [...paths.filter((p) => p === state.active), ...paths.filter((p) => p !== state.active)];
+    let next = 0;
+    state.ui.busy += 1;
+    emit('busy');
+    const worker = async () => {
+      while (next < order.length) {
+        const path = order[next];
+        next += 1;
+        try {
+          apply(await backend.refresh(path));
+        } catch {
+          // Shown as unreadable by the snapshot of the next one.
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PARALLEL_READS, order.length) }, worker));
+    state.ui.busy -= 1;
+    state.ui.refreshedAt = new Date();
+    emit('busy');
   },
 
   /** Reads again one repository, or all of them (`path` null). */

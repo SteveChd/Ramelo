@@ -113,6 +113,8 @@ async function start() {
   splashStep(t('splash.render', { n: snapshot.repositories.length }), 0.85);
   store.load(snapshot);
   await hideSplash(t('splash.ready'));
+  // The repositories are read once the window shows: what was known of them is shown meanwhile.
+  store.readAll();
 }
 
 start();

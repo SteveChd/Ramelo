@@ -13,9 +13,15 @@ let othersCollapsed = false;
 let active = null;
 let added = 0;
 
+/** Repositories read since the start, as the backend reads them one by one after `startup`. */
+const read = new Set();
+
 function snapshot() {
   return structuredClone({
-    repositories: repositories.map((r) => ({ path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), pinned: Boolean(r.pinned), section: r.section ?? null, summary: r.summary ?? null, error: r.error ?? null })),
+    repositories: repositories.map((r) => {
+      const seen = read.has(r.path) || everyRead;
+      return { path: r.path, name: nameOf(r.path), color: r.color ?? null, closed: Boolean(r.closed), pinned: Boolean(r.pinned), section: r.section ?? null, summary: seen ? r.summary ?? null : null, error: seen ? r.error ?? null : null };
+    }),
     active,
     sections,
     othersCollapsed,
@@ -263,8 +269,12 @@ export async function createPullRequest(path, pull) {
   return structuredClone(rest);
 }
 
+/** Before `startup`, every repository counts as read. */
+let everyRead = true;
+
 export async function startup() {
   await delay(300);
+  everyRead = false;
   repositories = sampleWorkspace();
   // « ?many=200 » adds as many sample repositories, to see a crowded tab bar.
   const many = Number(new URLSearchParams(location.search).get('many')) || 0;
@@ -277,8 +287,11 @@ export async function startup() {
   return snapshot();
 }
 
-export async function refresh() {
-  await delay(250);
+export async function refresh(path) {
+  // « ?slow=1 » makes the first reading of each repository slow, as on a cold disk.
+  const slow = !read.has(path) && new URLSearchParams(location.search).has('slow');
+  await delay(slow ? 1500 : 250);
+  for (const r of repositories) if (!path || r.path === path) read.add(r.path);
   return snapshot();
 }
 

@@ -67,6 +67,8 @@ button { cursor: pointer; }
 .badge.branch { background: var(--a-soft); color: var(--a-ink); font-weight: 600; }
 .badge.ahead { color: var(--ok); }
 .badge.behind { color: var(--accent); }
+.badge.reading { color: var(--muted); gap: 6px; }
+.badge.reading .spinner { width: 11px; height: 11px; }
 .badge.dirty { color: var(--modified); }
 .badge.conflict { background: color-mix(in srgb, var(--conflict) 14%, transparent); color: var(--conflict); font-weight: 600; }
 .badge.op { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); font-weight: 600; }

@@ -240,6 +240,7 @@ export default {
   'badge.stashes.other': '{n} remises',
   'badge.noCommit': 'Aucun commit',
   'badge.unreadable': 'Illisible',
+  'badge.reading': 'Lecture…',
 
   'operation.rebase': 'Rebase en cours',
   'operation.merge': 'Fusion en cours',
