@@ -12,6 +12,7 @@ import * as backend from '../../api/backend.js';
 import { describeError } from '../../app/errors.js';
 import { pullView } from '../../state/pull-view.js';
 import { repoStore } from '../../state/repo-store.js';
+import { threadsOf, renderThread } from './comment-threads.js';
 import { diffKey, fileRow } from './files.js';
 
 /** State chip: open, draft, merged or closed. */
@@ -71,13 +72,23 @@ function tabs(details) {
     tabButton('commits', t('pr.tab.commits'), data?.commits.length));
 }
 
-function post({ author, created, body, path, line }, description = false) {
-  return h('article', { class: `pull-post${description ? ' description' : ''}` },
+function post({ author, created, body }) {
+  return h('article', { class: 'pull-post description' },
     h('header', {},
       h('span', { class: 'who' }, icon('user', 13), author),
-      when(created),
-      path && h('span', { class: 'on-file', title: path }, icon('commit', 12), line ? `${path}:${line}` : path)),
+      when(created)),
     body?.trim() ? markdown(body) : h('p', { class: 'muted empty-body' }, t('pr.noDescription')));
+}
+
+/** Where a comment on the changes is: opens its file at its line. */
+function onFile(c) {
+  const where = c.line ? `${c.path}:${c.line}` : c.path;
+  return h('button', {
+    type: 'button',
+    class: `on-file${c.outdated ? ' outdated' : ''}`,
+    title: `${t('pr.showLine')}\n${c.path}`,
+    onclick: () => pullView.showComment(c),
+  }, icon('commit', 12), where);
 }
 
 function composer() {
@@ -99,11 +110,17 @@ function composer() {
   return h('div', { class: 'pull-composer' }, area, h('div', { class: 'pull-composer-foot' }, h('span', { class: 'hint' }, 'Ctrl+Enter'), send));
 }
 
-function conversation(view) {
+function conversation(view, rerender) {
   const { details, comments } = view;
+  const open = details.state === 'open';
   return [
-    post({ author: details.author, created: details.created, body: details.body }, true),
-    comments.map((c) => post(c)),
+    post({ author: details.author, created: details.created, body: details.body }),
+    threadsOf(comments).map((thread) => renderThread(thread, {
+      open,
+      rerender,
+      card: 'pull-post',
+      chip: thread.root.path ? onFile(thread.root) : null,
+    })),
     composer(),
   ];
 }
@@ -146,6 +163,13 @@ function changesTab() {
   picker.value = commit ?? '';
   const files = commit ? commitDetails?.files : all;
   const open = diffKey(repoStore.state.diff);
+  // Discussions per file, on the changes as a whole (a commit has other line numbers).
+  const discussed = new Map();
+  if (!commit) {
+    for (const { root } of threadsOf(pullView.state.view?.comments ?? [])) {
+      if (root.path) discussed.set(root.path, (discussed.get(root.path) ?? 0) + 1);
+    }
+  }
   return [
     h('div', { class: 'pull-changes-head' },
       picker,
@@ -159,7 +183,10 @@ function changesTab() {
           key: fileKey(f),
           open: open === fileKey(f),
           onclick: () => pullView.openFile(f),
-          extra: stats(f),
+          extra: [
+            discussed.get(f.path) && h('span', { class: 'file-comments', title: tn('pr.fileComments', discussed.get(f.path)) }, icon('comment', 12), discussed.get(f.path)),
+            stats(f),
+          ],
         }))),
   ];
 }
@@ -197,7 +224,7 @@ export function renderPull(container) {
     head(view.details),
     tabs(view.details),
     h('div', { class: `pull-body ${tab}` },
-      tab === 'conversation' ? conversation(view) : tab === 'changes' ? changesTab() : commitsTab()));
+      tab === 'conversation' ? conversation(view, () => renderPull(container)) : tab === 'changes' ? changesTab() : commitsTab()));
   const body = container.querySelector('.pull-body');
   if (body) body.scrollTop = scroll;
 }

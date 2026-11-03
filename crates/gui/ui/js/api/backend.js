@@ -29,6 +29,7 @@ export const {
   rangeFileDiff,
   commentPullRequest,
   commentPullRequestLine,
+  replyPullRequestComment,
   mergePullRequest,
   closePullRequest,
   createPullRequest,

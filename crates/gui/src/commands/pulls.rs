@@ -164,6 +164,17 @@ pub async fn comment_pull_request_line(state: State<'_, AppState>, path: String,
     pull_request(state, path, number).await
 }
 
+/// Answers a comment of a pull request.
+#[tauri::command]
+pub async fn reply_pull_request_comment(state: State<'_, AppState>, path: String, number: u64, reply: ramelo_hosting::CommentReply) -> CommandResult<PullView> {
+    let hosting = required(&state, Path::new(&path))?;
+    if reply.body.trim().is_empty() {
+        return Err(CommandError::new("comment_empty", None, "the comment is empty"));
+    }
+    ramelo_hosting::reply_to_comment(&hosting.account, &hosting.key, number, &reply)?;
+    pull_request(state, path, number).await
+}
+
 #[tauri::command]
 pub async fn comment_pull_request(state: State<'_, AppState>, path: String, number: u64, body: String) -> CommandResult<PullView> {
     let hosting = required(&state, Path::new(&path))?;

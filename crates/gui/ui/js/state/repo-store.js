@@ -297,6 +297,9 @@ export const repoStore = {
   get state() { return state; },
   get draft() { return draft(); },
 
+  /** Reads the file before and after the change of the open diff (`diff.versions`), once. */
+  loadVersions,
+
   subscribe(listener) {
     listeners.add(listener);
     return () => listeners.delete(listener);

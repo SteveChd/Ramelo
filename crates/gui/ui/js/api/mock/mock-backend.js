@@ -118,11 +118,14 @@ function pullsOf(path) {
     const make = (number, title, author, source, extra = {}) => ({
       number, title, author, state: 'open', draft: false, sourceBranch: source, targetBranch: 'main', sourceRepo: null, sourceCloneUrl: null,
       headOid: null, created: hoursAgo(number * 7), updated: hoursAgo(number), webUrl: `https://github.com/steve-c/${name}/pull/${number}`,
-      comments: 2, reviewers: [], reviewRequested: false, ...extra,
+      comments: 5, reviewers: [], reviewRequested: false, ...extra,
       body: `## What\n\n${title}.\n\n## Why\n\nThe old way was slow on large projects.\n\n- [x] Tests\n- [ ] Documentation`,
       thread: [
         { id: `${number}-1`, author: 'anna', body: 'Nice! Could you add a test for the **empty** case?', created: hoursAgo(number * 5), path: null, line: null },
         { id: `${number}-2`, author: 'steve-c', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14, oldSide: false, outdated: false },
+        { id: `${number}-3`, author: 'anna', body: 'How about here? No need for a lock?', created: hoursAgo(number * 2.5), path: 'crates/export/src/gantt.rs', line: 40, oldSide: false, outdated: false },
+        { id: `${number}-4`, author: 'steve-c', body: 'Good catch, I will add one.', created: hoursAgo(number * 2), path: null, line: null, parent: `${number}-3` },
+        { id: `${number}-5`, author: 'marc', body: 'This name is misleading.', created: hoursAgo(number * 4), path: 'crates/export/src/gantt.rs', line: 9, oldSide: false, outdated: true },
       ],
     });
     const list = name === 'waypoint'
@@ -236,6 +239,17 @@ export async function commentPullRequestLine(path, number, comment) {
     id: String(Date.now()), author: accounts[0]?.username ?? 'me', body: comment.body, created: Math.floor(Date.now() / 1000),
     path: comment.path, line: oldSide ? comment.oldLine : comment.newLine, oldSide, outdated: false,
   });
+  return pullView(findPull(path, number), path);
+}
+
+export async function replyPullRequestComment(path, number, reply) {
+  await delay(300);
+  if (!reply.body.trim()) throw { code: 'comment_empty', subject: null, message: 'empty' };
+  findPull(path, number).thread.push({
+    id: String(Date.now()), author: accounts[0]?.username ?? 'me', body: reply.body, created: Math.floor(Date.now() / 1000),
+    path: null, line: null, parent: reply.to,
+  });
+  globalThis.mockReplies = [...(globalThis.mockReplies ?? []), reply];
   return pullView(findPull(path, number), path);
 }
 

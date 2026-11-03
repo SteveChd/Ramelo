@@ -8,12 +8,11 @@ import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { shortcut } from '../../app/actions.js';
 import { fileKind } from '../../lib/file-kinds.js';
-import { markdown } from '../../lib/markdown.js';
-import { relativeTime } from '../../lib/time.js';
 import { layout } from '../../state/layout.js';
 import { pullView } from '../../state/pull-view.js';
 import { repoStore } from '../../state/repo-store.js';
 import { store } from '../../state/store.js';
+import { renderThread, threadsOf } from './comment-threads.js';
 import { renderConflict } from './conflict-view.js';
 import { diffKey } from './files.js';
 import { renderPreview } from './preview.js';
@@ -110,7 +109,7 @@ function stats(data) {
 let composer = null;
 
 /**
- * The pull request whose whole changes this diff shows, with its comments on this file; null for
+ * The pull request whose whole changes this diff shows, with the discussions on this file; null for
  * any other diff (a commit of the pull request has other line numbers).
  */
 function review(diff) {
@@ -118,7 +117,7 @@ function review(diff) {
   const data = s.changes?.data;
   if (diff.kind !== 'range' || s.number === null || !s.view || !data || diff.base !== data.base || diff.oid !== data.head) return null;
   return {
-    comments: s.view.comments.filter((c) => c.path === diff.file && c.line && !c.outdated),
+    threads: threadsOf(s.view.comments).filter(({ root }) => root.path === diff.file),
     open: s.view.details.state === 'open',
   };
 }
@@ -127,7 +126,109 @@ const lineKey = (l) => `${l.old ?? ''}:${l.new ?? ''}`;
 
 /** A comment is on the side it was written on: the old line numbers for a removed line. */
 function isOn(comment, l) {
+  if (!comment.line || comment.outdated || l.kind === 'noNewline') return false;
   return comment.oldSide ? l.kind !== 'added' && l.old === comment.line : l.kind !== 'deleted' && l.new === comment.line;
+}
+
+// ---------- Lines around a comment, outside the changes ----------
+
+/** Lines shown before and after a commented line that the changes do not show. */
+const AROUND = 3;
+
+/** How many lines of each side a hunk covers. */
+function span(hunk) {
+  let old = 0;
+  let nw = 0;
+  for (const l of hunk.lines) {
+    if (l.kind === 'noNewline') continue;
+    if (l.kind !== 'added') old += 1;
+    if (l.kind !== 'deleted') nw += 1;
+  }
+  return { old, new: nw };
+}
+
+function splitText(base64) {
+  if (!base64) return null;
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  if (bytes.includes(0)) return null;
+  const lines = new TextDecoder('utf-8').decode(bytes).split('\n').map((l) => l.replace(/\r$/, ''));
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+/**
+ * The hunks of the diff with, between them, the lines around the comments on lines the changes do
+ * not show (unchanged lines away from them), read from the file after the changes. `missing`: such
+ * comments, until the file is read.
+ */
+function withCommentedLines(data, rv, diff) {
+  const hunks = data.hunks.map((hunk) => ({ ...hunk, ...span(hunk) }));
+  const shown = (c) => hunks.some((hunk) => hunk.lines.some((l) => isOn(c, l)));
+  const away = rv ? rv.threads.map((t) => t.root).filter((c) => c.line && !c.outdated && !shown(c)) : [];
+  if (!away.length) return { hunks: data.hunks, missing: [] };
+  const after = diff.versions ? splitText(diff.versions.after?.data) : null;
+  if (!after) {
+    if (!diff.versions) repoStore.loadVersions();
+    return { hunks: data.hunks, missing: away };
+  }
+  // Between two hunks the lines are the same on both sides, shifted by what the hunks before added.
+  const gapOf = (newLine) => {
+    let shift = 0;
+    let first = 1;
+    for (let i = 0; i < hunks.length; i += 1) {
+      const hunk = hunks[i];
+      if (newLine < hunk.newStart) return { index: i, shift, first, last: hunk.newStart - 1 };
+      shift = hunk.newStart + hunk.new - (hunk.oldStart + hunk.old);
+      first = hunk.newStart + hunk.new;
+    }
+    return { index: hunks.length, shift, first, last: after.length };
+  };
+  const toNew = (c) => {
+    if (!c.oldSide) return c.line;
+    // An old line number: the gap it is in is found from the old side.
+    let shift = 0;
+    for (const hunk of hunks) {
+      if (c.line < hunk.oldStart) break;
+      shift = hunk.newStart + hunk.new - (hunk.oldStart + hunk.old);
+    }
+    return c.line + shift;
+  };
+  const ranges = new Map();
+  const missing = [];
+  for (const c of away) {
+    const at = toNew(c);
+    const gap = gapOf(at);
+    if (at < gap.first || at > gap.last || at > after.length) {
+      missing.push(c);
+      continue;
+    }
+    const from = Math.max(gap.first, at - AROUND);
+    const to = Math.min(gap.last, at + AROUND);
+    const list = ranges.get(gap.index) ?? [];
+    list.push({ from, to, shift: gap.shift });
+    ranges.set(gap.index, list);
+  }
+  const extra = (index) => {
+    const list = (ranges.get(index) ?? []).sort((a, b) => a.from - b.from);
+    const merged = [];
+    for (const r of list) {
+      const last = merged[merged.length - 1];
+      if (last && r.from <= last.to + 1) last.to = Math.max(last.to, r.to);
+      else merged.push({ ...r });
+    }
+    return merged.map((r) => ({
+      header: t('pr.aroundComment', { from: r.from, to: r.to }),
+      around: true,
+      lines: Array.from({ length: r.to - r.from + 1 }, (_, k) => {
+        const nw = r.from + k;
+        return { kind: 'context', old: nw - r.shift, new: nw, text: after[nw - 1] };
+      }),
+    }));
+  };
+  const out = [];
+  data.hunks.forEach((hunk, index) => out.push(...extra(index), { ...hunk, index }));
+  out.push(...extra(data.hunks.length));
+  return { hunks: out, missing };
 }
 
 function commentButton(l, rerender, side = '') {
@@ -179,17 +280,29 @@ function lineComposer(l, data, rerender) {
       h('button', { type: 'button', class: 'btn small primary', disabled: busy, onclick: send }, busy ? t('pr.sending') : t('pr.comment'))));
 }
 
-/** What follows a line: its comments, and the box to write one when it is open. */
+/** What follows a line: its discussions, and the box to write a comment when it is open. */
 function lineExtras(lines, rv, data, rerender) {
   if (!rv) return null;
-  const comments = rv.comments.filter((c) => lines.some((l) => l && isOn(c, l)));
+  const threads = rv.threads.filter(({ root }) => lines.some((l) => l && isOn(root, l)));
   const target = lines.find((l) => l && composer?.key === lineKey(l));
   return [
-    comments.length > 0 && h('div', { class: 'line-thread' }, comments.map((c) => h('div', { class: 'line-comment' },
-      h('header', {}, h('span', { class: 'who' }, icon('user', 12), c.author), c.created && h('time', {}, relativeTime(c.created))),
-      markdown(c.body)))),
+    threads.length > 0 && h('div', { class: 'line-thread' }, threads.map((thread) => renderThread(thread, { open: rv.open, rerender }))),
     target && lineComposer(target, data, rerender),
   ];
+}
+
+/** Discussions of the file not on a line shown: on an earlier version, or until the file is read. */
+function elsewhere(rv, missing, rerender) {
+  if (!rv) return null;
+  const threads = rv.threads.filter(({ root }) => !root.line || root.outdated || missing.includes(root));
+  if (!threads.length) return null;
+  return h('div', { class: 'diff-elsewhere' }, threads.map((thread) => {
+    const { root } = thread;
+    const label = !root.line ? null : root.outdated ? t('pr.outdatedAt', { line: root.line }) : t('pr.notInChanges', { line: root.line });
+    // Not placed yet: its line is shown once the file is read.
+    const waiting = missing.includes(root) ? { 'data-missing': '' } : {};
+    return h('div', { class: 'line-thread', ...waiting }, label && h('div', { class: 'thread-where' }, icon('comment', 12), label), renderThread(thread, { open: rv.open, rerender }));
+  }));
 }
 
 function line(l) {
@@ -294,12 +407,13 @@ export function renderDiff(container) {
   else if (data.truncated) body = h('div', { class: 'diff-note' }, diff.loading ? t('repo.loading') : t('diff.tooLarge', { additions: data.additions, deletions: data.deletions }));
   else if (!data.hunks.length) body = h('div', { class: 'diff-note' }, t('diff.noContent'));
   else {
-    body = data.hunks.map((hunk, index) => [
-      h('div', { class: 'hunk-head' }, h('span', { class: 'h' }, hunk.header), hunkActions(index)),
+    const { hunks, missing } = withCommentedLines(data, rv, diff);
+    body = [elsewhere(rv, missing, rerender), hunks.map((hunk, index) => [
+      h('div', { class: `hunk-head${hunk.around ? ' around' : ''}` }, h('span', { class: 'h' }, hunk.header), !hunk.around && hunkActions(hunk.index ?? index)),
       layout.state.diffSplit
         ? splitRows(hunk.lines).map((pair) => reviewedRow(pair, rv, data, rerender))
         : hunk.lines.map((l) => reviewedLine(l, rv, data, rerender)),
-    ]);
+    ])];
   }
   mount(container, h('div', { class: 'diff' },
     h('div', {
@@ -321,4 +435,12 @@ export function renderDiff(container) {
     h('div', { class: `diff-body${diff.mode === 'preview' ? ' preview' : ''}${layout.state.diffSplit ? ' split' : ''}${rv ? ' reviewed' : ''}` }, body)));
   const shown = container.querySelector('.diff-body');
   if (shown) [shown.scrollTop, shown.scrollLeft] = scroll;
+  // A comment of the conversation was asked for: brought into view, once its line is drawn.
+  const focus = pullView.state.focus;
+  const target = focus && shown?.querySelector(`[data-comment="${CSS.escape(focus)}"]`);
+  const placed = target && !(target.closest('.diff-elsewhere') && !diff.versions && target.closest('[data-missing]'));
+  if (placed && pullView.takeFocus(focus)) {
+    target.scrollIntoView({ block: 'center' });
+    target.classList.add('flash');
+  }
 }

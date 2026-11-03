@@ -32,8 +32,10 @@ const state = {
   commit: null,
   /** Details of that commit (with its files), once read. */
   commitDetails: null,
-  /** What is being sent: 'comment', 'line', 'merge' or 'close'. */
+  /** What is being sent: 'comment', 'line', 'reply', 'merge' or 'close'. */
   busy: null,
+  /** Id of a comment to bring into view in the diff once it is drawn. */
+  focus: null,
 };
 
 /** The comment being written, kept per pull request while the application runs. */
@@ -130,7 +132,7 @@ export const pullView = {
   /** Back to the graph. */
   close() {
     if (state.number === null) return;
-    Object.assign(state, { path: null, number: null, view: null, changes: null, commit: null, commitDetails: null, busy: null, error: null });
+    Object.assign(state, { path: null, number: null, view: null, changes: null, commit: null, commitDetails: null, busy: null, error: null, focus: null });
     if (['range', 'commit'].includes(repoStore.state.diff?.kind)) repoStore.closeDiff();
     emit();
   },
@@ -217,6 +219,42 @@ export const pullView = {
     if (state.busy) return false;
     const { path, number } = state;
     return send('line', () => backend.commentPullRequestLine(path, number, comment));
+  },
+
+  /** Answers `comment` of the discussion started by `root`; true when sent. */
+  async reply(comment, root, body) {
+    if (state.busy) return false;
+    const { path, number } = state;
+    return send('reply', () => backend.replyPullRequestComment(path, number, {
+      to: comment.id,
+      root: root.id,
+      thread: comment.thread ?? root.thread ?? null,
+      onChanges: Boolean(root.path),
+      quote: comment.body ?? '',
+      body,
+    }));
+  },
+
+  /** Shows the line of the changes a comment is about, with its discussion. */
+  async showComment(comment) {
+    await pullView.showCommit(null);
+    const data = state.changes?.data;
+    if (!data || !comment.path) return;
+    const file = data.files.find((f) => f.path === comment.path);
+    if (!file) {
+      store.notify(t('pr.fileNotChanged', { file: comment.path }));
+      return;
+    }
+    state.focus = comment.id;
+    pullView.openFile(file);
+    emit();
+  },
+
+  /** The comment to bring into view, once: the diff takes it when drawn. */
+  takeFocus(id) {
+    if (state.focus !== id) return false;
+    state.focus = null;
+    return true;
   },
 
   async closePull() {

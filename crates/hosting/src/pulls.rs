@@ -89,6 +89,27 @@ pub struct PullComment {
     pub old_side: bool,
     /// The line changed since: the comment is no longer on the changes as they are.
     pub outdated: bool,
+    /// The comment this one answers, if it is a reply.
+    pub parent: Option<String>,
+    /// The discussion it belongs to, for a service that answers a discussion (GitLab).
+    pub thread: Option<String>,
+}
+
+/// An answer to a comment of a pull request.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentReply {
+    /// The comment answered.
+    pub to: String,
+    /// The first comment of its discussion, which GitHub answers rather than a reply.
+    pub root: Option<String>,
+    /// Its discussion (GitLab).
+    pub thread: Option<String>,
+    /// It is on the changes (a line of a file), not on the conversation.
+    pub on_changes: bool,
+    /// What it says, quoted where the service cannot answer a comment.
+    pub quote: String,
+    pub body: String,
 }
 
 /// A comment on one line of the changes of a pull request. A line both sides have (unchanged) has
@@ -416,16 +437,25 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     old_side: c["side"] == "LEFT",
                     // A review comment whose line is gone from the current changes keeps only its original line.
                     outdated: c["path"].is_string() && c["line"].is_null(),
+                    parent: c["in_reply_to_id"].as_u64().map(|id| id.to_string()),
+                    thread: None,
                 })
                 .collect()
         }
         Provider::GitLab => {
-            let notes: Value = client.get_json(&format!("{url}/notes?sort=asc&order_by=created_at&per_page=100"))?;
-            items(&notes)
+            // A discussion is a comment and its replies: the first note starts it.
+            let discussions: Value = client.get_json(&format!("{url}/discussions?per_page=100"))?;
+            items(&discussions)
                 .iter()
+                .flat_map(|d| {
+                    let thread = text(&d["id"]);
+                    let notes = items(&d["notes"]);
+                    let first = notes.first().map(|n| n["id"].to_string());
+                    notes.iter().enumerate().map(move |(i, n)| (n, thread.clone(), if i == 0 { None } else { first.clone() }))
+                })
                 // « added 2 commits », « approved this merge request »… are told by GitLab, not written.
-                .filter(|n| !n["system"].as_bool().unwrap_or(false))
-                .map(|n| PullComment {
+                .filter(|(n, _, _)| !n["system"].as_bool().unwrap_or(false))
+                .map(|(n, thread, parent)| PullComment {
                     id: n["id"].to_string(),
                     author: text(&n["author"]["username"]).unwrap_or_default(),
                     body: text(&n["body"]).unwrap_or_default(),
@@ -434,6 +464,8 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     line: n["position"]["new_line"].as_u64().or(n["position"]["old_line"].as_u64()).map(|l| l as u32),
                     old_side: n["position"]["new_line"].is_null() && n["position"]["old_line"].is_u64(),
                     outdated: false,
+                    parent,
+                    thread,
                 })
                 .collect()
         }
@@ -451,32 +483,81 @@ fn comments_with(provider: Provider, client: &Client, key: &str, number: u64) ->
                     line: c["inline"]["to"].as_u64().or(c["inline"]["from"].as_u64()).map(|l| l as u32),
                     old_side: c["inline"]["to"].is_null() && c["inline"]["from"].is_u64(),
                     outdated: c["inline"]["outdated"].as_bool().unwrap_or(false),
+                    parent: c["parent"]["id"].as_u64().map(|id| id.to_string()),
+                    thread: None,
                 })
                 .collect()
         }
         Provider::BitbucketServer => {
             let page: Value = client.get_json(&format!("{url}/activities?limit=100"))?;
-            items(&page["values"])
-                .iter()
-                .filter(|a| a["action"] == "COMMENTED")
-                .map(|a| {
-                    let c = &a["comment"];
-                    PullComment {
-                        id: c["id"].to_string(),
-                        author: text(&c["author"]["name"]).unwrap_or_default(),
-                        body: text(&c["text"]).unwrap_or_default(),
-                        created: millis(&c["createdDate"]),
-                        path: text(&a["commentAnchor"]["path"]),
-                        line: a["commentAnchor"]["line"].as_u64().map(|l| l as u32),
-                        old_side: a["commentAnchor"]["fileType"] == "FROM",
-                        outdated: a["commentAnchor"]["orphaned"].as_bool().unwrap_or(false),
-                    }
-                })
-                .collect()
+            let mut comments = Vec::new();
+            for activity in items(&page["values"]).iter().filter(|a| a["action"] == "COMMENTED") {
+                server_comments(&activity["comment"], &activity["commentAnchor"], None, &mut comments);
+            }
+            // A reply is told once on its own and once within the comment it answers.
+            let mut seen = std::collections::HashSet::new();
+            comments.retain(|c: &PullComment| seen.insert(c.id.clone()));
+            comments
         }
     };
     comments.sort_by_key(|c| c.created.unwrap_or(0));
     Ok(comments)
+}
+
+/// A comment of Bitbucket Data Center and, within it, its replies.
+fn server_comments(c: &Value, anchor: &Value, parent: Option<String>, out: &mut Vec<PullComment>) {
+    if c.is_null() {
+        return;
+    }
+    let id = c["id"].to_string();
+    // The replies are on the line of the comment they answer, which has the anchor.
+    let anchored = parent.is_none();
+    out.push(PullComment {
+        id: id.clone(),
+        author: text(&c["author"]["name"]).unwrap_or_default(),
+        body: text(&c["text"]).unwrap_or_default(),
+        created: millis(&c["createdDate"]),
+        path: if anchored { text(&anchor["path"]) } else { None },
+        line: if anchored { anchor["line"].as_u64().map(|l| l as u32) } else { None },
+        old_side: anchored && anchor["fileType"] == "FROM",
+        outdated: anchored && anchor["orphaned"].as_bool().unwrap_or(false),
+        parent,
+        thread: None,
+    });
+    for reply in items(&c["comments"]) {
+        server_comments(reply, &Value::Null, Some(id.clone()), out);
+    }
+}
+
+/// Answers a comment of a pull request. A comment of the conversation of GitHub cannot be answered:
+/// a new comment quotes it.
+pub fn reply_to_comment(account: &Account, key: &str, number: u64, reply: &CommentReply) -> Result<(), HostingError> {
+    reply_with(account.provider, &client(account)?, key, number, reply)
+}
+
+fn quoted(reply: &CommentReply) -> String {
+    let quote: Vec<String> = reply.quote.lines().map(|l| format!("> {l}")).collect();
+    format!("{}\n\n{}", quote.join("\n"), reply.body)
+}
+
+fn reply_with(provider: Provider, client: &Client, key: &str, number: u64, reply: &CommentReply) -> Result<(), HostingError> {
+    let url = format!("{}/{number}", base(provider, key));
+    // The services number their comments; an id that is not one is not theirs.
+    let id = || reply.to.parse::<u64>().map_err(|_| HostingError::Format(format!("not a comment: {}", reply.to)));
+    let _: Value = match provider {
+        Provider::GitHub if reply.on_changes => {
+            let root = reply.root.as_deref().unwrap_or(&reply.to);
+            client.post_json(&format!("{url}/comments/{root}/replies"), &json!({ "body": reply.body }))?
+        }
+        Provider::GitHub => return add_comment_with(provider, client, key, number, &quoted(reply)),
+        Provider::GitLab => match &reply.thread {
+            Some(thread) => client.post_json(&format!("{url}/discussions/{thread}/notes"), &json!({ "body": reply.body }))?,
+            None => return add_comment_with(provider, client, key, number, &quoted(reply)),
+        },
+        Provider::Bitbucket => client.post_json(&format!("{url}/comments"), &json!({ "content": { "raw": reply.body }, "parent": { "id": id()? } }))?,
+        Provider::BitbucketServer => client.post_json(&format!("{url}/comments"), &json!({ "text": reply.body, "parent": { "id": id()? } }))?,
+    };
+    Ok(())
 }
 
 /// Adds a comment to the conversation of a pull request.
@@ -709,9 +790,10 @@ mod tests {
         let mr = r#"{"iid":3,"title":"Draft: Faster scan","author":{"username":"steve"},"state":"opened","draft":true,"source_branch":"scan",
             "target_branch":"main","source_project_id":1,"target_project_id":1,"sha":"def","web_url":"https://gitlab.com/t/a/-/merge_requests/3",
             "description":"Body","detailed_merge_status":"mergeable","has_conflicts":false,"user_notes_count":2}"#;
-        let notes = r#"[{"id":1,"body":"added 1 commit","system":true,"author":{"username":"steve"},"created_at":"2026-10-01T10:00:00Z"},
-            {"id":2,"body":"Looks good","system":false,"author":{"username":"anna"},"created_at":"2026-10-01T11:00:00Z",
-             "position":{"new_path":"src/scan.rs","new_line":40}}]"#;
+        let notes = r#"[{"id":"d1","notes":[{"id":1,"body":"added 1 commit","system":true,"author":{"username":"steve"},"created_at":"2026-10-01T10:00:00Z"}]},
+            {"id":"d2","notes":[{"id":2,"body":"Looks good","system":false,"author":{"username":"anna"},"created_at":"2026-10-01T11:00:00Z",
+             "position":{"new_path":"src/scan.rs","new_line":40}},
+             {"id":3,"body":"Thanks","system":false,"author":{"username":"steve"},"created_at":"2026-10-01T12:00:00Z"}]}]"#;
         let (base, requests) = serve(vec![(200, vec![], mr.into()), (200, vec![], notes.into())]);
         let client = bearer(&base);
         let gitlab = account(Provider::GitLab, "https://gitlab.com");
@@ -719,8 +801,52 @@ mod tests {
         assert_eq!(requests.recv().unwrap().0, "GET /projects/t%2Fa/merge_requests/3 HTTP/1.1");
         assert_eq!((details.mergeable, details.pull.draft, details.body.as_str()), (Some(true), true, "Body"));
         let comments = comments_with(Provider::GitLab, &client, "t/a", 3).unwrap();
-        assert_eq!(comments.len(), 1);
-        assert_eq!((comments[0].path.as_deref(), comments[0].line), (Some("src/scan.rs"), Some(40)));
+        assert_eq!(requests.recv().unwrap().0, "GET /projects/t%2Fa/merge_requests/3/discussions?per_page=100 HTTP/1.1");
+        assert_eq!(comments.len(), 2);
+        assert_eq!((comments[0].path.as_deref(), comments[0].line, comments[0].parent.as_deref()), (Some("src/scan.rs"), Some(40), None));
+        assert_eq!((comments[1].parent.as_deref(), comments[1].thread.as_deref()), (Some("2"), Some("d2")));
+    }
+
+    #[test]
+    fn reads_the_replies_of_bitbucket_comments() {
+        let cloud = r#"{"values":[{"id":10,"content":{"raw":"Why?"},"user":{"nickname":"anna"},"created_on":"2026-10-01T10:00:00Z","inline":{"path":"a.c","to":368}},
+            {"id":11,"content":{"raw":"Because"},"user":{"nickname":"steve"},"created_on":"2026-10-01T11:00:00Z","inline":{"path":"a.c","to":368},"parent":{"id":10}}]}"#;
+        let (base, _requests) = serve(vec![(200, vec![], cloud.into())]);
+        let comments = comments_with(Provider::Bitbucket, &bearer(&base), "ws/r", 2).unwrap();
+        assert_eq!((comments[1].parent.as_deref(), comments[1].line), (Some("10"), Some(368)));
+
+        let server = r#"{"values":[{"action":"COMMENTED","commentAction":"ADDED","commentAnchor":{"path":"a.c","line":5,"fileType":"TO"},
+            "comment":{"id":1,"text":"Why?","author":{"name":"anna"},"createdDate":1790848800000,"comments":[
+              {"id":2,"text":"Because","author":{"name":"steve"},"createdDate":1790848900000,"comments":[
+                {"id":3,"text":"Fine","author":{"name":"anna"},"createdDate":1790849000000}]}]}},
+            {"action":"COMMENTED","commentAction":"REPLIED","comment":{"id":2,"text":"Because","author":{"name":"steve"},"createdDate":1790848900000}}]}"#;
+        let (base, _requests) = serve(vec![(200, vec![], server.into())]);
+        let comments = comments_with(Provider::BitbucketServer, &bearer(&base), "PLAT/tool", 2).unwrap();
+        let shape: Vec<(&str, Option<&str>, Option<u32>)> = comments.iter().map(|c| (c.id.as_str(), c.parent.as_deref(), c.line)).collect();
+        assert_eq!(shape, vec![("1", None, Some(5)), ("2", Some("1"), None), ("3", Some("2"), None)]);
+    }
+
+    #[test]
+    fn replies_to_comments() {
+        let reply = CommentReply { to: "11".into(), root: Some("10".into()), thread: Some("d2".into()), on_changes: true, quote: "Why?\nReally".into(), body: "Because".into() };
+        let cases = [
+            (Provider::GitHub, "o/r", "POST /repos/o/r/pulls/5/comments/10/replies HTTP/1.1", json!({ "body": "Because" })),
+            (Provider::GitLab, "t/a", "POST /projects/t%2Fa/merge_requests/5/discussions/d2/notes HTTP/1.1", json!({ "body": "Because" })),
+            (Provider::Bitbucket, "ws/r", "POST /repositories/ws/r/pullrequests/5/comments HTTP/1.1", json!({ "content": { "raw": "Because" }, "parent": { "id": 11 } })),
+            (Provider::BitbucketServer, "PLAT/tool", "POST /projects/PLAT/repos/tool/pull-requests/5/comments HTTP/1.1", json!({ "text": "Because", "parent": { "id": 11 } })),
+        ];
+        for (provider, key, line, body) in cases {
+            let (base, requests) = serve(vec![(201, vec![], "{}".into())]);
+            reply_with(provider, &bearer(&base), key, 5, &reply).unwrap();
+            let (sent, _, sent_body) = requests.recv().unwrap();
+            assert_eq!((sent.as_str(), serde_json::from_str::<Value>(&sent_body).unwrap()), (line, body), "{provider:?}");
+        }
+        // A comment of the conversation of GitHub: a new comment that quotes it.
+        let (base, requests) = serve(vec![(201, vec![], "{}".into())]);
+        reply_with(Provider::GitHub, &bearer(&base), "o/r", 5, &CommentReply { on_changes: false, ..reply }).unwrap();
+        let (sent, _, sent_body) = requests.recv().unwrap();
+        assert_eq!(sent, "POST /repos/o/r/issues/5/comments HTTP/1.1");
+        assert_eq!(serde_json::from_str::<Value>(&sent_body).unwrap()["body"], "> Why?\n> Really\n\nBecause");
     }
 
     #[test]

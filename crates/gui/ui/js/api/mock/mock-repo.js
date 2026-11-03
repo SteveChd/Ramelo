@@ -177,6 +177,11 @@ export function fileVersions(file) {
   if (/\.png$/.test(file)) return { before: version(PNG_BEFORE), after: version(PNG_AFTER) };
   if (/\.md$/.test(file)) return { before: version(utf8(MARKDOWN_BEFORE)), after: version(utf8(MARKDOWN_AFTER)) };
   if (/\.html?$/.test(file)) return { before: null, after: version(utf8(HTML)) };
+  if (/\.rs$/.test(file)) {
+    // Long enough for a comment away from the changes to be shown with the lines around it.
+    const text = (from) => Array.from({ length: 60 }, (_, i) => `    let line_${i + from} = ${i + from};`).join('\n') + '\n';
+    return { before: version(utf8(text(0))), after: version(utf8(text(1))) };
+  }
   return { before: version(utf8('before\n')), after: version(utf8('after\n')) };
 }
 

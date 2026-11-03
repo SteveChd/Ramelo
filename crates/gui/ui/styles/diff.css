@@ -169,3 +169,22 @@
 .line-comment .markdown { padding: 6px 10px; font-size: 13px; }
 .line-thread.composing { padding: 8px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: var(--radius-sm); background: var(--panel); }
 .line-thread .pull-reply { min-height: 64px; }
+
+/* Discussions of a pull request: a comment and its replies, each with a link to answer it. */
+.comment-thread { display: flex; flex-direction: column; gap: 6px; }
+.thread-replies { display: flex; flex-direction: column; gap: 6px; margin-left: 22px; padding-left: 10px; border-left: 2px solid var(--border); }
+.thread-comment footer { display: flex; gap: 8px; padding: 0 10px 6px; }
+.thread-comment .link-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; margin-left: -6px; border: 0; border-radius: 4px;
+  background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer;
+}
+.thread-comment .link-btn:hover, .thread-comment .link-btn.active { color: var(--accent); background: var(--hover); }
+.reply-box { display: flex; flex-direction: column; gap: 6px; margin-left: 22px; }
+.reply-box .pull-reply { min-height: 64px; }
+.thread-comment.flash { animation: flash 1.6s ease-out; }
+.thread-where { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+/* Discussions not on a line shown, above the hunks. */
+.diff-elsewhere { padding: 8px 0 4px; border-bottom: 1px solid var(--border); }
+.diff-elsewhere .line-thread { margin-top: 0; }
+/* Unchanged lines shown around a comment, between the hunks. */
+.hunk-head.around { font-style: italic; }
