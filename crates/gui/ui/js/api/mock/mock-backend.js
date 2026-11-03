@@ -131,10 +131,38 @@ function pullsOf(path) {
   return PULLS.get(path);
 }
 
-const pullView = (pull) => ({
-  details: { ...pull, thread: undefined, mergeable: pull.state === 'open' && !pull.draft, conflicts: false, mergeMethods: ['merge', 'squash', 'rebase'] },
-  comments: structuredClone(pull.thread),
-});
+/** The cache on disk of the application, here in memory: `path#number` → { index entry, view, changes }. */
+const PULL_CACHE = new Map();
+
+function pullView(pull, path) {
+  const view = {
+    details: { ...pull, thread: undefined, mergeable: pull.state === 'open' && !pull.draft, conflicts: false, mergeMethods: ['merge', 'squash', 'rebase'] },
+    comments: structuredClone(pull.thread),
+  };
+  const key = `${path}#${pull.number}`;
+  if (pull.state !== 'open') PULL_CACHE.delete(key);
+  else {
+    const entry = PULL_CACHE.get(key) ?? { meta: { number: pull.number } };
+    Object.assign(entry.meta, { viewAt: Date.now(), updated: pull.updated, headOid: pull.headOid });
+    entry.view = structuredClone(view);
+    PULL_CACHE.set(key, entry);
+  }
+  return view;
+}
+
+export async function pullCacheIndex(path) {
+  return [...PULL_CACHE.entries()].filter(([key]) => key.startsWith(`${path}#`)).map(([, e]) => ({ ...e.meta }));
+}
+
+export async function cachedPullRequest(path, number) {
+  const entry = PULL_CACHE.get(`${path}#${number}`);
+  return entry?.view ? { at: entry.meta.viewAt, data: structuredClone(entry.view) } : null;
+}
+
+export async function cachedPullRequestChanges(path, number) {
+  const entry = PULL_CACHE.get(`${path}#${number}`);
+  return entry?.changes ? { at: entry.meta.changesAt, data: structuredClone(entry.changes) } : null;
+}
 
 function findPull(path, number) {
   const pull = pullsOf(path).find((p) => p.number === number);
@@ -154,6 +182,9 @@ export async function pullRequests(path, openOnly = true) {
   const hosting = await repositoryHosting(path);
   if (!hosting || !accounts.length) return null;
   const pulls = pullsOf(path).filter((p) => !openOnly || p.state === 'open').map((p) => { const { body, thread, ...rest } = p; return structuredClone(rest); });
+  for (const key of [...PULL_CACHE.keys()]) {
+    if (key.startsWith(`${path}#`) && !pulls.some((p) => p.state === 'open' && key === `${path}#${p.number}`)) PULL_CACHE.delete(key);
+  }
   return { hosting, pulls };
 }
 
@@ -163,7 +194,7 @@ globalThis.mockPullReads = { view: 0, changes: 0 };
 export async function pullRequest(path, number) {
   globalThis.mockPullReads.view += 1;
   await delay(350);
-  return pullView(findPull(path, number));
+  return pullView(findPull(path, number), path);
 }
 
 export async function pullRequestChanges(path, number) {
@@ -172,7 +203,12 @@ export async function pullRequestChanges(path, number) {
   findPull(path, number);
   const commits = repo.history(path, 4).rows.slice(0, 3).map((c) => ({ oid: c.oid, summary: c.summary, author: c.author, time: c.time }));
   const files = ['crates/export/src/gantt.rs', 'crates/export/src/calendar.rs', 'README.md'].map((p, i) => repo.diffFor(p, i === 1 ? 'added' : 'modified'));
-  return { base: 'b0b0b0b0', head: commits[0].oid, commits, files };
+  const changes = { base: 'b0b0b0b0', head: commits[0].oid, commits, files };
+  const entry = PULL_CACHE.get(`${path}#${number}`) ?? { meta: { number } };
+  Object.assign(entry.meta, { changesAt: Date.now(), changesHead: changes.head });
+  entry.changes = structuredClone(changes);
+  PULL_CACHE.set(`${path}#${number}`, entry);
+  return changes;
 }
 
 export async function rangeFileDiff(path, from, to, file) {
@@ -183,7 +219,7 @@ export async function commentPullRequest(path, number, body) {
   await delay(300);
   if (!body.trim()) throw { code: 'comment_empty', subject: null, message: 'empty' };
   findPull(path, number).thread.push({ id: String(Date.now()), author: accounts[0]?.username ?? 'me', body, created: Math.floor(Date.now() / 1000), path: null, line: null });
-  return pullView(findPull(path, number));
+  return pullView(findPull(path, number), path);
 }
 
 export async function commentPullRequestLine(path, number, comment) {
@@ -194,7 +230,7 @@ export async function commentPullRequestLine(path, number, comment) {
     id: String(Date.now()), author: accounts[0]?.username ?? 'me', body: comment.body, created: Math.floor(Date.now() / 1000),
     path: comment.path, line: oldSide ? comment.oldLine : comment.newLine, oldSide, outdated: false,
   });
-  return pullView(findPull(path, number));
+  return pullView(findPull(path, number), path);
 }
 
 export async function mergePullRequest(path, number) {
@@ -202,13 +238,13 @@ export async function mergePullRequest(path, number) {
   const pull = findPull(path, number);
   if (pull.draft) throw { code: 'hosting_http', subject: 'Pull request is in draft state', message: 'draft' };
   pull.state = 'merged';
-  return pullView(pull);
+  return pullView(pull, path);
 }
 
 export async function closePullRequest(path, number) {
   await delay(300);
   findPull(path, number).state = 'closed';
-  return pullView(findPull(path, number));
+  return pullView(findPull(path, number), path);
 }
 
 export async function createPullRequest(path, pull) {

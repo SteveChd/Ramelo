@@ -8,7 +8,7 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use ramelo_core::{Git, RepoSummary};
-use ramelo_storage::{Accounts, Workspace};
+use ramelo_storage::{Accounts, PullCache, Workspace};
 
 use crate::error::{CommandError, CommandResult};
 use crate::snapshot::Snapshot;
@@ -26,6 +26,8 @@ pub struct AppState {
     language: Mutex<String>,
     /// Set to stop the clone in progress.
     pub clone_cancelled: AtomicBool,
+    /// Pull requests already read, on disk.
+    pub pull_cache: PullCache,
 }
 
 impl AppState {
@@ -37,6 +39,7 @@ impl AppState {
         let workspace = Workspace::load(&data_dir);
         let accounts = Accounts::load(&data_dir);
         Self {
+            pull_cache: PullCache::new(&data_dir),
             data_dir,
             git,
             workspace: Mutex::new(workspace),
@@ -101,6 +104,8 @@ impl AppState {
     }
 
     pub fn forget(&self, path: &Path) {
+        // Its pull requests kept on disk go too.
+        let _ = self.pull_cache.keep_only(path, &[]);
         self.states().remove(path);
     }
 

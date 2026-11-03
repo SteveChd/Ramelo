@@ -1,11 +1,13 @@
 //! Pull requests of a repository, on the service its remote points to: the account is the one set
-//! up for that server. Their changes are read with git, from commits fetched from the remote.
+//! up for that server. Their changes are read with git, from commits fetched from the remote. What is
+//! read of an open pull request is kept on disk (see `PullCache`), and given back by the `cached_`
+//! commands.
 
 use std::path::{Path, PathBuf};
 
 use ramelo_core::{FileDiff, RangeChanges};
-use ramelo_hosting::{MergeMethod, NewPull, PullComment, PullDetails, PullRequest};
-use ramelo_storage::{Account, Provider};
+use ramelo_hosting::{MergeMethod, NewPull, PullComment, PullDetails, PullRequest, PullState};
+use ramelo_storage::{Account, Cached, CachedPull, Provider};
 use serde::Serialize;
 use tauri::State;
 
@@ -70,6 +72,9 @@ pub struct PullList {
 pub async fn pull_requests(state: State<'_, AppState>, path: String, open_only: bool) -> CommandResult<Option<PullList>> {
     let Some(hosting) = hosting(&state, Path::new(&path))? else { return Ok(None) };
     let pulls = ramelo_hosting::list_pulls(&hosting.account, &hosting.key, open_only)?;
+    // Those no longer open (merged, closed) leave the cache.
+    let open: Vec<u64> = pulls.iter().filter(|p| p.state == PullState::Open).map(|p| p.number).collect();
+    let _ = state.pull_cache.keep_only(Path::new(&path), &open);
     Ok(Some(PullList { hosting, pulls }))
 }
 
@@ -86,7 +91,15 @@ pub async fn pull_request(state: State<'_, AppState>, path: String, number: u64)
     let hosting = required(&state, Path::new(&path))?;
     let details = ramelo_hosting::pull_details(&hosting.account, &hosting.key, number)?;
     let comments = ramelo_hosting::pull_comments(&hosting.account, &hosting.key, number)?;
-    Ok(PullView { details, comments })
+    let view = PullView { details, comments };
+    // The cache is a help: failing to write it does not fail the reading.
+    let pull = &view.details.pull;
+    let _ = if pull.state == PullState::Open {
+        state.pull_cache.put_view(Path::new(&path), number, &view, pull.updated, pull.head_oid.clone())
+    } else {
+        state.pull_cache.forget(Path::new(&path), number)
+    };
+    Ok(view)
 }
 
 /// The commits of a pull request and their changes: its commits and its target branch are fetched
@@ -100,7 +113,27 @@ pub async fn pull_request_changes(state: State<'_, AppState>, path: String, numb
     let target = ramelo_core::fetch_commit(&state.git, &root, &hosting.remote, &format!("refs/heads/{}", details.pull.target_branch)).map_err(named)?;
     let (source, reference) = ramelo_hosting::fetch_source(hosting.provider, &details.pull);
     let head = ramelo_core::fetch_commit(&state.git, &root, source.as_deref().unwrap_or(&hosting.remote), &reference).map_err(named)?;
-    Ok(ramelo_core::range_changes(&state.git, &root, &target, &head)?)
+    let changes = ramelo_core::range_changes(&state.git, &root, &target, &head)?;
+    let _ = state.pull_cache.put_changes(&root, number, &changes, &changes.head);
+    Ok(changes)
+}
+
+/// What is kept on disk of the pull requests of a repository: when each was read, and what it was.
+#[tauri::command]
+pub fn pull_cache_index(state: State<'_, AppState>, path: String) -> Vec<CachedPull> {
+    state.pull_cache.index(Path::new(&path))
+}
+
+/// The conversation of a pull request as last read, if kept.
+#[tauri::command]
+pub async fn cached_pull_request(state: State<'_, AppState>, path: String, number: u64) -> CommandResult<Option<Cached>> {
+    Ok(state.pull_cache.view(Path::new(&path), number))
+}
+
+/// The changes of a pull request as last read, if kept.
+#[tauri::command]
+pub async fn cached_pull_request_changes(state: State<'_, AppState>, path: String, number: u64) -> CommandResult<Option<Cached>> {
+    Ok(state.pull_cache.changes(Path::new(&path), number))
 }
 
 /// One file of the changes between two commits, in full.

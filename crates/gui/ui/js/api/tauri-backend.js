@@ -19,6 +19,9 @@ export const repositoryHosting = (path) => invoke('repository_hosting', { path }
 export const pullRequests = (path, openOnly = true) => invoke('pull_requests', { path, openOnly });
 export const pullRequest = (path, number) => invoke('pull_request', { path, number });
 export const pullRequestChanges = (path, number) => invoke('pull_request_changes', { path, number });
+export const pullCacheIndex = (path) => invoke('pull_cache_index', { path });
+export const cachedPullRequest = (path, number) => invoke('cached_pull_request', { path, number });
+export const cachedPullRequestChanges = (path, number) => invoke('cached_pull_request_changes', { path, number });
 export const rangeFileDiff = (path, from, to, file) => invoke('range_file_diff', { path, from, to, file });
 export const commentPullRequest = (path, number, body) => invoke('comment_pull_request', { path, number, body });
 /** `comment`: { path, oldPath, oldLine, newLine, body }; a removed line has no `newLine`, an added one no `oldLine`. */

@@ -48,7 +48,8 @@ const current = (path, number) => state.path === path && state.number === number
 /** `force`: read again even when the changes kept are those of the last commit. */
 async function loadChanges(force = false) {
   const { path, number } = state;
-  const kept = force ? null : pullCache.changes(path, number);
+  const kept = force ? null : await pullCache.changes(path, number);
+  if (!current(path, number)) return;
   if (kept) {
     state.changes = { loading: false, data: kept, error: null };
     emit();
@@ -104,9 +105,12 @@ export const pullView = {
 
   async open(path, number) {
     if (current(path, number)) return;
-    const kept = pullCache.view(path, number);
-    Object.assign(state, { path, number, tab: 'conversation', view: kept?.view ?? null, loading: true, error: null, changes: null, commit: null, commitDetails: null, busy: null });
+    Object.assign(state, { path, number, tab: 'conversation', view: null, loading: true, error: null, changes: null, commit: null, commitDetails: null, busy: null });
     if (repoStore.state.diff?.kind === 'range') repoStore.closeDiff();
+    // Read from the disk: shown at once, without the service when still current.
+    const kept = await pullCache.view(path, number);
+    if (!current(path, number)) return;
+    if (kept) state.view = kept.view;
     if (kept && !kept.stale) {
       state.loading = false;
       emit();
