@@ -24,6 +24,8 @@ const state = {
   refs: null,
   /** 'wip' for the working copy, otherwise the oid of the selected commit. */
   selection: 'wip',
+  /** Commits marked together (Ctrl+click, Shift+click), to be combined; empty: none. */
+  marked: [],
   details: null,
   /**
    * Diff shown below the graph: { kind: 'worktree' | 'commit' | 'range', file, staged, untracked, oid,
@@ -212,6 +214,7 @@ function rewriteNotes(info) {
 async function afterRewrite(result, { pushedTo }) {
   store.notify(t(pushedTo.length ? 'rewrite.donePushed' : 'rewrite.done'));
   state.selection = 'wip';
+  state.marked = [];
   state.details = null;
   state.diff = null;
   emit('selection');
@@ -301,7 +304,7 @@ export const repoStore = {
 
   /** The tab shows another repository: everything is read for it. */
   open(path) {
-    Object.assign(state, { path, history: null, limit: PAGE, refs: null, selection: 'wip', details: null, diff: null, running: null });
+    Object.assign(state, { path, history: null, limit: PAGE, refs: null, selection: 'wip', marked: [], details: null, diff: null, running: null });
     state.loadedFor = fingerprint(repo());
     emit('selection');
     loadHistory();
@@ -342,11 +345,17 @@ export const repoStore = {
 
   selectWip() {
     state.selection = 'wip';
+    state.marked = [];
     state.details = null;
     emit('selection');
   },
 
-  async selectCommit(oid) {
+  /** Selects a commit; `keepMarks`: the commits marked stay marked (a right click on one of them). */
+  async selectCommit(oid, { keepMarks = false } = {}) {
+    if (!keepMarks && state.marked.length) {
+      state.marked = [];
+      if (state.selection === oid) emit('selection');
+    }
     if (state.selection === oid) return;
     state.selection = oid;
     state.details = null;
@@ -356,6 +365,34 @@ export const repoStore = {
     if (state.selection !== oid || !details) return;
     state.details = details;
     emit('details');
+  },
+
+  clearMarks() {
+    if (!state.marked.length) return;
+    state.marked = [];
+    emit('selection');
+  },
+
+  /**
+   * Marks commits to combine them: `range` false toggles `oid` (Ctrl+click), true marks every commit
+   * from the selected one to `oid` (Shift+click). The selected commit counts as marked.
+   */
+  markCommit(oid, { range = false } = {}) {
+    const rows = state.history?.rows ?? [];
+    const anchor = state.selection !== 'wip' ? state.selection : null;
+    let marked = state.marked.length ? [...state.marked] : anchor ? [anchor] : [];
+    if (range && anchor) {
+      const [from, to] = [rows.findIndex((r) => r.oid === anchor), rows.findIndex((r) => r.oid === oid)];
+      if (from < 0 || to < 0) return;
+      marked = rows.slice(Math.min(from, to), Math.max(from, to) + 1).map((r) => r.oid);
+    } else if (marked.includes(oid)) {
+      marked = marked.filter((m) => m !== oid);
+    } else {
+      marked.push(oid);
+    }
+    state.marked = marked.length > 1 ? marked : [];
+    emit('selection');
+    if (!range && state.selection === 'wip') this.selectCommit(oid, { keepMarks: true });
   },
 
   async openWorktreeDiff(file, staged, untracked) {
@@ -592,6 +629,51 @@ export const repoStore = {
     if (result) await afterRewrite(result, info.squash);
   },
 
+  /**
+   * Combines commits that follow one another into the oldest of them: a squash asks for the message
+   * (all of theirs to start with), a fixup keeps the one of the oldest.
+   */
+  async squashCommits(oids, { fixup = false } = {}) {
+    // Newest first, as the graph shows them; each one's only parent must be the next.
+    const order = (state.history?.rows ?? []).filter((r) => oids.includes(r.oid));
+    const follow = order.length === oids.length && order.every((r, i) => i === order.length - 1 || (r.parents.length === 1 && r.parents[0] === order[i + 1].oid));
+    if (order.length < 2 || !follow) {
+      store.notify(t('rewrite.cannotSquashMany'), true);
+      return;
+    }
+    const oldest = order.at(-1);
+    const info = await rewritable(oldest.oid);
+    if (!info) return;
+    const details = await Promise.all(order.map((r) => (state.details?.oid === r.oid ? state.details : run(() => backend.commitDetails(state.path, r.oid)))));
+    if (details.some((d) => !d)) return;
+    const names = { n: order.length, oldest: oldest.oid.slice(0, 7), summary: details.at(-1).message.split('\n')[0].trim() };
+    // The commits combined are not written again: only those after them.
+    const { notes, warning } = rewriteNotes({ ...info, descendants: info.descendants - (order.length - 1) });
+    const text = [t(fixup ? 'rewrite.fixupManyNote' : 'rewrite.squashManyNote', names), notes[0]];
+    let message = null;
+    if (fixup) {
+      const ok = await confirm({
+        title: t('rewrite.fixupManyTitle', names),
+        message: [...text, warning].filter(Boolean).join(' '),
+        confirmLabel: t('rewrite.fixup'),
+        danger: Boolean(warning),
+      });
+      if (!ok) return;
+    } else {
+      message = await editText({
+        title: t('rewrite.squashManyTitle', names),
+        notes: text,
+        warning,
+        value: `${[...details].reverse().map((d) => d.message.trimEnd()).join('\n\n')}\n`,
+        confirmLabel: t('rewrite.squash'),
+        validate: (value) => (value.trim() ? null : t('rewrite.messageMissing')),
+      });
+      if (message === null) return;
+    }
+    const result = await run(() => backend.squashCommits(state.path, order.map((r) => r.oid), message), 'rewrite');
+    if (result) await afterRewrite(result, info);
+  },
+
   // ---------- Conflicts ----------
 
   /** Opens the conflict editor on a conflicted file of the working copy. */
@@ -742,6 +824,7 @@ export const repoStore = {
     if (result.carried === 'conflicted') store.notify(t('switch.conflicted'), true);
     else if (result.carried === 'reapplied') store.notify(t('switch.carried', { target }));
     state.selection = 'wip';
+    state.marked = [];
     state.diff = null;
     emit('selection');
     await afterChange(result.snapshot);
@@ -774,6 +857,7 @@ export const repoStore = {
     else store.notify(t('branch.created', { name }));
     if (answer.checks.checkout) {
       state.selection = 'wip';
+      state.marked = [];
       state.diff = null;
       emit('selection');
     }

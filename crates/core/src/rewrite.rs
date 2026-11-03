@@ -1,6 +1,6 @@
 //! Rewriting the history of the current branch without an interactive rebase: changing the message
-//! of a past commit or the content of one of its files, or combining a commit with the one before it
-//! (squash, fixup).
+//! of a past commit or the content of one of its files, or combining a commit with the one before it,
+//! or several commits that follow one another into one (squash, fixup).
 //!
 //! The commit and every commit after it up to HEAD are written again as new objects (same author,
 //! same messages, the user as committer), then HEAD moves to the new tip with `reset --keep`, which
@@ -101,19 +101,57 @@ pub fn edit_file(git: &Git, root: &Path, oid: &str, path: &str, content: &[u8]) 
 pub fn squash(git: &Git, root: &Path, oid: &str, message: Option<&str>) -> Result<Rewritten, GitError> {
     let oid = check(git, root, oid)?;
     let parent = squash_parent(git, root, &oid)?.ok_or_else(|| GitError::CannotSquash(short(&oid)))?;
-    let message = match message.map(str::trim_end) {
-        Some(m) if m.trim().is_empty() => return Err(GitError::NothingToCommit),
-        Some(m) => Some(format!("{m}\n")),
-        None => None,
+    rewrite(git, root, &parent, Change::Squash { absorbed: vec![oid], message: squash_message(message)? })
+}
+
+fn squash_message(message: Option<&str>) -> Result<Option<String>, GitError> {
+    match message.map(str::trim_end) {
+        Some(m) if m.trim().is_empty() => Err(GitError::NothingToCommit),
+        Some(m) => Ok(Some(format!("{m}\n"))),
+        None => Ok(None),
+    }
+}
+
+/// Combines commits that follow one another on the current branch into one, given in any order: the
+/// oldest takes the changes of all of them, its author, and `message` (squash), or keeps its own
+/// message when `message` is `None` (fixup). Each commit but the oldest must have the one before it
+/// as its only parent, with no other line leaving from it.
+pub fn squash_many(git: &Git, root: &Path, oids: &[String], message: Option<&str>) -> Result<Rewritten, GitError> {
+    let mut chain = Vec::with_capacity(oids.len());
+    for oid in oids {
+        let oid = check(git, root, oid)?;
+        if !chain.contains(&oid) {
+            chain.push(oid);
+        }
+    }
+    let [first, ..] = chain.as_slice() else {
+        return Err(GitError::NothingToCommit);
     };
-    rewrite(git, root, &parent, Change::Squash { child: oid, message })
+    if chain.len() == 1 {
+        return squash(git, root, &first.clone(), message);
+    }
+    // The oldest has the most commits after it.
+    let mut counted = Vec::with_capacity(chain.len());
+    for oid in chain {
+        counted.push((descendants(git, root, &oid)?.len(), oid));
+    }
+    counted.sort_by_key(|c| std::cmp::Reverse(c.0));
+    let chain: Vec<String> = counted.into_iter().map(|(_, oid)| oid).collect();
+    for pair in chain.windows(2) {
+        if squash_parent(git, root, &pair[1])?.as_deref() != Some(pair[0].as_str()) {
+            return Err(GitError::CannotSquash(short(&pair[1])));
+        }
+    }
+    let message = squash_message(message)?;
+    rewrite(git, root, &chain[0], Change::Squash { absorbed: chain[1..].to_vec(), message })
 }
 
 enum Change {
     Message(String),
     File { path: String, content: Vec<u8> },
-    /// The rewritten commit takes the tree of `child`, which disappears.
-    Squash { child: String, message: Option<String> },
+    /// The rewritten commit takes the tree of the last of `absorbed` (commits that follow it one
+    /// after the other), which disappear.
+    Squash { absorbed: Vec<String>, message: Option<String> },
 }
 
 /// The full id of `oid`, once checked that it can be rewritten.
@@ -139,8 +177,8 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
     order.extend(descendants(git, root, &oid)?);
     for old in &order {
         // The squashed commit is now part of the one before it.
-        if let Change::Squash { child, .. } = &change {
-            if old == child {
+        if let Change::Squash { absorbed, .. } = &change {
+            if absorbed.contains(old) {
                 let merged = rewritten[&oid].clone();
                 rewritten.insert(old.clone(), merged);
                 continue;
@@ -149,8 +187,9 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
         let commit = RawCommit::read(git, root, old)?;
         let parents: Vec<String> = commit.parents.iter().map(|p| rewritten.get(p).cloned().unwrap_or_else(|| p.clone())).collect();
         let (tree, message) = match &change {
-            Change::Squash { child, message } if *old == oid => {
-                let tree = git.text(root, ["rev-parse", &format!("{child}^{{tree}}")])?.trim().to_owned();
+            Change::Squash { absorbed, message } if *old == oid => {
+                let last = absorbed.last().ok_or(GitError::NothingToCommit)?;
+                let tree = git.text(root, ["rev-parse", &format!("{last}^{{tree}}")])?.trim().to_owned();
                 (tree, message.as_ref().map_or_else(|| commit.message.clone(), |m| m.as_bytes().to_vec()))
             }
             Change::Squash { .. } => (commit.tree.clone(), commit.message.clone()),

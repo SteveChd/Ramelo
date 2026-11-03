@@ -248,3 +248,7 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .pull-note.waiting, .sb-empty.waiting { display: flex; align-items: center; gap: 10px; }
 .sb-empty.waiting .spinner { width: 12px; height: 12px; }
 .pull-note.waiting .spinner { width: 16px; height: 16px; color: var(--accent); }
+/* Several commits marked in the graph, to combine them. */
+.marked-box { margin: 12px 14px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent) 7%, var(--panel)); font-size: 12.5px; }
+.marked-box p { margin: 0 0 8px; line-height: 1.45; }
+.marked-box .actions { display: flex; gap: 6px; flex-wrap: wrap; }

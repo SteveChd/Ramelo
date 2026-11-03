@@ -107,6 +107,7 @@ export const resolveConflict = (path, file, content) => invoke('resolve_conflict
 /** Marks a conflicted file resolved with one side as it is: a snapshot. */
 export const takeConflictSide = (path, file, theirs) => invoke('take_conflict_side', { path, file, theirs });
 export const squashCommit = (path, oid, message) => invoke('squash_commit', { path, oid, message });
+export const squashCommits = (path, oids, message) => invoke('squash_commits', { path, oids, message });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });
 /** FileDiff { path, oldPath, status, binary, additions, deletions, hunks, truncated }, or null. */
 /**

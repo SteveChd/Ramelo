@@ -28,6 +28,8 @@
 .grow { height: 28px; font-size: 13px; cursor: default; }
 .grow:hover { background: var(--hover); }
 .grow.selected { background: var(--sel); box-shadow: inset 3px 0 0 var(--accent); }
+.grow.marked { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+.grow.marked.selected { background: var(--sel); box-shadow: inset 3px 0 0 var(--accent); }
 .grow svg { display: block; overflow: hidden; max-width: 100%; }
 .grow .msg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 10px 0 4px; overflow: hidden; }
 .grow .msg .text { flex: 1 1 0; min-width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }

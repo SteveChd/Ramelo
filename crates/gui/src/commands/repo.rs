@@ -258,6 +258,15 @@ pub async fn squash_commit(state: State<'_, AppState>, path: String, oid: String
     Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
 }
 
+/// Combines commits of the current branch that follow one another into the oldest of them: with
+/// `message` (squash), or with the message of the oldest when there is none (fixup).
+#[tauri::command]
+pub async fn squash_commits(state: State<'_, AppState>, path: String, oids: Vec<String>, message: Option<String>) -> CommandResult<RewriteResult> {
+    let root = PathBuf::from(path);
+    let rewritten = core::squash_many(&state.git, &root, &oids, message.as_deref())?;
+    Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgressResult {

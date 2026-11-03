@@ -410,6 +410,37 @@ fn squashes_and_fixes_up_a_commit_into_the_one_before() {
 }
 
 #[test]
+fn squashes_several_commits_that_follow_one_another() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "1\n", "Base");
+    commit_file(&root, "a.txt", "2\n", "One");
+    commit_file(&root, "b.txt", "b\n", "Two");
+    commit_file(&root, "c.txt", "c\n", "Three");
+    commit_file(&root, "d.txt", "d\n", "Four");
+    let tree = git(&root, &["rev-parse", "HEAD^{tree}"]);
+    let id = |rev: &str| git(&root, &["rev-parse", rev]).trim().to_owned();
+
+    // Given in any order: Three, One, Two become one commit under the message of One (fixup).
+    let done = squash_many(&g, &root, &[id("HEAD~1"), id("HEAD~3"), id("HEAD~2")], None).unwrap();
+    assert_eq!(messages(&root), ["Four", "One", "Base"]);
+    assert_eq!(git(&root, &["rev-parse", "HEAD^{tree}"]), tree);
+    assert_eq!(git(&root, &["show", "--format=", "--name-only", &done.commit]).trim(), "a.txt\nb.txt\nc.txt");
+
+    // With a message, up to the last commit.
+    squash_many(&g, &root, &[id("HEAD"), id("HEAD~1")], Some("One to four")).unwrap();
+    assert_eq!(messages(&root), ["One to four", "Base"]);
+    assert_eq!(git(&root, &["rev-parse", "HEAD^{tree}"]), tree);
+
+    // Commits with a gap between them cannot be combined.
+    commit_file(&root, "e.txt", "e\n", "Five");
+    commit_file(&root, "f.txt", "f\n", "Six");
+    assert!(matches!(squash_many(&g, &root, &[id("HEAD"), id("HEAD~2")], None), Err(GitError::CannotSquash(_))));
+    assert_eq!(messages(&root), ["Six", "Five", "One to four", "Base"]);
+}
+
+#[test]
 fn tells_where_a_branch_is_checked_out_in_another_worktree() {
     let dir = tempfile::tempdir().unwrap();
     let root = new_repo(&dir.path().join("r"));

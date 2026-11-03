@@ -64,6 +64,7 @@ export const {
   rewordCommit,
   editCommitFile,
   squashCommit,
+  squashCommits,
   continueOperation,
   skipCommit,
   abortOperation,

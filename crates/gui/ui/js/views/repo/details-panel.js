@@ -7,8 +7,18 @@ import { fullDate } from '../../lib/time.js';
 import { repoStore } from '../../state/repo-store.js';
 import { diffKey, fileRow } from './files.js';
 
+/** Several commits marked in the graph: what can be done with them. */
+function markedBox(marked) {
+  return h('div', { class: 'marked-box' },
+    h('p', {}, t('rewrite.markHint', { n: marked.length })),
+    h('div', { class: 'actions' },
+      h('button', { type: 'button', class: 'btn primary', onclick: () => repoStore.squashCommits(marked) }, icon('squash', 14), t('rewrite.squash')),
+      h('button', { type: 'button', class: 'btn', onclick: () => repoStore.squashCommits(marked, { fixup: true }) }, t('rewrite.fixup')),
+      h('button', { type: 'button', class: 'btn', onclick: () => repoStore.clearMarks() }, t('dialog.cancel'))));
+}
+
 export function renderDetailsPanel(container) {
-  const { details, diff } = repoStore.state;
+  const { details, diff, marked } = repoStore.state;
   if (!details) {
     mount(container, h('div', { class: 'loading' }, h('span', { class: 'spinner' }), t('repo.loading')));
     return;
@@ -17,6 +27,7 @@ export function renderDetailsPanel(container) {
   const body = rest.join('\n').trim();
   const sameCommitter = details.committer === details.author;
   mount(container, h('div', { class: 'side-scroll' },
+    marked.length > 1 && markedBox(marked),
     h('div', { class: 'details' },
       h('p', { class: 'msg-summary' }, summary),
       body && h('pre', { class: 'msg-body' }, body),

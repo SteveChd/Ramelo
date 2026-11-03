@@ -87,6 +87,17 @@ function refLabels(row) {
 
 /** Right click on a commit: branch from it, switch to it or to one of its branches, copy its id. */
 function commitMenu(event, row, headOid) {
+  const { marked } = repoStore.state;
+  if (marked.length > 1 && marked.includes(row.oid)) {
+    repoStore.selectCommit(row.oid, { keepMarks: true });
+    openContextMenu(event, [
+      { label: t('rewrite.squashManyMenu', { n: marked.length }), icon: 'squash', run: () => repoStore.squashCommits(marked) },
+      { label: t('rewrite.fixupManyMenu', { n: marked.length }), run: () => repoStore.squashCommits(marked, { fixup: true }) },
+      '-',
+      { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
+    ]);
+    return;
+  }
   repoStore.selectCommit(row.oid);
   const current = store.activeRepo?.summary?.head.branch;
   const branches = row.refs.filter((r) => r.kind === 'branch' && r.name !== current);
@@ -142,10 +153,19 @@ function highlighter() {
 
 function commitRow(row, width, headOid, selected, mark) {
   const found = search.active ? (search.matches(row.oid) ? ' match' : ' dim') : '';
+  const marked = repoStore.state.marked.includes(row.oid) ? ' marked' : '';
   return h('div', {
-    class: `grow${selected ? ' selected' : ''}${row.parents.length > 1 ? ' merge' : ''}${found}`,
+    class: `grow${selected ? ' selected' : ''}${marked}${row.parents.length > 1 ? ' merge' : ''}${found}`,
     dataset: { oid: row.oid },
-    onclick: () => repoStore.selectCommit(row.oid),
+    // Ctrl+click marks commits one by one, Shift+click a range of them, to combine them.
+    onclick: (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        event.preventDefault();
+        repoStore.markCommit(row.oid, { range: event.shiftKey });
+      } else {
+        repoStore.selectCommit(row.oid);
+      }
+    },
     oncontextmenu: (event) => commitMenu(event, row, headOid),
   },
   laneSvg(row, width, row.oid === headOid),
@@ -280,8 +300,9 @@ function focusLine(container) {
 
 /** Selection changed: only the highlighted row changes, and the selected commit is scrolled into view. */
 export function updateGraphSelection(container) {
-  const { selection } = repoStore.state;
+  const { selection, marked } = repoStore.state;
   for (const row of container.querySelectorAll('.grow.selected')) row.classList.remove('selected');
+  for (const row of container.querySelectorAll('.grow[data-oid]')) row.classList.toggle('marked', marked.includes(row.dataset.oid));
   const target = selection === 'wip' ? container.querySelector('.grow.wip') : container.querySelector(`.grow[data-oid="${selection}"]`);
   target?.classList.add('selected');
   target?.scrollIntoView({ block: 'nearest' });
