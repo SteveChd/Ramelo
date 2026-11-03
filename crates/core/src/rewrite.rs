@@ -1,6 +1,10 @@
 //! Rewriting the history of the current branch without an interactive rebase: changing the message
 //! of a past commit or the content of one of its files, or combining a commit with the one before it,
-//! or several commits that follow one another into one (squash, fixup).
+//! or several commits that follow one another into one (squash, fixup), or moving a commit one place
+//! up or down (swapping it with its neighbour).
+//!
+//! A move applies the change of each of the two commits on top of the other with `git merge-tree`,
+//! in memory: the working copy is only touched at the end.
 //!
 //! The commit and every commit after it up to HEAD are written again as new objects (same author,
 //! same messages, the user as committer), then HEAD moves to the new tip with `reset --keep`, which
@@ -11,8 +15,9 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::repo::Operation;
 use crate::{Git, GitError};
@@ -146,6 +151,129 @@ pub fn squash_many(git: &Git, root: &Path, oids: &[String], message: Option<&str
     rewrite(git, root, &chain[0], Change::Squash { absorbed: chain[1..].to_vec(), message })
 }
 
+/// Which way a commit moves: up (after the commit that follows it) or down (before the one before it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Direction {
+    Up,
+    Down,
+}
+
+/// Moves commit `oid` one place up or down on the current branch: it swaps with its neighbour, each
+/// change applied on top of the other. Both must follow one another without a merge, and the lower
+/// one must have a parent. A conflict between their changes leaves the history as it was.
+pub fn move_commit(git: &Git, root: &Path, oid: &str, direction: Direction) -> Result<Rewritten, GitError> {
+    let oid = check(git, root, oid)?;
+    let cannot = || GitError::CannotMove(short(&oid));
+    let (lower, upper) = match direction {
+        Direction::Down => (squash_parent(git, root, &oid)?.ok_or_else(cannot)?, oid.clone()),
+        Direction::Up => (oid.clone(), only_child(git, root, &oid)?.ok_or_else(cannot)?),
+    };
+    let low = RawCommit::read(git, root, &lower)?;
+    let up = RawCommit::read(git, root, &upper)?;
+    let [base] = low.parents.as_slice() else {
+        return Err(cannot());
+    };
+    let head = git.text(root, ["rev-parse", "HEAD"])?.trim().to_owned();
+    let committer = git.text(root, ["var", "GIT_COMMITTER_IDENT"]).map_err(|_| GitError::IdentityMissing)?.trim().to_owned();
+
+    // The upper change first, on the base; then the lower one on top of it.
+    let up_tree = pick(git, root, &lower, base, &upper)?;
+    let new_up = up.write(git, root, &up_tree, std::slice::from_ref(base), &committer, &up.message)?;
+    let low_tree = pick(git, root, base, &new_up, &lower)?;
+    let new_low = low.write(git, root, &low_tree, std::slice::from_ref(&new_up), &committer, &low.message)?;
+
+    // The commits after them: the same content when the two together give the same result (the
+    // usual case), otherwise their own change applied again.
+    let mut rewritten: HashMap<String, String> = HashMap::from([(upper.clone(), new_low.clone()), (lower.clone(), new_up.clone())]);
+    for old in descendants(git, root, &upper)? {
+        let commit = RawCommit::read(git, root, &old)?;
+        let parents: Vec<String> = commit.parents.iter().map(|p| rewritten.get(p).cloned().unwrap_or_else(|| p.clone())).collect();
+        let tree = if low_tree == up.tree {
+            commit.tree.clone()
+        } else {
+            let ([old_parent], [new_parent]) = (commit.parents.as_slice(), parents.as_slice()) else {
+                return Err(GitError::MoveConflict(short(&old)));
+            };
+            pick(git, root, old_parent, new_parent, &old)?
+        };
+        let new = commit.write(git, root, &tree, &parents, &committer, &commit.message)?;
+        rewritten.insert(old, new);
+    }
+    let new_head = rewritten.get(&head).cloned().unwrap_or(head);
+    move_head(git, root, &new_head)?;
+    Ok(Rewritten { head: new_head, commit: if oid == upper { new_up } else { new_low } })
+}
+
+/// The commit whose only parent is `oid`, on the way to HEAD, with no other line leaving from `oid`.
+fn only_child(git: &Git, root: &Path, oid: &str) -> Result<Option<String>, GitError> {
+    for later in descendants(git, root, oid)? {
+        if RawCommit::read(git, root, &later)?.parents == [oid] {
+            return Ok((squash_parent(git, root, &later)?.as_deref() == Some(oid)).then_some(later));
+        }
+    }
+    Ok(None)
+}
+
+/// The tree of `onto` with the change from `from` to `commit` applied, as a cherry-pick would give,
+/// computed in memory with `git merge-tree` (git 2.40 and later), or by applying the patch to an
+/// index of its own with an older git.
+fn pick(git: &Git, root: &Path, from: &str, onto: &str, commit: &str) -> Result<String, GitError> {
+    let base = format!("--merge-base={from}");
+    let out = git.raw(root, &["merge-tree", "--write-tree", "--name-only", "--no-messages", &base, onto, commit])?;
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    let mut lines = text.lines();
+    let tree = lines.next().unwrap_or_default().trim().to_owned();
+    match out.status.code() {
+        Some(0) if !tree.is_empty() => Ok(tree),
+        // Status 1: the changes conflict; the conflicted files follow the tree.
+        Some(1) => Err(GitError::MoveConflict(lines.map(str::trim).find(|l| !l.is_empty()).unwrap_or_default().to_owned())),
+        // The options are not known: an older git.
+        _ => pick_by_patch(git, root, from, onto, commit),
+    }
+}
+
+/// [`pick`] for an older git: the patch from `from` to `commit` applied to `onto` in a temporary
+/// index, which leaves the user's index alone.
+fn pick_by_patch(git: &Git, root: &Path, from: &str, onto: &str, commit: &str) -> Result<String, GitError> {
+    static INDEXES: AtomicU64 = AtomicU64::new(0);
+    let dir = git.text(root, ["rev-parse", "--absolute-git-dir"])?;
+    let index = Path::new(dir.trim()).join(format!("ramelo-pick-{}-{}", std::process::id(), INDEXES.fetch_add(1, Ordering::Relaxed)));
+    let env = [("GIT_INDEX_FILE", index.as_os_str())];
+    let run = |args: &[&str], input: Option<&[u8]>| -> Result<std::process::Output, GitError> { git.raw_with_env(root, args, &env, input) };
+    let result = (|| {
+        Git::check(&["read-tree"], run(&["read-tree", onto], None)?)?;
+        let patch = git.output(root, ["diff", "--binary", "--full-index", "--no-renames", from, commit])?;
+        if !patch.is_empty() {
+            let out = run(&["apply", "--cached", "--3way", "--whitespace=nowarn"], Some(&patch))?;
+            if !out.status.success() {
+                // « U path » names a conflicted file, « error: patch failed: path:line » one that
+                // could not be applied at all.
+                let message = String::from_utf8_lossy(&out.stderr);
+                let file = message.lines().find_map(|l| {
+                    l.strip_prefix("U ").map(str::to_owned).or_else(|| l.split_once("patch failed: ").map(|(_, rest)| rest.rsplit_once(':').map_or(rest, |(f, _)| f).to_owned()))
+                });
+                return Err(GitError::MoveConflict(file.unwrap_or_default()));
+            }
+        }
+        let tree = Git::check(&["write-tree"], run(&["write-tree"], None)?)?;
+        Ok(String::from_utf8_lossy(&tree).trim().to_owned())
+    })();
+    let _ = fs::remove_file(&index);
+    result
+}
+
+/// HEAD moves to the rewritten tip; the working copy follows, its own changes kept.
+fn move_head(git: &Git, root: &Path, new_head: &str) -> Result<(), GitError> {
+    let out = git.raw(root, &["reset", "--quiet", "--keep", new_head])?;
+    if !out.status.success() {
+        let message = String::from_utf8_lossy(&out.stderr);
+        let file = message.lines().find_map(|l| l.split('\'').nth(1)).unwrap_or_default().to_owned();
+        return Err(GitError::LocalChanges(file));
+    }
+    Ok(())
+}
+
 enum Change {
     Message(String),
     File { path: String, content: Vec<u8> },
@@ -220,12 +348,7 @@ fn rewrite(git: &Git, root: &Path, oid: &str, change: Change) -> Result<Rewritte
 
     let new_head = rewritten.get(&head).cloned().unwrap_or(head);
     let commit = rewritten.get(&oid).cloned().unwrap_or(oid);
-    let out = git.raw(root, &["reset", "--quiet", "--keep", &new_head])?;
-    if !out.status.success() {
-        let message = String::from_utf8_lossy(&out.stderr);
-        let file = message.lines().find_map(|l| l.split('\'').nth(1)).unwrap_or_default().to_owned();
-        return Err(GitError::LocalChanges(file));
-    }
+    move_head(git, root, &new_head)?;
     Ok(Rewritten { head: new_head, commit })
 }
 
@@ -429,4 +552,43 @@ fn operation(git: &Git, root: &Path) -> Result<Option<Operation>, GitError> {
 
 fn short(oid: &str) -> String {
     oid.chars().take(7).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(root: &Path, args: &[&str]) -> String {
+        Git::default().text(root, args.iter().copied()).unwrap().trim().to_owned()
+    }
+
+    fn commit(root: &Path, file: &str, content: &str, message: &str) -> String {
+        fs::write(root.join(file), content).unwrap();
+        run(root, &["add", file]);
+        run(root, &["-c", "user.name=T", "-c", "user.email=t@e", "commit", "-q", "-m", message]);
+        run(root, &["rev-parse", "HEAD"])
+    }
+
+    /// The way of an older git gives the same trees as `merge-tree`, and the same conflicts.
+    #[test]
+    fn picks_by_patch_like_merge_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        run(root, &["init", "-q", "-b", "main"]);
+        let base = commit(root, "a.txt", "1\n2\n3\n", "Base");
+        let one = commit(root, "a.txt", "one\n2\n3\n", "One");
+        let two = commit(root, "a.txt", "one\n2\nthree\n", "Two");
+        let git = Git::default();
+        // « Two » on « Base », as if « One » came after it.
+        let by_patch = pick_by_patch(&git, root, &one, &base, &two).unwrap();
+        assert_eq!(by_patch, pick(&git, root, &one, &base, &two).unwrap());
+        assert_eq!(run(root, &["cat-file", "-p", &format!("{by_patch}:a.txt")]), "1\n2\nthree");
+        let index = run(root, &["rev-parse", "--absolute-git-dir"]);
+        assert!(fs::read_dir(index).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().starts_with("ramelo-pick")));
+
+        let again = commit(root, "a.txt", "ONE\n2\nthree\n", "Again");
+        // « Again » changes the first line, which is not the same on « Base »: a conflict either way.
+        assert!(matches!(pick_by_patch(&git, root, &two, &base, &again), Err(GitError::MoveConflict(f)) if f == "a.txt"));
+        assert!(matches!(pick(&git, root, &two, &base, &again), Err(GitError::MoveConflict(f)) if f == "a.txt"));
+    }
 }

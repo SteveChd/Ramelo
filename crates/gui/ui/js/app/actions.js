@@ -16,6 +16,7 @@ import { store } from '../state/store.js';
 const hasActive = () => store.activeRepo !== null;
 const hasRepos = () => store.repositories.length > 0;
 const hasTabs = () => store.tabs.length > 0;
+const selectedCommit = () => hasActive() && repoStore.state.selection !== 'wip' && !repoStore.state.running;
 
 /** Moves to the next (`step` 1) or previous (-1) tab; the overview is the first tab. */
 function cycleTab(step) {
@@ -50,6 +51,8 @@ const ACTIONS = {
   'view.prevTab': { key: 'Ctrl+Shift+Tab', enabled: hasTabs, run: () => cycleTab(-1) },
   'view.tabList': { key: 'Ctrl+Shift+A', enabled: hasTabs, run: () => openTabList() },
   'view.theme': { run: () => toggleTheme() },
+  'commit.moveUp': { key: 'Alt+ArrowUp', enabled: selectedCommit, run: () => repoStore.moveCommit(repoStore.state.selection, 'up') },
+  'commit.moveDown': { key: 'Alt+ArrowDown', enabled: selectedCommit, run: () => repoStore.moveCommit(repoStore.state.selection, 'down') },
   'view.toggleLeft': { key: 'Alt+1', enabled: hasActive, run: () => layout.toggle('leftCollapsed') },
   'view.toggleRight': { key: 'Alt+2', enabled: hasActive, run: () => layout.toggle('rightCollapsed') },
   'view.toggleDiff': { key: 'Alt+3', enabled: () => Boolean(repoStore.state.diff), run: () => layout.toggle('diffCollapsed') },
@@ -82,7 +85,7 @@ export function label(name) {
 }
 
 export function shortcut(name) {
-  return ACTIONS[name]?.key ?? null;
+  return ACTIONS[name]?.key?.replace('ArrowUp', '↑').replace('ArrowDown', '↓') ?? null;
 }
 
 export function isEnabled(name) {

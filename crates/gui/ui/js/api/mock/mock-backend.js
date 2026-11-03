@@ -521,6 +521,12 @@ export async function squashCommit(path, oid) {
   return { head: oid, commit: oid, snapshot: snapshot() };
 }
 
+export async function moveCommit(path, oid, direction) {
+  await delay(200);
+  globalThis.mockMoved = [oid, direction];
+  return { head: oid, commit: oid, snapshot: snapshot() };
+}
+
 export async function squashCommits(path, oids) {
   await delay(300);
   globalThis.mockSquashed = oids;

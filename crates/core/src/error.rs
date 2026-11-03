@@ -61,6 +61,10 @@ pub enum GitError {
     RewriteConflict(String),
     #[error("commit {0} cannot be combined with the one before it")]
     CannotSquash(String),
+    #[error("commit {0} cannot be moved: the commits around it must follow one another, without a merge")]
+    CannotMove(String),
+    #[error("moving the commit conflicts on « {0} »: the two commits change the same place")]
+    MoveConflict(String),
     #[error("the branch is already checked out in the worktree « {0} »")]
     BranchInWorktree(String),
     #[error("{0} files still have conflicts")]
@@ -106,6 +110,8 @@ impl GitError {
             Self::NotInHistory(_) => "not_in_history",
             Self::RewriteConflict(_) => "rewrite_conflict",
             Self::CannotSquash(_) => "cannot_squash",
+            Self::CannotMove(_) => "cannot_move",
+            Self::MoveConflict(_) => "move_conflict",
             Self::BranchInWorktree(_) => "branch_in_worktree",
             Self::ConflictsRemain(_) => "conflicts_remain",
             Self::NoOperation => "no_operation",
@@ -123,6 +129,7 @@ impl GitError {
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) | Self::HostUnknown(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
             Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) => Some(name.clone()),
+            Self::CannotMove(name) | Self::MoveConflict(name) => Some(name.clone()),
             Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution | Self::Cancelled => None,
             Self::InvalidUrl(url) => Some(url.clone()),
             Self::TargetExists(path) => Some(path.display().to_string()),

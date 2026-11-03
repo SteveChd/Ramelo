@@ -630,6 +630,33 @@ export const repoStore = {
   },
 
   /**
+   * Moves a commit one place up (after the commit that follows it) or down ('up' or 'down'). A
+   * pushed commit asks first, since the branch will need a force push; the moved commit stays
+   * selected, to move it again.
+   */
+  async moveCommit(oid, direction) {
+    const info = await rewritable(oid);
+    if (!info) return;
+    // Moving down rewrites the commit before it too.
+    const pushedTo = direction === 'down' ? info.squash?.pushedTo ?? info.pushedTo : info.pushedTo;
+    if (pushedTo.length) {
+      const ok = await confirm({
+        title: t(direction === 'up' ? 'rewrite.moveUpTitle' : 'rewrite.moveDownTitle', { oid: oid.slice(0, 7) }),
+        message: t('rewrite.squashPushed', { remotes: pushedTo.slice(0, 3).join(', ') }),
+        confirmLabel: t(direction === 'up' ? 'rewrite.moveUp' : 'rewrite.moveDown'),
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    const result = await run(() => backend.moveCommit(state.path, oid, direction), 'rewrite');
+    if (!result) return;
+    if (pushedTo.length) store.notify(t('rewrite.donePushed'));
+    state.diff = null;
+    await afterChange(result.snapshot);
+    await reveal(result.commit);
+  },
+
+  /**
    * Combines commits that follow one another into the oldest of them: a squash asks for the message
    * (all of theirs to start with), a fixup keeps the one of the oldest.
    */

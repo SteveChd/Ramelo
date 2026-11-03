@@ -69,6 +69,12 @@ impl Git {
         self.run(dir, args, None)
     }
 
+    /// Like [`Git::raw`], with variables added to git's environment (another index file…) and
+    /// `input` sent to its standard input.
+    pub fn raw_with_env<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], env: &[(&str, &OsStr)], input: Option<&[u8]>) -> Result<Output, GitError> {
+        self.run_with(dir, args, env, input)
+    }
+
     /// Runs git, handing each line of its error output to `on_line` as it comes (progress lines
     /// end with « \r » and are handed one by one). `cancelled` is asked a few times a second; when
     /// it answers true, git is stopped and [`GitError::Cancelled`] returned.
@@ -165,7 +171,12 @@ impl Git {
     }
 
     fn run<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], input: Option<&[u8]>) -> Result<Output, GitError> {
+        self.run_with(dir, args, &[], input)
+    }
+
+    fn run_with<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], env: &[(&str, &OsStr)], input: Option<&[u8]>) -> Result<Output, GitError> {
         let mut command = self.command(dir, args);
+        command.envs(env.iter().copied());
         // Without a terminal, ssh and editors fail at once instead of waiting for an answer.
         command.stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() });
         let spawn_error = |source: std::io::Error| match source.kind() {

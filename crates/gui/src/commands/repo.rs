@@ -267,6 +267,14 @@ pub async fn squash_commits(state: State<'_, AppState>, path: String, oids: Vec<
     Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
 }
 
+/// Moves a commit of the current branch one place up or down, swapping it with its neighbour.
+#[tauri::command]
+pub async fn move_commit(state: State<'_, AppState>, path: String, oid: String, direction: core::Direction) -> CommandResult<RewriteResult> {
+    let root = PathBuf::from(path);
+    let rewritten = core::move_commit(&state.git, &root, &oid, direction)?;
+    Ok(RewriteResult { rewritten, snapshot: changed(&state, root) })
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgressResult {

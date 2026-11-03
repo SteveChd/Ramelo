@@ -6,6 +6,7 @@ import { h, mount, s } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
 import { fullDate, relativeTime } from '../../lib/time.js';
 import { openContextMenu } from '../../components/context-menu.js';
+import { shortcut } from '../../app/actions.js';
 import { repoStore } from '../../state/repo-store.js';
 import { search } from '../../state/search.js';
 import { store } from '../../state/store.js';
@@ -108,6 +109,8 @@ function commitMenu(event, row, headOid) {
     { label: t('rewrite.rewordMenu'), icon: 'edit', run: () => repoStore.rewordCommit(row.oid) },
     { label: t('rewrite.squashMenu'), icon: 'squash', disabled: row.parents.length !== 1, run: () => repoStore.squashCommit(row.oid) },
     { label: t('rewrite.fixupMenu'), disabled: row.parents.length !== 1, run: () => repoStore.squashCommit(row.oid, { fixup: true }) },
+    { label: t('rewrite.moveUpMenu'), icon: 'arrowUp', hint: shortcut('commit.moveUp'), disabled: row.oid === headOid, run: () => repoStore.moveCommit(row.oid, 'up') },
+    { label: t('rewrite.moveDownMenu'), icon: 'arrowDown', hint: shortcut('commit.moveDown'), disabled: row.parents.length !== 1, run: () => repoStore.moveCommit(row.oid, 'down') },
     '-',
     { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
     { label: t('graph.copySummary'), run: () => copy(row.summary) },

@@ -441,6 +441,40 @@ fn squashes_several_commits_that_follow_one_another() {
 }
 
 #[test]
+fn moves_a_commit_up_and_down() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = new_repo(&dir.path().join("r"));
+    let g = Git::default();
+    commit_file(&root, "a.txt", "a\n", "Base");
+    commit_file(&root, "b.txt", "b\n", "Add b");
+    commit_file(&root, "c.txt", "c\n", "Add c");
+    commit_file(&root, "d.txt", "d\n", "Add d");
+    let tree = git(&root, &["rev-parse", "HEAD^{tree}"]);
+    let id = |rev: &str| git(&root, &["rev-parse", rev]).trim().to_owned();
+
+    // « Add b » goes up, after « Add c »: the content at the end is the same.
+    let moved = move_commit(&g, &root, &id("HEAD~2"), Direction::Up).unwrap();
+    assert_eq!(messages(&root), ["Add d", "Add b", "Add c", "Base"]);
+    assert_eq!(git(&root, &["rev-parse", "HEAD^{tree}"]), tree);
+    assert_eq!(moved.commit, id("HEAD~1"));
+    assert_eq!(git(&root, &["show", "--format=", "--name-only", &moved.commit]).trim(), "b.txt");
+    // And back down.
+    move_commit(&g, &root, &id("HEAD~1"), Direction::Down).unwrap();
+    assert_eq!(messages(&root), ["Add d", "Add c", "Add b", "Base"]);
+    // The last commit cannot go up, the one after the first commit cannot go down.
+    assert!(matches!(move_commit(&g, &root, &id("HEAD"), Direction::Up), Err(GitError::CannotMove(_))));
+    assert!(matches!(move_commit(&g, &root, &id("HEAD~2"), Direction::Down), Err(GitError::CannotMove(_))));
+
+    // Two changes to the same line cannot be swapped: nothing changes.
+    commit_file(&root, "a.txt", "a2\n", "Change a");
+    commit_file(&root, "a.txt", "a3\n", "Change a again");
+    let before = id("HEAD");
+    assert!(matches!(move_commit(&g, &root, &before, Direction::Down), Err(GitError::MoveConflict(f)) if f == "a.txt"));
+    assert_eq!(id("HEAD"), before);
+    assert!(status(&root).is_clean());
+}
+
+#[test]
 fn tells_where_a_branch_is_checked_out_in_another_worktree() {
     let dir = tempfile::tempdir().unwrap();
     let root = new_repo(&dir.path().join("r"));
