@@ -157,12 +157,17 @@ export async function pullRequests(path, openOnly = true) {
   return { hosting, pulls };
 }
 
+/** Readings of pull requests, counted for the tests of the cache. */
+globalThis.mockPullReads = { view: 0, changes: 0 };
+
 export async function pullRequest(path, number) {
+  globalThis.mockPullReads.view += 1;
   await delay(350);
   return pullView(findPull(path, number));
 }
 
 export async function pullRequestChanges(path, number) {
+  globalThis.mockPullReads.changes += 1;
   await delay(700);
   findPull(path, number);
   const commits = repo.history(path, 4).rows.slice(0, 3).map((c) => ({ oid: c.oid, summary: c.summary, author: c.author, time: c.time }));

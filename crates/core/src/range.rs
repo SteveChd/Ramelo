@@ -3,6 +3,7 @@
 //! remote under the reference the service publishes for the pull request.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::Serialize;
 
@@ -27,13 +28,20 @@ pub fn remote_urls(git: &Git, root: &Path) -> Result<Vec<(String, String)>, GitE
         .collect())
 }
 
+/// Fetches made so far, to name the reference of each.
+static FETCHES: AtomicU64 = AtomicU64::new(0);
+
 /// Fetches `reference` from `source` (a remote, or an address) without keeping it under a name;
 /// returns the commit it points to.
 pub fn fetch_commit(git: &Git, root: &Path, source: &str, reference: &str) -> Result<String, GitError> {
-    git.output(root, ["fetch", "--no-tags", "--no-write-fetch-head", source, &format!("+{reference}:refs/ramelo/fetched")])?;
-    let oid = git.text(root, ["rev-parse", "--verify", "refs/ramelo/fetched^{commit}"])?.trim().to_owned();
+    // A name of its own, so that two fetches at the same time (one in the background) do not mix.
+    let name = format!("refs/ramelo/fetched-{}-{}", std::process::id(), FETCHES.fetch_add(1, Ordering::Relaxed));
+    git.output(root, ["fetch", "--no-tags", "--no-write-fetch-head", source, &format!("+{reference}:{name}")])?;
+    let oid = git.text(root, ["rev-parse", "--verify", &format!("{name}^{{commit}}")]);
     // The commit stays in the object store; the temporary name goes.
-    git.output(root, ["update-ref", "-d", "refs/ramelo/fetched"])?;
+    let removed = git.output(root, ["update-ref", "-d", &name]);
+    let oid = oid?.trim().to_owned();
+    removed?;
     Ok(oid)
 }
 

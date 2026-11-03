@@ -1,12 +1,15 @@
 // The pull request open in the centre of a repository, in place of the graph: its conversation, its
 // changes (all of them, or those of one of its commits) and its commits. Merging, closing and
-// commenting go to the service, after which the list of the repository is read again.
+// commenting go to the service, after which the list of the repository is read again. What was read
+// is kept (see pull-cache.js): a pull request opened again shows at once, and is read again behind
+// only when it changed.
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { choose, confirm } from '../components/dialog.js';
 import { withHostTrust } from '../components/host-trust.js';
 import { t } from '../i18n/i18n.js';
+import { pullCache } from './pull-cache.js';
 import { pulls } from './pulls.js';
 import { repoStore } from './repo-store.js';
 import { store } from './store.js';
@@ -42,12 +45,20 @@ function emit() {
 
 const current = (path, number) => state.path === path && state.number === number;
 
-async function loadChanges() {
+/** `force`: read again even when the changes kept are those of the last commit. */
+async function loadChanges(force = false) {
   const { path, number } = state;
-  state.changes = { loading: true, data: null, error: null };
+  const kept = force ? null : pullCache.changes(path, number);
+  if (kept) {
+    state.changes = { loading: false, data: kept, error: null };
+    emit();
+    return;
+  }
+  // The changes shown stay while they are read again.
+  state.changes = state.changes?.data ? { ...state.changes, loading: false, refreshing: true } : { loading: true, data: null, error: null };
   emit();
   try {
-    const data = await withHostTrust(() => backend.pullRequestChanges(path, number));
+    const data = await withHostTrust(() => pullCache.loadChanges(path, number));
     if (current(path, number)) state.changes = { loading: false, data, error: null };
   } catch (error) {
     if (current(path, number)) state.changes = { loading: false, data: null, error };
@@ -62,6 +73,7 @@ async function send(busy, call) {
   emit();
   try {
     const view = await call();
+    pullCache.putView(path, number, view);
     if (current(path, number)) state.view = view;
     return true;
   } catch (error) {
@@ -92,11 +104,17 @@ export const pullView = {
 
   async open(path, number) {
     if (current(path, number)) return;
-    Object.assign(state, { path, number, tab: 'conversation', view: null, loading: true, error: null, changes: null, commit: null, commitDetails: null, busy: null });
+    const kept = pullCache.view(path, number);
+    Object.assign(state, { path, number, tab: 'conversation', view: kept?.view ?? null, loading: true, error: null, changes: null, commit: null, commitDetails: null, busy: null });
     if (repoStore.state.diff?.kind === 'range') repoStore.closeDiff();
+    if (kept && !kept.stale) {
+      state.loading = false;
+      emit();
+      return;
+    }
     emit();
     try {
-      const view = await backend.pullRequest(path, number);
+      const view = await pullCache.loadView(path, number);
       if (current(path, number)) state.view = view;
     } catch (error) {
       if (current(path, number)) state.error = error;
@@ -120,13 +138,13 @@ export const pullView = {
     state.loading = true;
     emit();
     try {
-      const view = await backend.pullRequest(path, number);
+      const view = await pullCache.loadView(path, number);
       if (current(path, number)) Object.assign(state, { view, error: null });
     } catch (error) {
       if (current(path, number)) state.error = error;
     }
     if (current(path, number)) state.loading = false;
-    if (state.changes && current(path, number)) await loadChanges();
+    if (state.changes && current(path, number)) await loadChanges(true);
     else emit();
   },
 
