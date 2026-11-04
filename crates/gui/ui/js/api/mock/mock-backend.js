@@ -519,7 +519,7 @@ export async function notify(title, body) {
 export async function about() {
   await delay(80);
   return {
-    version: '0.1.0', authors: 'Steve Chadaud', license: 'MIT', git: '2.47.1', webview: '130.0.2849.80', tauri: '2.1.1',
+    version: '1.0.0', authors: 'Steve Chadaud', license: 'MIT', git: '2.47.1', webview: '130.0.2849.80', tauri: '2.1.1',
     os: 'linux', arch: 'x86_64', dataDir: '/home/steve/.local/share/dev.ramelo.app',
   };
 }

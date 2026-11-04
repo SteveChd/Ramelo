@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/core", "crates/storage", "crates/hosting", "crates/gui"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Steve Chadaud"]
 edition = "2021"
 license = "MIT"
