@@ -271,3 +271,48 @@ pub fn set_repositories_section(state: State<'_, AppState>, paths: Vec<String>, 
 pub fn open_folder(path: String) -> CommandResult<()> {
     open::that_detached(&path).map_err(|e| CommandError::new("open_failed", Some(path), e.to_string()))
 }
+
+/// Opens the folder in Visual Studio Code: its program where it is usually installed or in the PATH,
+/// otherwise the `vscode://` address its installer registers.
+#[tauri::command]
+pub fn open_in_vscode(path: String) -> CommandResult<()> {
+    for program in vscode_programs() {
+        let mut command = std::process::Command::new(&program);
+        command.arg(&path).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // `code.cmd` goes through a console, which must not flash open.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+        if command.spawn().is_ok() {
+            return Ok(());
+        }
+    }
+    let address = format!("vscode://file/{}", path.replace('\\', "/"));
+    open::that_detached(&address).map_err(|_| CommandError::new("vscode_missing", Some(path), "Visual Studio Code was not found"))
+}
+
+/// Where Visual Studio Code may be, most likely first.
+fn vscode_programs() -> Vec<PathBuf> {
+    let mut programs = Vec::new();
+    #[cfg(windows)]
+    {
+        for (var, dir) in [("LOCALAPPDATA", "Programs\\Microsoft VS Code"), ("ProgramFiles", "Microsoft VS Code"), ("ProgramFiles(x86)", "Microsoft VS Code")] {
+            if let Some(base) = std::env::var_os(var) {
+                let exe = PathBuf::from(base).join(dir).join("Code.exe");
+                if exe.is_file() {
+                    programs.push(exe);
+                }
+            }
+        }
+        programs.push(PathBuf::from("code.cmd"));
+    }
+    #[cfg(not(windows))]
+    {
+        programs.push(PathBuf::from("code"));
+        programs.push(PathBuf::from("codium"));
+    }
+    programs
+}

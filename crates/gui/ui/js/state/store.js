@@ -320,6 +320,10 @@ export const store = {
     await run(() => backend.openFolder(path));
   },
 
+  async openInVsCode(path) {
+    await run(() => backend.openInVsCode(path));
+  },
+
   /** A command of the repository view returned a new snapshot. */
   applySnapshot(snapshot) {
     apply(snapshot);

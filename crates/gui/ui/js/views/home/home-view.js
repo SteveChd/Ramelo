@@ -67,6 +67,7 @@ function card(repo) {
         h('span', { class: 'path', title: repo.path }, h('bdi', {}, repo.path))),
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder', 16)),
+        h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openVsCode'), onclick: () => store.openInVsCode(repo.path) }, icon('code', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh', 16)),
         h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.remove'), onclick: () => store.remove(repo.path) }, icon('remove', 16)))),
     h('div', { class: 'badges' }, repoBadges(repo)),

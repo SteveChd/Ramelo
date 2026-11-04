@@ -60,6 +60,7 @@ export const {
   setSectionCollapsed,
   setRepositoriesSection,
   openFolder,
+  openInVsCode,
   history,
   searchCommits,
   commitDetails,

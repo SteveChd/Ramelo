@@ -45,6 +45,7 @@ const ACTIONS = {
   'repo.refresh': { key: 'F5', enabled: hasRepos, run: () => store.refresh(store.activeRepo?.path ?? null) },
   'repo.refreshAll': { key: 'Ctrl+F5', enabled: hasRepos, run: () => store.refresh(null) },
   'repo.openFolder': { key: 'Ctrl+Shift+E', enabled: hasActive, run: () => store.openFolder(store.active) },
+  'repo.openVsCode': { key: 'Ctrl+Alt+O', enabled: hasActive, run: () => store.openInVsCode(store.active) },
   'repo.closeTab': { key: 'Ctrl+W', enabled: hasActive, run: () => store.close(store.active) },
   'repo.closeAllTabs': { key: 'Ctrl+Shift+W', enabled: () => store.tabs.some((r) => !r.pinned), run: () => store.closeAll() },
   'repo.pinTab': { enabled: hasActive, run: () => store.setPinned(store.active, !store.activeRepo?.pinned) },

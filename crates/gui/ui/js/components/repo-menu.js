@@ -51,6 +51,7 @@ export function openRepoMenu(at, repo) {
     colorPicker(repo),
     '-',
     { label: t('action.repo.openFolder'), icon: 'folder', run: () => store.openFolder(repo.path) },
+    { label: t('action.repo.openVsCode'), icon: 'code', run: () => store.openInVsCode(repo.path) },
     { label: t('action.repo.refresh'), icon: 'refresh', run: () => store.refresh(repo.path) },
     pulls.of(repo.path)?.hosting && { label: watch.isWatched(repo.path) ? t('watch.stop') : t('watch.start'), icon: 'bell', run: () => watch.toggle(repo.path) },
     { label: t('sections.fileUnder'), icon: 'layers', run: () => sectionMenu(at, repo) },

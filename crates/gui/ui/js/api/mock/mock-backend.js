@@ -508,6 +508,10 @@ export async function setRepositoriesSection(paths, section) {
 
 export async function openFolder() {}
 
+export async function openInVsCode(path) {
+  globalThis.mockVsCode = path;
+}
+
 export async function notify(title, body) {
   globalThis.mockNotified = [...(globalThis.mockNotified ?? []), { title, body }];
 }

@@ -62,6 +62,7 @@ export default {
   'errors.cancelled': 'Stopped.',
   'action.repo.refresh': 'Refresh',
   'action.repo.refreshAll': 'Refresh all repositories',
+  'action.repo.openVsCode': 'Open in VS Code',
   'action.repo.openFolder': 'Open folder',
   'action.repo.remove': 'Remove from workspace',
   'action.repo.removeAll': 'Remove all repositories…',
@@ -384,6 +385,7 @@ export default {
   'errors.file_access': 'Cannot access « {subject} ».',
   'errors.file_format': '« {subject} » cannot be written.',
   'errors.open_failed': 'Cannot open « {subject} ».',
+  'errors.vscode_missing': 'Visual Studio Code was not found: install it, or add « code » to the PATH.',
 
   // Repository view
   'action.repo.fetch': 'Fetch',

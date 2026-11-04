@@ -75,6 +75,8 @@ export const moveSection = (name, index) => invoke('move_section', { name, index
 export const setSectionCollapsed = (name, collapsed) => invoke('set_section_collapsed', { name, collapsed });
 export const setRepositoriesSection = (paths, section) => invoke('set_repositories_section', { paths, section });
 export const openFolder = (path) => invoke('open_folder', { path });
+/** Opens the folder in Visual Studio Code. */
+export const openInVsCode = (path) => invoke('open_in_vscode', { path });
 
 // ---------- One repository ----------
 /** { rows: [{ oid, parents, author, email, time, summary, refs, graph }], width, hasMore }. */

@@ -69,6 +69,7 @@ fn main() {
             commands::workspace::set_section_collapsed,
             commands::workspace::set_repositories_section,
             commands::workspace::open_folder,
+            commands::workspace::open_in_vscode,
             commands::repo::history,
             commands::repo::rewrite_info,
             commands::repo::reword_commit,

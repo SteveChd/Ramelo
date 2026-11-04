@@ -51,6 +51,7 @@ export function renderToolbar(container, repo) {
     h('div', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-btn', title: `${t('action.repo.search')} (${shortcut('repo.search')})`, onclick: () => search.open() }, icon('search')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.openFolder'), onclick: () => store.openFolder(repo.path) }, icon('folder')),
+    h('button', { type: 'button', class: 'icon-btn', title: `${t('action.repo.openVsCode')} (${shortcut('repo.openVsCode')})`, onclick: () => store.openInVsCode(repo.path) }, icon('code')),
     h('button', { type: 'button', class: 'icon-btn', title: t('action.repo.refresh'), onclick: () => store.refresh(repo.path) }, icon('refresh')),
   );
 }

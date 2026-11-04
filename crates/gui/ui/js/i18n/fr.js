@@ -62,6 +62,7 @@ export default {
   'errors.cancelled': 'Arrêté.',
   'action.repo.refresh': 'Actualiser',
   'action.repo.refreshAll': 'Actualiser tous les dépôts',
+  'action.repo.openVsCode': 'Ouvrir dans VS Code',
   'action.repo.openFolder': 'Ouvrir le dossier',
   'action.repo.remove': 'Retirer de l\'espace de travail',
   'action.repo.removeAll': 'Retirer tous les dépôts…',
@@ -384,6 +385,7 @@ export default {
   'errors.file_access': 'Impossible d\'accéder à « {subject} ».',
   'errors.file_format': 'Impossible d\'écrire « {subject} ».',
   'errors.open_failed': 'Impossible d\'ouvrir « {subject} ».',
+  'errors.vscode_missing': 'Visual Studio Code est introuvable : installe-le, ou ajoute « code » au PATH.',
 
   // Repository view
   'action.repo.fetch': 'Récupérer',
