@@ -24,6 +24,8 @@ pub struct Hosting {
     pub key: String,
     pub web_url: String,
     pub remote: String,
+    /// The user of the account, to tell their own comments from those of others.
+    pub user: String,
     #[serde(skip)]
     account: Account,
 }
@@ -43,6 +45,7 @@ fn hosting(state: &AppState, root: &Path) -> CommandResult<Option<Hosting>> {
             web_url: ramelo_hosting::repo_web_url(account, &key),
             key,
             remote,
+            user: account.username.clone(),
             account: account.clone(),
         }));
     }

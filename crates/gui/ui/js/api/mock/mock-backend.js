@@ -140,6 +140,22 @@ function pullsOf(path) {
   return PULLS.get(path);
 }
 
+// For the tests of the design preview: someone else opens a pull request, or comments one.
+globalThis.mockOthers = {
+  open(path, title) {
+    const list = pullsOf(path);
+    const number = Math.max(...list.map((p) => p.number)) + 1;
+    list.unshift({ ...structuredClone(list[0]), number, title, author: 'marc', comments: 0, thread: [], created: hoursAgo(0), updated: hoursAgo(0) });
+    return number;
+  },
+  comment(path, number, body) {
+    const pull = pullsOf(path).find((p) => p.number === number);
+    pull.thread.push({ id: String(Date.now()), author: 'anna', body, created: Math.floor(Date.now() / 1000), path: null, line: null });
+    pull.comments = (pull.comments ?? 0) + 1;
+    pull.updated = Math.floor(Date.now() / 1000);
+  },
+};
+
 /** The cache on disk of the application, here in memory: `path#number` → { index entry, view, changes }. */
 const PULL_CACHE = new Map();
 
@@ -183,7 +199,7 @@ export async function repositoryHosting(path) {
   const repo = repositories.find((r) => r.path === path);
   if (!repo?.summary?.remotes.length) return null;
   const name = nameOf(path);
-  return { accountId: accounts[0]?.id, provider: 'github', key: `steve-c/${name}`, webUrl: `https://github.com/steve-c/${name}`, remote: 'origin' };
+  return { accountId: accounts[0]?.id, provider: 'github', key: `steve-c/${name}`, webUrl: `https://github.com/steve-c/${name}`, remote: 'origin', user: accounts[0]?.username ?? 'steve-c' };
 }
 
 export async function pullRequests(path, openOnly = true) {
@@ -491,6 +507,10 @@ export async function setRepositoriesSection(paths, section) {
 }
 
 export async function openFolder() {}
+
+export async function notify(title, body) {
+  globalThis.mockNotified = [...(globalThis.mockNotified ?? []), { title, body }];
+}
 
 export async function about() {
   await delay(80);

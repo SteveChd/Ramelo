@@ -33,6 +33,8 @@ export const createPullRequest = (path, pull) => invoke('create_pull_request', {
 export const searchRepositories = (accountId, query, scope) => invoke('search_repositories', { accountId, query, scope });
 export const repositoryReadme = (accountId, repo) => invoke('repository_readme', { accountId, repo });
 export const about = () => invoke('about');
+/** A notification of the system; the window asks for attention when it is behind. */
+export const notify = (title, body) => invoke('notify', { title, body });
 export const startup = () => invoke('startup');
 /** Reads again one repository, or all of them when `path` is null. */
 export const refresh = (path = null) => invoke('refresh', { path });

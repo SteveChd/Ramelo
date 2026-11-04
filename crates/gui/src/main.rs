@@ -15,6 +15,7 @@ use crate::state::AppState;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             migrate_legacy_data(&data_dir);
@@ -104,6 +105,7 @@ fn main() {
             commands::settings::set_language,
             commands::settings::show_window,
             commands::settings::about,
+            commands::settings::notify,
         ])
         .run(tauri::generate_context!())
         .expect("cannot start Ramelo");

@@ -11,6 +11,7 @@ import { openContextMenu } from '../../components/context-menu.js';
 import { openNewPullDialog } from '../../components/new-pull-dialog.js';
 import { pullView } from '../../state/pull-view.js';
 import { pulls } from '../../state/pulls.js';
+import { watch } from '../../state/watch.js';
 import { repoStore } from '../../state/repo-store.js';
 
 /** Sections folded by the user, remembered while the application runs. */
@@ -112,7 +113,15 @@ function pullSection(path) {
   const entry = pulls.of(path);
   if (!entry || (!entry.hosting && !entry.error)) return null;
   const list = entry.pulls ?? [];
+  const watched = watch.isWatched(path);
   const tools = h('span', { class: 'sb-tools' },
+    entry.hosting && h('button', {
+      type: 'button',
+      class: `icon-btn small watch-btn${watched ? ' on' : ''}`,
+      title: watched ? t('watch.stop') : t('watch.start'),
+      'aria-pressed': String(watched),
+      onclick: () => watch.toggle(path),
+    }, icon('bell', 13)),
     h('button', {
       type: 'button',
       class: `icon-btn small${entry.loading ? ' spinning' : ''}`,

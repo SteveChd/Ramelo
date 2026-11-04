@@ -4,6 +4,7 @@ import { isEnabled, label, run, shortcut } from '../app/actions.js';
 import { LANGUAGES, language, setLanguage, t } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
 import { icon, logo } from '../lib/icons.js';
+import { notificationBell } from './notifications.js';
 import { currentTheme, toggleTheme } from './theme.js';
 
 const MENUS = [
@@ -71,6 +72,7 @@ export function renderMenubar(container) {
     h('span', { class: 'app-name' }, 'Ramelo'),
     MENUS.map(menuButton),
     h('div', { class: 'spacer' }),
+    notificationBell(),
     languageSwitch(),
     h('button', {
       type: 'button',

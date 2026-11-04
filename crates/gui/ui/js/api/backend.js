@@ -36,6 +36,7 @@ export const {
   repositoryReadme,
   startup,
   about,
+  notify,
   refresh,
   pickFolder,
   addRepositories,

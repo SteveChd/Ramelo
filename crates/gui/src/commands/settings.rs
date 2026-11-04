@@ -50,3 +50,15 @@ pub async fn about(state: State<'_, AppState>) -> Result<About, ()> {
         data_dir: state.data_dir().display().to_string(),
     })
 }
+
+/// Tells the user something happened (a new pull request, a new comment) while they may be elsewhere:
+/// a notification of the system, and the window asks for attention (the taskbar button flashes)
+/// when it is not in front.
+#[tauri::command]
+pub fn notify(app: tauri::AppHandle, window: tauri::WebviewWindow, title: String, body: String) {
+    use tauri_plugin_notification::NotificationExt;
+    let _ = app.notification().builder().title(title).body(body).show();
+    if !window.is_focused().unwrap_or(true) {
+        let _ = window.request_user_attention(Some(tauri::UserAttentionType::Informational));
+    }
+}

@@ -18,6 +18,7 @@ import { pulls } from '../../state/pulls.js';
 import { repoStore } from '../../state/repo-store.js';
 import { search } from '../../state/search.js';
 import { store } from '../../state/store.js';
+import { watch } from '../../state/watch.js';
 import { renderDetailsPanel } from './details-panel.js';
 import { renderDiff } from './diff-view.js';
 import { diffKey } from './files.js';
@@ -216,6 +217,11 @@ layout.subscribe((l) => {
     renderToolbar(view.toolbar, repo);
     if (repoStore.state.diff) renderDiff(view.diff);
   }
+});
+
+// A repository watched or no longer: the bell of its pull requests follows.
+watch.subscribe(() => {
+  if (view && store.activeRepo?.path === view.path) renderSidebar(view.sidebar);
 });
 
 repoStore.subscribe((topic) => {
