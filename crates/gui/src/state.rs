@@ -50,6 +50,11 @@ impl AppState {
         }
     }
 
+    /// The data folder of the application.
+    pub fn data_dir(&self) -> &std::path::Path {
+        &self.data_dir
+    }
+
     /// Exclusive access to the workspace; a lock poisoned by a panic stays usable.
     pub fn workspace(&self) -> MutexGuard<'_, Workspace> {
         self.workspace.lock().unwrap_or_else(|e| e.into_inner())

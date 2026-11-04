@@ -103,6 +103,7 @@ fn main() {
             commands::repo::push,
             commands::settings::set_language,
             commands::settings::show_window,
+            commands::settings::about,
         ])
         .run(tauri::generate_context!())
         .expect("cannot start Ramelo");

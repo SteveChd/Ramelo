@@ -2,6 +2,7 @@
 // what they do.
 
 import { openAccountsDialog } from '../components/accounts-dialog.js';
+import { openAboutDialog } from '../components/about-dialog.js';
 import { openSettingsDialog } from '../components/settings-dialog.js';
 import { openNewPullDialog } from '../components/new-pull-dialog.js';
 import { openTabList } from '../components/tabbar.js';
@@ -35,6 +36,7 @@ function goToTab(n) {
 const ACTIONS = {
   'app.accounts': { key: 'Ctrl+,', run: () => openAccountsDialog() },
   'app.settings': { run: () => openSettingsDialog() },
+  'app.about': { run: () => openAboutDialog() },
   'repo.add': { key: 'Ctrl+O', run: () => store.add() },
   'repo.clone': { key: 'Ctrl+Shift+O', run: () => store.clone() },
   'repo.find': { key: 'Ctrl+Shift+N', run: () => store.find() },

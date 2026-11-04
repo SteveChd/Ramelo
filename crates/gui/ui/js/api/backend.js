@@ -35,6 +35,7 @@ export const {
   createPullRequest,
   repositoryReadme,
   startup,
+  about,
   refresh,
   pickFolder,
   addRepositories,

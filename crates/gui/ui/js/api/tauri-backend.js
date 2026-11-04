@@ -32,6 +32,7 @@ export const closePullRequest = (path, number) => invoke('close_pull_request', {
 export const createPullRequest = (path, pull) => invoke('create_pull_request', { path, pull });
 export const searchRepositories = (accountId, query, scope) => invoke('search_repositories', { accountId, query, scope });
 export const repositoryReadme = (accountId, repo) => invoke('repository_readme', { accountId, repo });
+export const about = () => invoke('about');
 export const startup = () => invoke('startup');
 /** Reads again one repository, or all of them when `path` is null. */
 export const refresh = (path = null) => invoke('refresh', { path });

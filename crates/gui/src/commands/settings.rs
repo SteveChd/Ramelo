@@ -1,5 +1,6 @@
 //! Settings sent by the interface.
 
+use serde::Serialize;
 use tauri::State;
 
 use crate::state::AppState;
@@ -16,4 +17,36 @@ pub fn set_language(state: State<'_, AppState>, language: String) {
 pub fn show_window(window: tauri::WebviewWindow) {
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+/// What the « About » window tells: the version of the application and what it runs on.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct About {
+    pub version: String,
+    pub authors: String,
+    pub license: String,
+    /// The version of git found, if any.
+    pub git: Option<String>,
+    pub webview: Option<String>,
+    pub tauri: String,
+    pub os: String,
+    pub arch: String,
+    /// Where the application keeps its settings, accounts and cache.
+    pub data_dir: String,
+}
+
+#[tauri::command]
+pub async fn about(state: State<'_, AppState>) -> Result<About, ()> {
+    Ok(About {
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+        authors: env!("CARGO_PKG_AUTHORS").replace(':', ", "),
+        license: env!("CARGO_PKG_LICENSE").to_owned(),
+        git: state.git.version().ok(),
+        webview: tauri::webview_version().ok(),
+        tauri: tauri::VERSION.to_owned(),
+        os: std::env::consts::OS.to_owned(),
+        arch: std::env::consts::ARCH.to_owned(),
+        data_dir: state.data_dir().display().to_string(),
+    })
 }

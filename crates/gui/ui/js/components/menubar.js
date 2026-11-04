@@ -10,6 +10,7 @@ const MENUS = [
   { label: 'menu.file', items: ['repo.add', 'repo.clone', 'repo.find', '-', 'repo.pinTab', 'repo.closeTab', 'repo.closeAllTabs', '-', 'repo.remove', 'repo.removeAll', '-', 'app.accounts', 'app.settings'] },
   { label: 'menu.repository', items: ['repo.fetch', 'repo.pull', 'repo.push', '-', 'repo.newBranch', 'repo.newPull', 'repo.stageAll', '-', 'repo.search', '-', 'repo.refresh', 'repo.refreshAll'] },
   { label: 'menu.view', items: ['view.home', 'view.nextTab', 'view.prevTab', 'view.tabList', '-', 'view.toggleLeft', 'view.toggleRight', 'view.toggleDiff', 'view.maximizeDiff', 'view.splitDiff', '-', 'view.theme'] },
+  { label: 'menu.help', items: ['app.about'] },
 ];
 
 let openMenu = null;
