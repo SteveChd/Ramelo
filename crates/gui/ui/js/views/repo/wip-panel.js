@@ -9,7 +9,6 @@ import { store } from '../../state/store.js';
 import { diffKey, fileRow } from './files.js';
 
 /** Length git tools recommend for the first line of a message. */
-const SUMMARY_LIMIT = 72;
 
 const isStaged = (f) => !['unmodified', 'untracked', 'ignored', 'conflicted'].includes(f.index);
 const isUnstaged = (f) => ['modified', 'typeChanged', 'deleted', 'untracked'].includes(f.worktree);
@@ -84,8 +83,8 @@ function updateCommitBox(repo) {
   const s = repo.summary;
   const draft = repoStore.draft;
   const length = draft.summary.trim().length;
-  fields.counter.textContent = String(SUMMARY_LIMIT - length);
-  fields.counter.classList.toggle('long', length > SUMMARY_LIMIT);
+  // Only how long it is: a summary may be as long as needed.
+  fields.counter.textContent = length ? String(length) : '';
   const branch = s?.head.branch ?? 'HEAD';
   const stagesAll = !draft.amend && s && s.staged === 0;
   const nothing = !draft.amend && (!s || s.fileCount === 0 || (stagesAll && s.conflicted > 0));

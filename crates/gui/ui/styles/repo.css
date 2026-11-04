@@ -147,7 +147,6 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .commit-box .summary-wrap { position: relative; }
 .commit-box .summary-wrap input { padding-right: 40px; font-weight: 600; }
 .commit-box .counter { position: absolute; right: 10px; top: 9px; font-size: 11px; color: var(--muted); font-family: var(--mono); }
-.commit-box .counter.long { color: var(--warn); }
 .commit-box textarea { height: 72px; padding: 8px 10px; resize: vertical; line-height: 1.45; font: inherit; }
 .commit-box .row { display: flex; align-items: center; gap: 8px; }
 .commit-box .row .btn.primary { flex: 1 1 auto; justify-content: center; height: 36px; }
