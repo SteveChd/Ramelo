@@ -30,6 +30,9 @@ const state = {
     /** Overview: text typed in the search field and quick filter (all | changes | sync | attention). */
     search: '',
     filter: 'all',
+    /** Overview: where the search looks (null: everywhere, else { section }: a section, null for the
+     * repositories in no section). */
+    scope: null,
   },
 };
 
@@ -336,6 +339,11 @@ export const store = {
 
   setSearch(text) {
     state.ui.search = text;
+    emit('ui');
+  },
+
+  setScope(scope) {
+    state.ui.scope = scope;
     emit('ui');
   },
 

@@ -79,6 +79,50 @@ function card(repo) {
   );
 }
 
+/**
+ * The search scope in force: the one chosen, unless its section is gone (renamed or removed), in
+ * which case the search looks everywhere again.
+ */
+function scopeOf() {
+  const scope = store.ui.scope;
+  if (!scope || store.sections.length === 0) return null;
+  return scope.section === null || store.sections.some((s) => s.name === scope.section) ? scope : null;
+}
+
+/** Whether `repo` is where the search looks. */
+function inScope(repo, scope) {
+  if (!scope) return true;
+  const named = store.sections.some((s) => s.name === repo.section);
+  return scope.section === null ? !named : repo.section === scope.section;
+}
+
+/** Picks where the search looks, when there are sections. */
+function scopePicker(scope) {
+  if (store.sections.length === 0) return null;
+  const others = '\u0000others';
+  const value = !scope ? '' : scope.section === null ? others : scope.section;
+  const select = h('select', {
+    class: 'scope',
+    'aria-label': t('home.scope'),
+    title: t('home.scope'),
+    onchange: (event) => {
+      const v = event.target.value;
+      store.setScope(v === '' ? null : { section: v === others ? null : v });
+    },
+  },
+  h('option', { value: '' }, t('home.scopeAll')),
+  store.sections.map((s) => h('option', { value: s.name }, s.name)),
+  h('option', { value: others }, t('sections.others')));
+  select.value = value;
+  return select;
+}
+
+/** Searches in one section (`name` null: the repositories in no section). */
+function searchIn(name) {
+  store.setScope({ section: name });
+  searchField?.focus();
+}
+
 function filterSwitch() {
   return h('div', { class: 'seg', role: 'group', 'aria-label': t('home.filter') },
     Object.keys(FILTERS).map((name) => {
@@ -159,6 +203,8 @@ function startDrag(event, what) {
 function sectionMenu(event, name) {
   const index = store.sections.findIndex((s) => s.name === name);
   openContextMenu(event, [
+    { label: t('sections.searchIn'), icon: 'search', run: () => searchIn(name) },
+    '-',
     { label: t('sections.rename'), icon: 'edit', run: () => store.renameSection(name) },
     { label: t('sections.moveUp'), icon: 'arrowUp', disabled: index <= 0, run: () => store.moveSection(name, index - 1) },
     { label: t('sections.moveDown'), icon: 'arrowDown', disabled: index >= store.sections.length - 1, run: () => store.moveSection(name, index + 1) },
@@ -171,9 +217,12 @@ function sectionMenu(event, name) {
 
 /**
  * One section and its cards (`name` null: the repositories in no section). `shown` are its
- * repositories that pass the filter and the search, `total` how many it holds.
+ * repositories that pass the filter and the search, `total` how many it holds; `outside`: the search
+ * is limited to another section.
  */
-function group(name, shown, total, collapsed, narrowed) {
+function group(name, shown, total, collapsed, narrowed, scope) {
+  const searched = Boolean(scope) && scope.section === name;
+  const outside = Boolean(scope) && !searched;
   const others = name === null;
   const title = others ? t('sections.others') : name;
   const head = h('div', {
@@ -187,15 +236,23 @@ function group(name, shown, total, collapsed, narrowed) {
     icon('chevron', 14, 2.2),
     h('span', { class: 'group-name' }, title),
     h('span', { class: 'n' }, shown.length < total ? `${shown.length} / ${total}` : String(total))),
-  !others && h('div', { class: 'group-actions' },
-    h('button', { type: 'button', class: 'icon-btn', title: t('sections.rename'), onclick: () => store.renameSection(name) }, icon('edit', 14)),
-    h('button', { type: 'button', class: 'icon-btn', title: t('sections.remove'), onclick: () => store.removeSection(name) }, icon('remove', 14))));
+  h('div', { class: 'group-actions' },
+    h('button', {
+      type: 'button',
+      class: `icon-btn${searched ? ' active' : ''}`,
+      title: searched ? t('home.scopeAll') : t('sections.searchIn'),
+      'aria-pressed': String(searched),
+      onclick: () => (searched ? store.setScope(null) : searchIn(name)),
+    }, icon('search', 14)),
+    !others && h('button', { type: 'button', class: 'icon-btn', title: t('sections.rename'), onclick: () => store.renameSection(name) }, icon('edit', 14)),
+    !others && h('button', { type: 'button', class: 'icon-btn', title: t('sections.remove'), onclick: () => store.removeSection(name) }, icon('remove', 14))));
   const body = collapsed ? null
     : shown.length ? h('div', { class: 'cards' }, shown.map(card))
       // While narrowed, a section with no match stays as a place to drop the repositories found.
-      : narrowed && total > 0 ? h('div', { class: 'group-empty compact' }, t('sections.noMatchHint'))
+      : outside && total > 0 ? h('div', { class: 'group-empty compact' }, t('sections.outOfScopeHint'))
+        : narrowed && total > 0 ? h('div', { class: 'group-empty compact' }, t('sections.noMatchHint'))
         : h('div', { class: 'group-empty' }, t('sections.emptyHint'));
-  return h('section', { class: `group${collapsed ? ' collapsed' : ''}${others ? ' others' : ''}`, 'data-section': others ? null : name }, head, body);
+  return h('section', { class: `group${collapsed ? ' collapsed' : ''}${others ? ' others' : ''}${outside ? ' outside' : ''}${searched ? ' searched' : ''}`, 'data-section': others ? null : name }, head, body);
 }
 
 /**
@@ -204,12 +261,12 @@ function group(name, shown, total, collapsed, narrowed) {
  * repositories in no section (left out only when there are none). A search unfolds the sections, so
  * that no match stays hidden.
  */
-function cardList(repos, visible) {
+function cardList(repos, visible, scope) {
   if (store.sections.length === 0) {
     return visible.length ? h('div', { class: 'cards' }, visible.map(card)) : h('div', { class: 'no-match' }, t('home.noMatch'));
   }
   const narrowed = visible.length < repos.length;
-  const searching = store.ui.search.trim() !== '';
+  const searching = store.ui.search.trim() !== '' || Boolean(scope);
   const names = new Set(store.sections.map((s) => s.name));
   const of = (name) => (r) => (name === null ? !names.has(r.section) : r.section === name);
   const groups = [...store.sections.map((s) => [s.name, s.collapsed]), [null, store.othersCollapsed]]
@@ -217,7 +274,7 @@ function cardList(repos, visible) {
     .filter((g) => g.name !== null || g.total > 0);
   return h('div', { class: 'groups' },
     narrowed && visible.length === 0 && h('div', { class: 'no-match' }, t('home.noMatch')),
-    groups.map((g) => group(g.name, g.shown, g.total, g.collapsed, narrowed)));
+    groups.map((g) => group(g.name, g.shown, g.total, g.collapsed && !(scope && scope.section === g.name), narrowed, scope)));
 }
 
 /** Search field kept between renders, so that typing is never interrupted. */
@@ -237,7 +294,8 @@ export function renderHome(container) {
     mount(container, emptyState());
     return;
   }
-  const visible = repos.filter(FILTERS[store.ui.filter]).filter((r) => matchesSearch(r, store.ui.search));
+  const scope = scopeOf();
+  const visible = repos.filter(FILTERS[store.ui.filter]).filter((r) => inScope(r, scope) && matchesSearch(r, store.ui.search));
   // Drawing again detaches the field, which takes its focus away: give it back, caret included.
   const typing = searchField !== null && document.activeElement === searchField;
   const caret = typing ? [searchField.selectionStart, searchField.selectionEnd, searchField.selectionDirection] : null;
@@ -246,7 +304,7 @@ export function renderHome(container) {
       h('h2', {}, t('home.title')),
       h('span', { class: 'count' }, tn('status.repos', repos.length)),
       h('div', { class: 'spacer' }),
-      search(),
+      h('div', { class: 'search-box' }, scopePicker(scope), search()),
       filterSwitch(),
       h('button', { type: 'button', class: 'btn', onclick: () => store.refresh(null) }, icon('refresh', 15), t('home.refreshAll')),
       // With a filter or a search, only the repositories shown are offered for removal.
@@ -260,7 +318,7 @@ export function renderHome(container) {
       h('button', { type: 'button', class: 'icon-btn new-section', title: t('sections.new'), onclick: () => store.newSection() }, icon('layers', 16)),
       h('button', { type: 'button', class: 'btn', onclick: () => store.clone() }, icon('fetch', 15), t('clone.short')),
       h('button', { type: 'button', class: 'btn primary', onclick: () => store.add() }, icon('plus', 15), t('action.repo.add'))),
-    cardList(repos, visible),
+    cardList(repos, visible, scope),
   ));
   if (typing) {
     searchField.focus({ preventScroll: true });

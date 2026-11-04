@@ -125,6 +125,8 @@ export default {
   'sections.others': 'Other repositories',
   'sections.emptyHint': 'Drag repositories here, or right click on one › Section.',
   'sections.noMatchHint': 'No match in this section. Drop a repository here to move it.',
+  'sections.outOfScopeHint': 'Not searched. Drop a repository here to move it.',
+  'sections.searchIn': 'Search in this section',
   'sections.fileUnder': 'Section',
   'sections.newWith': 'New section…',
   'sections.none': 'In no section',
@@ -239,6 +241,8 @@ export default {
   'home.filters.sync': 'To sync',
   'home.filters.attention': 'Attention',
   'home.search': 'Search: name, branch, path, last commit',
+  'home.scope': 'Where to search',
+  'home.scopeAll': 'All sections',
   'home.refreshAll': 'Refresh all',
   'home.noMatch': 'No repository matches.',
 

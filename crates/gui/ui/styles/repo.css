@@ -205,6 +205,8 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .pull-tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .pull-tabs .n { font-size: 11px; font-weight: 500; padding: 0 6px; border-radius: 999px; background: var(--soft); color: var(--muted); }
 .pull-body { flex: 1 1 auto; overflow: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+/* Items keep their height: the list scrolls, a long description is never squeezed and cut. */
+.pull-body > * { flex-shrink: 0; }
 .pull-body.changes, .pull-body.commits { padding: 8px 0 12px; gap: 4px; }
 .pull-note { padding: 18px 16px; color: var(--muted); }
 .pull-note.error { color: var(--err); }

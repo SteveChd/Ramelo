@@ -125,6 +125,8 @@ export default {
   'sections.others': 'Autres dépôts',
   'sections.emptyHint': 'Glisse des dépôts ici, ou clic droit sur l\'un d\'eux › Section.',
   'sections.noMatchHint': 'Aucun dépôt de cette section ne correspond. Dépose un dépôt ici pour l\'y déplacer.',
+  'sections.outOfScopeHint': 'Hors de la recherche. Dépose un dépôt ici pour l\'y déplacer.',
+  'sections.searchIn': 'Chercher dans cette section',
   'sections.fileUnder': 'Section',
   'sections.newWith': 'Nouvelle section…',
   'sections.none': 'Sans section',
@@ -239,6 +241,8 @@ export default {
   'home.filters.sync': 'À synchroniser',
   'home.filters.attention': 'À traiter',
   'home.search': 'Chercher : nom, branche, chemin, dernier commit',
+  'home.scope': 'Où chercher',
+  'home.scopeAll': 'Toutes les sections',
   'home.refreshAll': 'Tout actualiser',
   'home.noMatch': 'Aucun dépôt ne correspond.',
 

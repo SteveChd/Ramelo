@@ -8,6 +8,13 @@
   height: 32px; width: 300px; border: 1px solid var(--ctl); background: var(--panel); border-radius: var(--radius-sm);
   padding: 0 10px; outline: none; user-select: text;
 }
+.home-head .search-box { display: flex; align-items: stretch; }
+.home-head .search-box .scope {
+  height: 32px; max-width: 170px; border: 1px solid var(--ctl); border-right: 0; background: var(--soft); color: var(--ink);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm); padding: 0 6px; font: inherit; font-size: 12.5px; outline: none;
+}
+.home-head .search-box .scope:focus { border-color: var(--accent); }
+.home-head .search-box .scope + input[type="search"] { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; width: 240px; }
 .home-head input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
@@ -74,6 +81,10 @@
 .group-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
 .group-head:hover .group-actions, .group-head:focus-within .group-actions { opacity: 1; }
 .group-actions .icon-btn { width: 26px; height: 26px; color: var(--muted); }
+/* The section searched keeps its search button shown and lit; the others are dimmed. */
+.group-actions:has(.icon-btn.active) { opacity: 1; }
+.group-actions .icon-btn.active { color: var(--accent); background: var(--a-soft); }
+.group.outside .group-head { opacity: .6; }
 .group-empty {
   padding: 18px; text-align: center; color: var(--muted); font-size: 13px;
   border: 1px dashed var(--ctl); border-radius: var(--radius);
