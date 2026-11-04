@@ -124,6 +124,7 @@ export default {
   'sections.moveDown': 'Descendre',
   'sections.others': 'Autres dépôts',
   'sections.emptyHint': 'Glisse des dépôts ici, ou clic droit sur l\'un d\'eux › Section.',
+  'sections.noMatchHint': 'Aucun dépôt de cette section ne correspond. Dépose un dépôt ici pour l\'y déplacer.',
   'sections.fileUnder': 'Section',
   'sections.newWith': 'Nouvelle section…',
   'sections.none': 'Sans section',

@@ -173,7 +173,7 @@ function sectionMenu(event, name) {
  * One section and its cards (`name` null: the repositories in no section). `shown` are its
  * repositories that pass the filter and the search, `total` how many it holds.
  */
-function group(name, shown, total, collapsed) {
+function group(name, shown, total, collapsed, narrowed) {
   const others = name === null;
   const title = others ? t('sections.others') : name;
   const head = h('div', {
@@ -192,12 +192,18 @@ function group(name, shown, total, collapsed) {
     h('button', { type: 'button', class: 'icon-btn', title: t('sections.remove'), onclick: () => store.removeSection(name) }, icon('remove', 14))));
   const body = collapsed ? null
     : shown.length ? h('div', { class: 'cards' }, shown.map(card))
-      : h('div', { class: 'group-empty' }, t('sections.emptyHint'));
+      // While narrowed, a section with no match stays as a place to drop the repositories found.
+      : narrowed && total > 0 ? h('div', { class: 'group-empty compact' }, t('sections.noMatchHint'))
+        : h('div', { class: 'group-empty' }, t('sections.emptyHint'));
   return h('section', { class: `group${collapsed ? ' collapsed' : ''}${others ? ' others' : ''}`, 'data-section': others ? null : name }, head, body);
 }
 
-/** The cards, in their sections when there are some. A section with nothing to show is left out
- * while a filter or a search is on; a search unfolds the sections, so that no match stays hidden. */
+/**
+ * The cards, in their sections when there are some. The sections always stay, even with nothing to
+ * show, so that a repository found by a search can be dragged into any of them, or back among the
+ * repositories in no section (left out only when there are none). A search unfolds the sections, so
+ * that no match stays hidden.
+ */
 function cardList(repos, visible) {
   if (store.sections.length === 0) {
     return visible.length ? h('div', { class: 'cards' }, visible.map(card)) : h('div', { class: 'no-match' }, t('home.noMatch'));
@@ -208,9 +214,10 @@ function cardList(repos, visible) {
   const of = (name) => (r) => (name === null ? !names.has(r.section) : r.section === name);
   const groups = [...store.sections.map((s) => [s.name, s.collapsed]), [null, store.othersCollapsed]]
     .map(([name, collapsed]) => ({ name, collapsed: Boolean(collapsed) && !searching, shown: visible.filter(of(name)), total: repos.filter(of(name)).length }))
-    .filter((g) => (g.name === null ? g.total > 0 : true) && (!narrowed || g.shown.length > 0));
-  if (narrowed && visible.length === 0) return h('div', { class: 'no-match' }, t('home.noMatch'));
-  return h('div', { class: 'groups' }, groups.map((g) => group(g.name, g.shown, g.total, g.collapsed)));
+    .filter((g) => g.name !== null || g.total > 0);
+  return h('div', { class: 'groups' },
+    narrowed && visible.length === 0 && h('div', { class: 'no-match' }, t('home.noMatch')),
+    groups.map((g) => group(g.name, g.shown, g.total, g.collapsed, narrowed)));
 }
 
 /** Search field kept between renders, so that typing is never interrupted. */

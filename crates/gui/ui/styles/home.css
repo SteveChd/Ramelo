@@ -78,6 +78,7 @@
   padding: 18px; text-align: center; color: var(--muted); font-size: 13px;
   border: 1px dashed var(--ctl); border-radius: var(--radius);
 }
+.group-empty.compact { padding: 10px; font-size: 12px; }
 .home-head .new-section { width: 34px; height: 34px; color: var(--muted); }
 .home-head .new-section:hover { color: var(--ink); }
 .drag-ghost {

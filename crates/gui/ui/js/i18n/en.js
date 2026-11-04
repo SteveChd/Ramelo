@@ -124,6 +124,7 @@ export default {
   'sections.moveDown': 'Move down',
   'sections.others': 'Other repositories',
   'sections.emptyHint': 'Drag repositories here, or right click on one › Section.',
+  'sections.noMatchHint': 'No match in this section. Drop a repository here to move it.',
   'sections.fileUnder': 'Section',
   'sections.newWith': 'New section…',
   'sections.none': 'In no section',
