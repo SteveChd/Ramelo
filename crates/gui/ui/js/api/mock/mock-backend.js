@@ -526,9 +526,9 @@ function change(path, update) {
   return snapshot();
 }
 
-export async function history(path, limit) {
+export async function history(path, limit, refs = null) {
   await delay(80);
-  return repo.history(path, limit);
+  return repo.history(path, limit, refs);
 }
 
 export async function searchCommits(path, query, limit) {

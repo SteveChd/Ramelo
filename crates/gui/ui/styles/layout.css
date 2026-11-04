@@ -25,7 +25,7 @@
 .mi:disabled { opacity: .45; cursor: default; background: transparent; }
 .mi .lbl { flex: 1 1 auto; white-space: nowrap; }
 .mi .key { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
-.menu.context { position: fixed; top: 0; left: 0; min-width: 230px; z-index: 80; }
+.menu.context { position: fixed; top: 0; left: 0; min-width: 230px; z-index: 80; max-height: calc(100vh - 16px); overflow-y: auto; }
 .mi .ico-space { width: 15px; flex: 0 0 auto; }
 .mi svg { flex: 0 0 auto; color: var(--muted); }
 .mi.danger { color: var(--err); }

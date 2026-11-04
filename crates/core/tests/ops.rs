@@ -125,6 +125,10 @@ fn reads_history_graph_and_commit_details() {
     assert_eq!(details.parents.len(), 2);
     assert_eq!(details.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["b"]);
     assert_eq!(log(&g, &root, 2, 3).unwrap().len(), 1);
+    // Only the commits of one branch; a ref that no longer exists is left out.
+    let topic = log_of(&g, &root, Some(&["refs/heads/topic".to_owned(), "refs/heads/gone".to_owned()]), 100, 0).unwrap();
+    assert_eq!(topic.iter().map(|c| c.summary.as_str()).collect::<Vec<_>>(), ["two", "one"]);
+    assert!(log_of(&g, &root, Some(&["refs/heads/gone".to_owned()]), 100, 0).unwrap().is_empty());
 
     let refs = refs::list(&g, &root).unwrap();
     assert_eq!(refs.local.iter().map(|b| (b.name.as_str(), b.is_head)).collect::<Vec<_>>().len(), 2);

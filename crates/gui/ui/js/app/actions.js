@@ -37,6 +37,8 @@ const ACTIONS = {
   'app.accounts': { key: 'Ctrl+,', run: () => openAccountsDialog() },
   'app.settings': { run: () => openSettingsDialog() },
   'app.about': { run: () => openAboutDialog() },
+  'view.onlyCurrentBranch': { key: 'Ctrl+Shift+B', enabled: hasActive, run: () => repoStore.soloCurrent() },
+  'view.allBranches': { enabled: () => hasActive() && Boolean(repoStore.state.filter), run: () => repoStore.setFilter(null) },
   'repo.add': { key: 'Ctrl+O', run: () => store.add() },
   'repo.clone': { key: 'Ctrl+Shift+O', run: () => store.clone() },
   'repo.find': { key: 'Ctrl+Shift+N', run: () => store.find() },

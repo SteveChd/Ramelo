@@ -7,6 +7,7 @@ import { describeError } from '../../app/errors.js';
 import { t } from '../../i18n/i18n.js';
 import { h, mount } from '../../lib/dom.js';
 import { icon } from '../../lib/icons.js';
+import { openContextMenu } from '../../components/context-menu.js';
 import { openNewPullDialog } from '../../components/new-pull-dialog.js';
 import { pullView } from '../../state/pull-view.js';
 import { pulls } from '../../state/pulls.js';
@@ -40,11 +41,32 @@ function trackInfo(branch) {
     branch.behind > 0 && h('span', { class: 'down' }, `↓${branch.behind}`));
 }
 
+/** What the graph shows of a branch or tag, from its right click. */
+function graphMenu(event, ref, extra = []) {
+  const shown = repoStore.isShown(ref);
+  const filtered = Boolean(repoStore.state.filter);
+  openContextMenu(event, [
+    { label: t('graph.soloRef'), icon: 'filter', run: () => repoStore.soloRef(ref) },
+    filtered && { label: shown ? t('graph.hideRefMenu') : t('graph.showRef'), icon: shown ? 'minus' : 'plus', run: () => repoStore.toggleRef(ref) },
+    filtered && { label: t('graph.showAll'), run: () => repoStore.setFilter(null) },
+    extra.length > 0 && '-',
+    ...extra,
+  ]);
+}
+
+/** A branch the graph does not show is dimmed. */
+const dimmed = (ref) => (repoStore.isShown(ref) ? '' : ' not-shown');
+
 function localItem(branch) {
   return h('div', {
-    class: `sb-item${branch.isHead ? ' head' : ''}`,
+    class: `sb-item${branch.isHead ? ' head' : ''}${dimmed({ kind: 'local', name: branch.name })}`,
     title: branch.upstream ? t('badge.tracking', { upstream: branch.upstream }) : branch.summary,
     onclick: () => repoStore.selectCommit(branch.oid),
+    oncontextmenu: (event) => graphMenu(event, { kind: 'local', name: branch.name }, [
+      !branch.isHead && { label: t('branch.switch'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
+      { label: t('branch.newHere'), icon: 'plus', run: () => repoStore.createBranch(branch.oid) },
+      !branch.isHead && { label: t('branch.deleteTitle'), icon: 'remove', danger: true, run: () => repoStore.deleteBranch(branch.name) },
+    ].filter(Boolean)),
     ondblclick: () => { if (!branch.isHead) repoStore.switchTo(branch.name); },
   },
   h('span', { class: 'lbl' }, branch.name),
@@ -59,9 +81,12 @@ function localItem(branch) {
 function remoteItem(branch) {
   const [, ...rest] = branch.name.split('/');
   return h('div', {
-    class: 'sb-item nested',
+    class: `sb-item nested${dimmed({ kind: 'remote', name: branch.name })}`,
     title: branch.summary,
     onclick: () => repoStore.selectCommit(branch.oid),
+    oncontextmenu: (event) => graphMenu(event, { kind: 'remote', name: branch.name }, [
+      { label: t('branch.checkoutRemote'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
+    ]),
     ondblclick: () => repoStore.switchTo(branch.name),
   },
   h('span', { class: 'lbl' }, rest.join('/')),
@@ -140,7 +165,11 @@ export function renderSidebar(container) {
         : h('div', { class: 'sb-empty' }, t('branch.noRemote'))),
     section('tags', t('branch.tags'), refs.tags.length,
       refs.tags.length
-        ? refs.tags.map((tag) => h('div', { class: 'sb-item', onclick: () => repoStore.selectCommit(tag.oid) }, icon('tag', 13), h('span', { class: 'lbl' }, tag.name)))
+        ? refs.tags.map((tag) => h('div', {
+          class: `sb-item${dimmed({ kind: 'tag', name: tag.name })}`,
+          onclick: () => repoStore.selectCommit(tag.oid),
+          oncontextmenu: (event) => graphMenu(event, { kind: 'tag', name: tag.name }),
+        }, icon('tag', 13), h('span', { class: 'lbl' }, tag.name)))
         : h('div', { class: 'sb-empty' }, t('branch.noTags'))),
   );
 }

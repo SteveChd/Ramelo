@@ -37,11 +37,12 @@ pub struct History {
     pub has_more: bool,
 }
 
-/// The `limit` most recent commits of all branches, with the layout of the graph. The graph is laid
-/// out from the first commit each time, so that loading more never shifts the lanes already shown.
+/// The `limit` most recent commits of all branches, or of `refs` only (full names), with the layout
+/// of the graph. The graph is laid out from the first commit each time, so that loading more never
+/// shifts the lanes already shown.
 #[tauri::command]
-pub async fn history(state: State<'_, AppState>, path: String, limit: usize) -> CommandResult<History> {
-    let mut commits = core::log(&state.git, &PathBuf::from(path), limit + 1, 0)?;
+pub async fn history(state: State<'_, AppState>, path: String, limit: usize, refs: Option<Vec<String>>) -> CommandResult<History> {
+    let mut commits = core::log_of(&state.git, &PathBuf::from(path), refs.as_deref(), limit + 1, 0)?;
     let has_more = commits.len() > limit;
     commits.truncate(limit);
     let (graph, width) = core::layout(&commits);

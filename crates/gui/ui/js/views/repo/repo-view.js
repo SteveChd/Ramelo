@@ -223,6 +223,10 @@ repoStore.subscribe((topic) => {
   if (!view || !repo || repo.path !== view.path) return;
   if (topic === 'history') renderGraphPart(repo);
   if (topic === 'refs') renderSidebar(view.sidebar);
+  if (topic === 'filter') {
+    renderSidebar(view.sidebar);
+    renderGraphPart(repo);
+  }
   if (topic === 'selection') {
     renderSide(repo);
     updateGraphSelection(view.graph);

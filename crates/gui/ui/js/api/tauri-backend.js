@@ -76,7 +76,8 @@ export const openFolder = (path) => invoke('open_folder', { path });
 
 // ---------- One repository ----------
 /** { rows: [{ oid, parents, author, email, time, summary, refs, graph }], width, hasMore }. */
-export const history = (path, limit) => invoke('history', { path, limit });
+/** `refs`: full names of the refs whose commits are shown; null: all of them. */
+export const history = (path, limit, refs = null) => invoke('history', { path, limit, refs });
 /** { oid, parents, author, email, time, committer, commitTime, message, files: [FileDiff] }. */
 /**
  * Commits of the whole history matching `query` { text, scope: 'all' | 'message' | 'author' | 'sha'

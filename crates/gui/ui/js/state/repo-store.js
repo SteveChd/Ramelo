@@ -40,7 +40,39 @@ const state = {
   reveal: null,
   /** What the history was read for: when HEAD or the branches move, it is read again. */
   loadedFor: null,
+  /**
+   * The branches and tags whose commits the graph shows: [{ kind: 'local' | 'remote' | 'tag', name }];
+   * null: all of them. Kept per repository (see graphFilters).
+   */
+  filter: null,
 };
+
+// ---------- Branches shown in the graph, kept per repository ----------
+
+const FILTERS_KEY = 'ramelo.graphFilters';
+
+function readFilters() {
+  try {
+    return JSON.parse(localStorage.getItem(FILTERS_KEY) ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function keepFilter(path, filter) {
+  const all = readFilters();
+  if (filter?.length) all[path] = filter;
+  else delete all[path];
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(all));
+  } catch {
+    // Not kept: the graph shows everything at the next start.
+  }
+}
+
+const REF_PREFIX = { local: 'refs/heads/', remote: 'refs/remotes/', tag: 'refs/tags/' };
+const sameRef = (a, b) => a.kind === b.kind && a.name === b.name;
+const fullRefs = (filter) => filter?.map((r) => `${REF_PREFIX[r.kind]}${r.name}`) ?? null;
 
 /** True while a snapshot of our own change is being applied (see `afterChange`). */
 let applying = false;
@@ -98,7 +130,7 @@ function fingerprint(r) {
 
 async function loadHistory() {
   const path = state.path;
-  const history = await run(() => backend.history(path, state.limit));
+  const history = await run(() => backend.history(path, state.limit, fullRefs(state.filter)));
   if (path !== state.path || !history) return;
   state.history = history;
   emit('history');
@@ -307,7 +339,8 @@ export const repoStore = {
 
   /** The tab shows another repository: everything is read for it. */
   open(path) {
-    Object.assign(state, { path, history: null, limit: PAGE, refs: null, selection: 'wip', marked: [], details: null, diff: null, running: null });
+    const filter = readFilters()[path];
+    Object.assign(state, { path, history: null, limit: PAGE, refs: null, selection: 'wip', marked: [], details: null, diff: null, running: null, filter: Array.isArray(filter) && filter.length ? filter : null });
     state.loadedFor = fingerprint(repo());
     emit('selection');
     loadHistory();
@@ -336,6 +369,46 @@ export const repoStore = {
     for (const oid of [...oids].reverse()) {
       if (await loadUntil(oid)) return;
     }
+  },
+
+  /** The ref is among those the graph shows (all are, without a filter). */
+  isShown(ref) {
+    return !state.filter || state.filter.some((r) => sameRef(r, ref));
+  },
+
+  /**
+   * The graph shows only `refs` ([{ kind, name }]); null or empty: all the branches. The selection
+   * stays when its commit is still shown.
+   */
+  async setFilter(refs) {
+    const filter = refs?.length ? refs.filter((r, i) => refs.findIndex((o) => sameRef(o, r)) === i) : null;
+    state.filter = filter;
+    keepFilter(state.path, filter);
+    state.limit = PAGE;
+    emit('filter');
+    await loadHistory();
+    if (state.selection !== 'wip' && !state.history?.rows.some((r) => r.oid === state.selection)) repoStore.selectWip();
+  },
+
+  /** Shows only this branch, or adds it to (or takes it from) the branches shown. */
+  soloRef(ref) {
+    return repoStore.setFilter([ref]);
+  },
+
+  toggleRef(ref) {
+    if (!state.filter) return repoStore.setFilter([ref]);
+    const shown = state.filter.some((r) => sameRef(r, ref));
+    return repoStore.setFilter(shown ? state.filter.filter((r) => !sameRef(r, ref)) : [...state.filter, ref]);
+  },
+
+  /** Shows only the branch checked out (with its upstream), or all of them again when it is the case. */
+  soloCurrent() {
+    const head = state.refs?.local.find((b) => b.isHead);
+    if (!head) return null;
+    const refs = [{ kind: 'local', name: head.name }];
+    if (head.upstream && !head.gone) refs.push({ kind: 'remote', name: head.upstream });
+    const same = state.filter && state.filter.length === refs.length && refs.every((r) => state.filter.some((f) => sameRef(f, r)));
+    return repoStore.setFilter(same ? null : refs);
   },
 
   async loadMore() {

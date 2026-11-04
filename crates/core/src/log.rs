@@ -45,25 +45,47 @@ pub struct Commit {
 
 const FIELDS: &str = "%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%D%x1f%s";
 
-/// Up to `limit` commits after skipping `skip`, children always before their parents.
+/// Up to `limit` commits of all the branches, tags and HEAD after skipping `skip`, children always
+/// before their parents.
 pub fn log(git: &Git, root: &Path, limit: usize, skip: usize) -> Result<Vec<Commit>, GitError> {
-    let args = [
-        "log".to_owned(),
-        "--branches".into(),
-        "--remotes".into(),
-        "--tags".into(),
-        "HEAD".into(),
+    log_of(git, root, None, limit, skip)
+}
+
+/// As [`log`], only for the commits reachable from `refs` (full names, such as « refs/heads/main »)
+/// when given. A name that is no longer a ref (a branch deleted since) is left out.
+pub fn log_of(git: &Git, root: &Path, refs: Option<&[String]>, limit: usize, skip: usize) -> Result<Vec<Commit>, GitError> {
+    let mut args = vec!["log".to_owned()];
+    match refs {
+        None => args.extend(["--branches", "--remotes", "--tags", "HEAD"].map(str::to_owned)),
+        Some(refs) => {
+            let wanted: Vec<&String> = refs.iter().filter(|r| r.starts_with("refs/")).collect();
+            if wanted.is_empty() {
+                return Ok(Vec::new());
+            }
+            // Only the refs that exist: git refuses an unknown one.
+            let mut listing = vec!["for-each-ref".to_owned(), "--format=%(refname)".to_owned()];
+            listing.extend(wanted.iter().map(|r| (*r).clone()));
+            let existing = String::from_utf8_lossy(&git.output(root, &listing)?).into_owned();
+            let existing: Vec<&str> = existing.lines().filter(|l| wanted.iter().any(|w| w.as_str() == *l)).collect();
+            if existing.is_empty() {
+                return Ok(Vec::new());
+            }
+            args.extend(existing.iter().map(|r| (*r).to_owned()));
+        }
+    }
+    args.extend([
         "--date-order".into(),
         "--decorate=full".into(),
         "-z".into(),
         format!("--format={FIELDS}"),
         format!("--max-count={limit}"),
         format!("--skip={skip}"),
-    ];
+        "--".into(),
+    ]);
     let out = match git.output(root, &args) {
         Ok(out) => out,
         // A repository without any commit has no history (HEAD points to an unborn branch).
-        Err(GitError::Failed { message, .. }) if message.contains("does not have any commits") || message.contains("unknown revision") => {
+        Err(GitError::Failed { message, .. }) if message.contains("does not have any commits") || message.contains("unknown revision") || message.contains("bad revision") => {
             return Ok(Vec::new());
         }
         Err(error) => return Err(error),

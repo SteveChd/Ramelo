@@ -30,7 +30,7 @@ pub use diff::{commit_details, commit_file_diff, parse_diff, worktree_diff, Comm
 pub use error::GitError;
 pub use git::Git;
 pub use graph::{layout, Edge, GraphRow};
-pub use log::{log, Commit, RefKind, RefLabel};
+pub use log::{log, log_of, Commit, RefKind, RefLabel};
 pub use range::{fetch_commit, range_changes, range_file_diff, remote_urls, RangeChanges, RangeCommit};
 pub use remote::{fetch, pull, push, PullMode, PullOutcome, PushOutcome};
 pub use repo::{open, summary, CommitInfo, Operation, RepoLocation, RepoSummary};

@@ -197,6 +197,42 @@ function wipRow(summary, width, headLane, selected) {
 /** Keeps the scroll position when the graph is drawn again with the same history. */
 let lastHistory = null;
 
+/** Menu of the branches the graph shows: all, the current one, or some chosen one by one. */
+function filterMenu(at) {
+  const { refs, filter } = repoStore.state;
+  const head = refs?.local.find((b) => b.isHead);
+  const toggle = (kind, name) => ({
+    label: name,
+    icon: filter && repoStore.isShown({ kind, name }) ? 'check' : null,
+    run: () => repoStore.toggleRef({ kind, name }),
+  });
+  openContextMenu(at, [
+    { label: t('graph.showAll'), icon: filter ? null : 'check', disabled: !filter, run: () => repoStore.setFilter(null) },
+    { label: t('graph.onlyCurrent'), icon: 'branch', disabled: !head, run: () => repoStore.soloCurrent() },
+    refs?.local.length > 0 && '-',
+    refs?.local.length > 0 && h('div', { class: 'menu-title' }, t('branch.local')),
+    ...(refs?.local ?? []).map((b) => toggle('local', b.name)),
+    refs?.remote.length > 0 && '-',
+    refs?.remote.length > 0 && h('div', { class: 'menu-title' }, t('branch.remote')),
+    ...(refs?.remote ?? []).map((b) => toggle('remote', b.name)),
+  ]);
+}
+
+/** What the graph is limited to, each removable, with a way back to all the branches. */
+function filterBar() {
+  const { filter } = repoStore.state;
+  if (!filter) return null;
+  return h('div', { class: 'graph-filter' },
+    icon('filter', 13),
+    h('span', { class: 'what' }, t('graph.filtered')),
+    filter.map((ref) => h('span', { class: `chip ${ref.kind}` },
+      ref.kind === 'tag' ? icon('tag', 11) : ref.kind === 'remote' ? icon('cloud', 11) : icon('branch', 11),
+      ref.name,
+      h('button', { type: 'button', class: 'x', title: t('graph.hideRef', { name: ref.name }), onclick: () => repoStore.toggleRef(ref) }, icon('close', 10, 2.4)))),
+    h('button', { type: 'button', class: 'btn small', onclick: (event) => filterMenu(event.currentTarget) }, t('graph.addRef')),
+    h('button', { type: 'button', class: 'btn small primary', onclick: () => repoStore.setFilter(null) }, t('graph.showAll')));
+}
+
 export function renderGraph(container, repo) {
   const { history, selection } = repoStore.state;
   if (!history) {
@@ -219,9 +255,16 @@ export function renderGraph(container, repo) {
   container.classList.toggle('only-matches', search.active && search.state.onlyMatches);
   mount(container,
     h('div', { class: 'graph-head' },
-      h('span', {}, t('graph.graph')), h('span', {}, t('graph.message')), h('span', {}, t('graph.author')), h('span', {}, t('graph.date')), h('span', {}, t('graph.sha'))),
+      h('span', {}, t('graph.graph')), h('span', { class: 'graph-title' }, t('graph.message'),
+        h('button', {
+          type: 'button',
+          class: `icon-btn small graph-filter-btn${repoStore.state.filter ? ' active' : ''}`,
+          title: t('graph.filterHint'),
+          onclick: (event) => filterMenu(event.currentTarget),
+        }, icon('filter', 13))), h('span', {}, t('graph.author')), h('span', {}, t('graph.date')), h('span', {}, t('graph.sha'))),
+    filterBar(),
     dirty && wipRow(summary, Math.max(width, 56), headLane, selection === 'wip'),
-    history.rows.length === 0 && !dirty && h('div', { class: 'graph-empty' }, t('graph.empty')),
+    history.rows.length === 0 && !dirty && h('div', { class: 'graph-empty' }, repoStore.state.filter ? t('graph.emptyFiltered') : t('graph.empty')),
     search.active && search.state.onlyMatches && search.state.result.oids.length === 0 && h('div', { class: 'graph-empty' }, t('search.none')),
     history.rows.map((row) => commitRow(row, Math.max(width, 56), headOid, selection === row.oid, mark)),
     history.hasMore && h('div', { class: 'load-more' },

@@ -83,11 +83,31 @@ function layout(commits) {
 
 const histories = new Map();
 
-export function history(path, limit) {
+export function history(path, limit, refs = null) {
   if (!histories.has(path)) histories.set(path, path.includes('waypoint') ? makeHistory(60) : makeHistory(18));
-  const commits = histories.get(path).slice(0, limit);
+  let all = histories.get(path);
+  if (refs) {
+    // Only the commits reachable from the refs asked for, as `git log <refs>`.
+    const known = branches(path);
+    const tips = [
+      ...known.local.map((b) => [`refs/heads/${b.name}`, b.oid]),
+      ...known.remote.map((b) => [`refs/remotes/${b.name}`, b.oid]),
+      ...known.tags.map((b) => [`refs/tags/${b.name}`, b.oid]),
+    ].filter(([name]) => refs.includes(name)).map(([, oid]) => oid);
+    const byOid = new Map(all.map((c) => [c.oid, c]));
+    const seen = new Set();
+    const todo = [...tips];
+    while (todo.length) {
+      const oid = todo.pop();
+      if (seen.has(oid) || !byOid.has(oid)) continue;
+      seen.add(oid);
+      todo.push(...byOid.get(oid).parents);
+    }
+    all = all.filter((c) => seen.has(c.oid));
+  }
+  const commits = all.slice(0, limit);
   const { rows, width } = layout(commits);
-  return { rows: commits.map((c, i) => ({ ...c, graph: rows[i] })), width, hasMore: histories.get(path).length > limit };
+  return { rows: commits.map((c, i) => ({ ...c, graph: rows[i] })), width, hasMore: all.length > limit };
 }
 
 /** A plausible diff for any file. */

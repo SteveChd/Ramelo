@@ -117,3 +117,23 @@
 .graph.focus-line .grow svg path.src { stroke-width: 2.6; }
 .graph.focus-line .grow svg path.on { stroke-width: 3.4; }
 .graph.focus-line .grow svg circle.on { transform-box: fill-box; transform-origin: center; transform: scale(1.18); }
+
+/* The branches the graph is limited to. */
+.graph-head .graph-title { display: flex; align-items: center; gap: 6px; }
+.graph-head .graph-filter-btn { margin-left: auto; }
+.graph-filter-btn { width: 22px; height: 22px; color: var(--muted); }
+.graph-filter-btn.active { color: var(--on-accent); background: var(--accent); }
+.graph-filter {
+  position: sticky; top: 30px; z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  font-size: 12.5px; color: var(--accent);
+}
+.graph-filter .what { font-weight: 600; margin-right: 2px; }
+.graph-filter .chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 2px 0 8px; border-radius: 11px;
+  background: var(--panel); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--ink); font-size: 12px;
+}
+.graph-filter .chip .x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; padding: 0; }
+.graph-filter .chip .x:hover { background: var(--hover); color: var(--ink); }
+.graph-filter .btn.small { height: 24px; }
+.graph-filter .btn.small:first-of-type { margin-left: auto; }
