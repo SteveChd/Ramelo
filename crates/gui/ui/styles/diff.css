@@ -88,7 +88,7 @@
 .sline .added { background: color-mix(in srgb, var(--added) 13%, transparent); }
 .sline .sign.added { color: var(--added); }
 .sline .code.noNewline { color: var(--muted); font-style: italic; }
-.sline .empty { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--muted) 7%, transparent) 5px 6px); }
+.sline .blank { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--muted) 7%, transparent) 5px 6px); }
 
 /* ---------- Conflict editor ---------- */
 

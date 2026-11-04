@@ -351,7 +351,7 @@ function splitRows(lines) {
 }
 
 function half(l, side) {
-  if (!l) return [h('span', { class: 'no empty' }), h('span', { class: 'sign empty' }), h('span', { class: 'code empty' })];
+  if (!l) return [h('span', { class: 'no blank' }), h('span', { class: 'sign blank' }), h('span', { class: 'code blank' })];
   const kind = l.kind === 'context' ? '' : ` ${l.kind}`;
   const sign = { added: '+', deleted: '−' }[l.kind] ?? '';
   return [
