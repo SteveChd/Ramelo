@@ -370,6 +370,7 @@ function reviewedLine(l, rv, data, rerender) {
   const row = line(l);
   if (!rv || l.kind === 'noNewline') return row;
   if (rv.open) row.append(commentButton(l, rerender));
+  if (rv.threads.some(({ root }) => isOn(root, l))) row.classList.add('commented');
   return [row, lineExtras([l], rv, data, rerender)];
 }
 
@@ -380,6 +381,7 @@ function reviewedRow(pair, rv, data, rerender) {
   const target = after?.kind !== 'noNewline' && after ? after : before?.kind !== 'noNewline' ? before : null;
   if (!rv || !target) return row;
   if (rv.open) row.append(commentButton(target, rerender, target === after ? '' : 'before'));
+  if (rv.threads.some(({ root }) => [before, after].some((l) => l && isOn(root, l)))) row.classList.add('commented');
   return [row, lineExtras(before === after ? [before] : [before, after], rv, data, rerender)];
 }
 

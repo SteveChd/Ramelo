@@ -188,3 +188,15 @@
 .diff-elsewhere .line-thread { margin-top: 0; }
 /* Unchanged lines shown around a comment, between the hunks. */
 .hunk-head.around { font-style: italic; }
+/* Discussions on the lines stand out from the code: tinted, with a coloured edge. */
+.line-thread .line-comment {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel)); box-shadow: 0 2px 10px rgb(0 0 0 / .22);
+}
+.line-thread .line-comment header { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); border-bottom-color: color-mix(in srgb, var(--accent) 30%, var(--border)); color: var(--ink); }
+.line-thread .line-comment .markdown { color: var(--ink); }
+.line-thread .thread-replies { border-left-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.thread-where { color: var(--accent); font-weight: 600; }
+/* The line a discussion is about. */
+.dline.commented, .sline.commented { box-shadow: inset 3px 0 0 var(--accent); background-color: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dline.commented .code, .sline.commented .code { font-weight: 600; }
