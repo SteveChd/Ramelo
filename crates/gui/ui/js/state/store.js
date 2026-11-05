@@ -5,7 +5,7 @@
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
-import { openCloneDialog } from '../components/clone-dialog.js';
+import { openCloneDialog, openCloneManyDialog } from '../components/clone-dialog.js';
 import { openRepoFinder } from '../components/repo-finder.js';
 import { confirm, prompt } from '../components/dialog.js';
 import { t, tn } from '../i18n/i18n.js';
@@ -162,10 +162,20 @@ export const store = {
     emit('notice', t('clone.done', { path }));
   },
 
-  /** Finds a repository on an account (with its README), then clones it. */
+  /** Clones several repositories into one folder, then adds those cloned. */
+  async cloneMany(addresses) {
+    const near = state.active ?? state.repositories[0]?.path ?? null;
+    const paths = await openCloneManyDialog({ near, addresses });
+    if (!paths?.length) return;
+    await store.add(paths, { quiet: true });
+    emit('notice', tn('clone.doneMany', paths.length));
+  },
+
+  /** Finds repositories on an account (with their README), then clones them. */
   async find() {
     const chosen = await openRepoFinder();
-    if (chosen) await store.clone(chosen.address);
+    if (chosen?.addresses) await store.cloneMany(chosen.addresses);
+    else if (chosen) await store.clone(chosen.address);
   },
 
   /** Closes the tab of a repository; it stays in the overview. */

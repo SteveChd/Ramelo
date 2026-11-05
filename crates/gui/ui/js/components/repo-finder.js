@@ -1,9 +1,10 @@
-// Finding a repository on an account (GitHub, GitLab, Bitbucket) to clone it: a search on the left,
+// Finding repositories on an account (GitHub, GitLab, Bitbucket) to clone them: a search on the left,
 // the README of the selected repository on the right, then its address goes to the clone dialog.
+// Several can be ticked, across searches, and cloned together.
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
-import { t } from '../i18n/i18n.js';
+import { t, tn } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { relativeTime } from '../lib/time.js';
@@ -32,7 +33,10 @@ function savePrefs(prefs) {
 
 const isMarkdown = (name) => /\.(md|markdown|mdown)$/i.test(name);
 
-/** Resolves with { address } of the repository to clone, or null. */
+/**
+ * Resolves with { address } of the repository to clone, { addresses } of the repositories ticked to
+ * clone together, or null.
+ */
 export async function openRepoFinder() {
   await accounts.load();
   return openDialog((box, close) => {
@@ -41,6 +45,8 @@ export async function openRepoFinder() {
     let account = accounts.list.find((a) => a.id === prefs.account) ?? accounts.list[0] ?? null;
     let results = [];
     let selected = null;
+    /** key → repository: those ticked, kept from one search to the next. */
+    const picked = new Map();
     let searching = 0;
     let timer = null;
     const readmes = new Map();
@@ -77,13 +83,35 @@ export async function openRepoFinder() {
         }, t(`finder.scope.${scope}`))));
     };
 
+    const toggle = (repo) => {
+      if (picked.has(repo.key)) picked.delete(repo.key);
+      else if (cloneAddress(repo)) picked.set(repo.key, repo);
+      drawList();
+      drawFoot();
+    };
+
     const row = (repo) => h('div', {
-      class: `finder-row${selected?.key === repo.key ? ' selected' : ''}`,
+      class: `finder-row${selected?.key === repo.key ? ' selected' : ''}${picked.has(repo.key) ? ' picked' : ''}`,
       role: 'option',
       'aria-selected': String(selected?.key === repo.key),
-      onclick: () => choose(repo),
+      // Ctrl+click ticks, as in a list of files.
+      onclick: (event) => (event.ctrlKey || event.metaKey ? toggle(repo) : choose(repo)),
       ondblclick: () => cloneIt(repo),
     },
+    h('input', {
+      type: 'checkbox',
+      class: 'finder-pick',
+      title: t('finder.tick'),
+      'aria-label': t('finder.tick'),
+      checked: picked.has(repo.key),
+      disabled: !cloneAddress(repo),
+      onclick: (event) => {
+        event.stopPropagation();
+        toggle(repo);
+      },
+      ondblclick: (event) => event.stopPropagation(),
+    }),
+    h('div', { class: 'finder-info' },
     h('div', { class: 'finder-name' },
       h('span', { class: 'full' }, repo.fullName),
       repo.private && h('span', { class: 'tag', title: t('finder.private') }, icon('lock', 12)),
@@ -92,7 +120,26 @@ export async function openRepoFinder() {
     h('div', { class: 'finder-meta' },
       repo.language && h('span', {}, repo.language),
       repo.stars ? h('span', {}, `★ ${repo.stars}`) : null,
-      repo.updated && h('span', {}, t('finder.updated', { when: relativeTime(repo.updated) }))));
+      repo.updated && h('span', {}, t('finder.updated', { when: relativeTime(repo.updated) })))));
+
+    const foot = h('div', { class: 'finder-foot' });
+    const drawFoot = () => {
+      if (picked.size === 0) {
+        mount(foot, h('span', { class: 'hint' }, t('finder.tickHint')));
+        return;
+      }
+      mount(foot,
+        h('span', { class: 'finder-picked' }, tn('finder.picked', picked.size)),
+        h('button', { type: 'button', class: 'link', onclick: () => { picked.clear(); drawList(); drawFoot(); } }, t('finder.untick')),
+        h('div', { class: 'spacer' }),
+        h('button', { type: 'button', class: 'btn primary', onclick: cloneTicked }, icon('fetch', 15), tn('finder.cloneTicked', picked.size)));
+    };
+
+    const cloneTicked = () => {
+      const addresses = [...picked.values()].map(cloneAddress).filter(Boolean);
+      if (addresses.length === 1) close({ address: addresses[0] });
+      else if (addresses.length) close({ addresses });
+    };
 
     const drawList = () => {
       if (searching && results.length === 0) mount(list, h('div', { class: 'finder-note' }, h('span', { class: 'spinner' }), t('finder.searching')));
@@ -188,6 +235,9 @@ export async function openRepoFinder() {
         event.preventDefault();
         const next = results[Math.max(0, Math.min(results.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))];
         if (next) choose(next);
+      } else if (event.key === ' ' && event.ctrlKey && selected) {
+        event.preventDefault();
+        toggle(selected);
       } else if (event.key === 'Enter') {
         event.preventDefault();
         if (timer) { clearTimeout(timer); timer = null; search(); } else if (selected) cloneIt(selected);
@@ -215,8 +265,10 @@ export async function openRepoFinder() {
         dialogHead(t('finder.title'), close),
         h('div', { class: 'finder-bar' }, accountPicker(), field, scopeSwitch()),
         status,
-        h('div', { class: 'finder-body' }, list, preview));
+        h('div', { class: 'finder-body' }, list, preview),
+        foot);
       drawList();
+      drawFoot();
       drawPreview();
       field.focus();
     }

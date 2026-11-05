@@ -1,9 +1,10 @@
 // Cloning a repository: its address, the folder it goes into and its name there, and optionally a
 // branch and the submodules. Git's progress shows while it runs, and the clone can be stopped.
+// Several repositories can also be cloned together into one folder, one after the other.
 
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
-import { t } from '../i18n/i18n.js';
+import { t, tn } from '../i18n/i18n.js';
 import { h, mount } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { openDialog } from './dialog.js';
@@ -159,5 +160,170 @@ export function openCloneDialog({ near = null, address = '', find = null } = {})
     // Escape or a click outside while cloning stops the clone instead of hiding it.
     if (running) backend.cancelClone();
     return !running;
+  });
+}
+
+/** The name git gives a phase of its progress, translated when it is known. */
+function phaseName(phase) {
+  const key = `clone.phase.${phase}`;
+  return t(key) === key ? phase : t(key);
+}
+
+/**
+ * Asks where to clone `addresses` and clones them one after the other; resolves with the paths of
+ * those cloned (possibly none). One that fails does not stop the others: its error shows on its
+ * line, and « Clone » tries again those not cloned yet.
+ */
+export function openCloneManyDialog({ near = null, addresses }) {
+  let running = false;
+  let stopped = false;
+  const items = addresses.map((address) => ({ address, name: cloneName(address), status: 'waiting', error: '', phase: '', percent: null }));
+  const cloned = [];
+  return openDialog((box, close) => {
+    box.classList.add('medium', 'clone-dialog', 'clone-many');
+    const folder = h('input', { type: 'text', spellcheck: 'false', value: lastFolder(near ? parentOf(near) : ''), placeholder: t('clone.folderPlaceholder') });
+    const submodules = h('input', { type: 'checkbox' });
+    const list = h('div', { class: 'clone-list' });
+    const error = h('div', { class: 'field-error' });
+    const cancel = h('button', { type: 'button', class: 'btn' }, t('dialog.cancel'));
+    const submit = h('button', { type: 'button', class: 'btn primary' }, icon('fetch', 15), t('clone.confirm'));
+    const browseButton = h('button', { type: 'button', class: 'btn browse' }, icon('folder', 15), t('clone.browse'));
+
+    const left = () => items.filter((item) => item.status !== 'done');
+    const finish = () => close(cloned);
+
+    /** Two repositories cannot go into the same folder. */
+    const clash = () => {
+      const names = left().map((item) => item.name.trim().toLowerCase());
+      return names.some((name, i) => names.indexOf(name) !== i);
+    };
+
+    const line = (item) => {
+      const name = h('input', { type: 'text', spellcheck: 'false', value: item.name, disabled: running || item.status === 'done', 'aria-label': t('clone.name') });
+      name.addEventListener('input', () => {
+        item.name = name.value;
+        update();
+      });
+      let state;
+      if (item.status === 'running') {
+        state = h('div', { class: 'clone-progress' },
+          h('div', { class: 'line' }, h('span', { class: 'phase' }, item.phase || t('clone.starting')), h('span', { class: 'detail' }, item.percent === null ? '' : `${item.percent} %`)),
+          h('div', { class: 'track' }, h('div', { class: `bar${item.percent === null ? ' busy' : ''}`, style: item.percent === null ? '' : `width: ${item.percent}%` })));
+      } else if (item.status === 'done') {
+        state = h('span', { class: 'clone-state done' }, icon('check', 13), t('clone.itemDone'));
+      } else if (item.status === 'failed') {
+        state = h('span', { class: 'clone-state failed', title: item.error }, item.error);
+      } else {
+        state = h('span', { class: 'clone-state' }, t('clone.itemWaiting'));
+      }
+      return h('div', { class: `clone-item ${item.status}` },
+        h('div', { class: 'clone-item-head' },
+          name,
+          !running && item.status !== 'done' && h('button', {
+            type: 'button',
+            class: 'icon-btn',
+            title: t('clone.leaveOut'),
+            onclick: () => {
+              items.splice(items.indexOf(item), 1);
+              if (items.length === 0) finish();
+              else draw();
+            },
+          }, icon('close', 13))),
+        h('div', { class: 'clone-item-address' }, item.address),
+        state);
+    };
+
+    const update = () => {
+      const ready = folder.value.trim() && left().length > 0 && left().every((item) => item.name.trim()) && !clash();
+      submit.disabled = !ready || running;
+      submit.lastChild.textContent = tn('clone.confirmMany', left().length);
+      error.textContent = clash() ? t('clone.sameName') : '';
+    };
+
+    const draw = () => {
+      mount(list, items.map(line));
+      folder.disabled = running;
+      submodules.disabled = running;
+      browseButton.disabled = running;
+      cancel.textContent = running ? t('clone.stop') : cloned.length ? t('dialog.close') : t('dialog.cancel');
+      update();
+    };
+
+    browseButton.addEventListener('click', async () => {
+      const chosen = await backend.pickCloneFolder(folder.value.trim() || null);
+      if (chosen) {
+        folder.value = chosen;
+        update();
+      }
+    });
+    folder.addEventListener('input', update);
+
+    const run = async () => {
+      if (submit.disabled) return;
+      running = true;
+      stopped = false;
+      const base = folder.value.trim();
+      for (const item of left()) item.status = 'waiting';
+      draw();
+      for (const item of left()) {
+        if (stopped) break;
+        item.status = 'running';
+        item.phase = '';
+        item.percent = null;
+        draw();
+        try {
+          const path = await withHostTrust(() => backend.cloneRepository(item.address, join(base, item.name.trim()), { branch: null, submodules: submodules.checked }, (p) => {
+            item.phase = phaseName(p.phase);
+            item.percent = p.percent;
+            const shown = list.children[items.indexOf(item)];
+            if (shown) shown.replaceWith(line(item));
+          }));
+          item.status = 'done';
+          cloned.push(path);
+          rememberFolder(base);
+        } catch (failure) {
+          item.status = failure?.code === 'cancelled' ? 'waiting' : 'failed';
+          item.error = failure?.code === 'cancelled' ? '' : describeError(failure);
+        }
+        draw();
+      }
+      running = false;
+      if (left().length === 0) finish();
+      else draw();
+    };
+
+    submit.addEventListener('click', run);
+    cancel.addEventListener('click', () => {
+      if (running) {
+        stopped = true;
+        backend.cancelClone();
+      } else {
+        finish();
+      }
+    });
+
+    mount(box,
+      h('div', { class: 'dialog-head' },
+        h('h2', {}, tn('clone.titleMany', items.length)),
+        h('button', { type: 'button', class: 'icon-btn', title: t('dialog.cancel'), onclick: () => cancel.click() }, icon('close', 16))),
+      h('div', { class: 'field' },
+        h('span', { class: 'label' }, t('clone.folder')),
+        h('div', { class: 'with-button' }, folder, browseButton)),
+      h('div', { class: 'field' },
+        h('span', { class: 'label' }, t('clone.names')),
+        list),
+      h('label', { class: 'check' }, submodules, t('clone.submodules')),
+      error,
+      h('div', { class: 'dialog-foot' }, cancel, submit));
+    draw();
+    setTimeout(() => (folder.value.trim() ? submit.focus() : folder.focus()), 0);
+  }, () => {
+    // Escape or a click outside while cloning stops the clones instead of hiding them.
+    if (running) {
+      stopped = true;
+      backend.cancelClone();
+      return false;
+    }
+    return true;
   });
 }
