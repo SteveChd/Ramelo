@@ -50,7 +50,9 @@
 .empty h2 { margin: 0; font-size: 22px; font-weight: 650; }
 .empty p { margin: 0; max-width: 460px; color: var(--muted); }
 .empty .btn { margin-top: 8px; }
-.no-match { color: var(--muted); padding: 30px 0; text-align: center; }
+.no-match { color: var(--muted); padding: 24px 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.no-match p { margin: 0; }
+.no-match .why { font-size: 12.5px; color: var(--ink2); }
 
 /* Folders dragged over the window */
 .drop-overlay {

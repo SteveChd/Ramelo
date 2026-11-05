@@ -256,6 +256,30 @@ function group(name, shown, total, collapsed, narrowed, scope) {
 }
 
 /**
+ * Nothing passes the quick filter, the search and the scope: says which of them hides the
+ * repositories, with a button that shows them all again.
+ */
+function noMatch() {
+  const why = [];
+  if (store.ui.filter !== 'all') why.push(t('home.noMatchFilter', { filter: t(`home.filters.${store.ui.filter}`) }));
+  if (store.ui.search.trim()) why.push(t('home.noMatchSearch', { text: store.ui.search.trim() }));
+  if (scopeOf()) why.push(t('home.noMatchScope', { section: scopeOf().section ?? t('sections.others') }));
+  return h('div', { class: 'no-match' },
+    h('p', {}, t('home.noMatch')),
+    why.length > 0 && h('p', { class: 'why' }, why.join(' · ')),
+    why.length > 0 && h('button', {
+      type: 'button',
+      class: 'btn',
+      onclick: () => {
+        store.setFilter('all');
+        store.setScope(null);
+        if (searchField) searchField.value = '';
+        store.setSearch('');
+      },
+    }, t('home.showAll')));
+}
+
+/**
  * The cards, in their sections when there are some. The sections always stay, even with nothing to
  * show, so that a repository found by a search can be dragged into any of them, or back among the
  * repositories in no section (left out only when there are none). A search unfolds the sections, so
@@ -263,7 +287,7 @@ function group(name, shown, total, collapsed, narrowed, scope) {
  */
 function cardList(repos, visible, scope) {
   if (store.sections.length === 0) {
-    return visible.length ? h('div', { class: 'cards' }, visible.map(card)) : h('div', { class: 'no-match' }, t('home.noMatch'));
+    return visible.length ? h('div', { class: 'cards' }, visible.map(card)) : noMatch();
   }
   const narrowed = visible.length < repos.length;
   const searching = store.ui.search.trim() !== '' || Boolean(scope);
@@ -273,7 +297,7 @@ function cardList(repos, visible, scope) {
     .map(([name, collapsed]) => ({ name, collapsed: Boolean(collapsed) && !searching, shown: visible.filter(of(name)), total: repos.filter(of(name)).length }))
     .filter((g) => g.name !== null || g.total > 0);
   return h('div', { class: 'groups' },
-    narrowed && visible.length === 0 && h('div', { class: 'no-match' }, t('home.noMatch')),
+    narrowed && visible.length === 0 && noMatch(),
     groups.map((g) => group(g.name, g.shown, g.total, g.collapsed && !(scope && scope.section === g.name), narrowed, scope)));
 }
 

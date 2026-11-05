@@ -263,6 +263,10 @@ export default {
   'home.scopeAll': 'All sections',
   'home.refreshAll': 'Refresh all',
   'home.noMatch': 'No repository matches.',
+  'home.noMatchFilter': 'Quick filter: {filter}',
+  'home.noMatchSearch': 'Search: « {text} »',
+  'home.noMatchScope': 'Only in: {section}',
+  'home.showAll': 'Show all the repositories',
 
   'status.repos.one': '{n} repository',
   'status.repos.other': '{n} repositories',

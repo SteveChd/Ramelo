@@ -263,6 +263,10 @@ export default {
   'home.scopeAll': 'Toutes les sections',
   'home.refreshAll': 'Tout actualiser',
   'home.noMatch': 'Aucun dépôt ne correspond.',
+  'home.noMatchFilter': 'Filtre rapide : {filter}',
+  'home.noMatchSearch': 'Recherche : « {text} »',
+  'home.noMatchScope': 'Seulement dans : {section}',
+  'home.showAll': 'Afficher tous les dépôts',
 
   'status.repos.one': '{n} dépôt',
   'status.repos.other': '{n} dépôts',
