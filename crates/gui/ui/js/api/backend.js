@@ -69,6 +69,7 @@ export const {
   editCommitFile,
   squashCommit,
   squashCommits,
+  exportPatches,
   moveCommit,
   continueOperation,
   skipCommit,

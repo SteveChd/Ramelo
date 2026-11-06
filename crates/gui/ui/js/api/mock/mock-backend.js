@@ -586,6 +586,13 @@ export async function moveCommit(path, oid, direction) {
   return { head: oid, commit: oid, snapshot: snapshot() };
 }
 
+export async function exportPatches(path, oids, summary) {
+  await delay(200);
+  globalThis.mockPatches = { oids, summary };
+  const name = oids.length === 1 ? `0001-${(summary ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.patch` : `commits-${oids.length}.patch`;
+  return { file: `${path}\\${name}`, count: oids.length, merges: 0 };
+}
+
 export async function squashCommits(path, oids) {
   await delay(300);
   globalThis.mockSquashed = oids;

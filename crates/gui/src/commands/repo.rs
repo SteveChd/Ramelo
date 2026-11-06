@@ -412,3 +412,43 @@ pub async fn push(state: State<'_, AppState>, path: String, force: bool) -> Comm
     let outcome = core::push(&state.git, &root, force).map_err(|e| name_host(&state, e, &root))?;
     Ok(PushResult { outcome, snapshot: changed(&state, root) })
 }
+
+/// Where the patches of some commits were written.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchExport {
+    pub file: String,
+    pub count: usize,
+    /// Merge commits left out.
+    pub merges: usize,
+}
+
+/// Writes the patches of `oids` (the oldest first) into one `.patch` file the user chooses, which
+/// `git am` applies elsewhere. `summary`: the summary of the commit when there is only one, to name
+/// the file as git would. `None` when the dialog is cancelled.
+#[tauri::command]
+pub async fn export_patches(state: State<'_, AppState>, path: String, oids: Vec<String>, summary: Option<String>) -> CommandResult<Option<PatchExport>> {
+    let root = PathBuf::from(&path);
+    let set = core::format_patches(&state.git, &root, &oids)?;
+    if set.count == 0 {
+        return Err(CommandError::new("nothing_to_export", None, "the commits chosen are all merges: there is no patch to write"));
+    }
+    let name = match summary.filter(|_| set.count == 1) {
+        Some(summary) => core::patch_file_name(&summary),
+        None => {
+            let repo = root.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "commits".to_owned());
+            format!("{repo}-{}-commits.patch", set.count)
+        }
+    };
+    let fr = state.language() == "fr";
+    let file = rfd::FileDialog::new()
+        .set_title(if fr { "Exporter en patch" } else { "Export as a patch" })
+        .set_directory(&root)
+        .set_file_name(name)
+        .add_filter("Patch", &["patch", "diff"])
+        .save_file();
+    let Some(file) = file else { return Ok(None) };
+    std::fs::write(&file, set.text.as_bytes())
+        .map_err(|e| CommandError::new("write_failed", Some(file.display().to_string()), e.to_string()))?;
+    Ok(Some(PatchExport { file: file.display().to_string(), count: set.count, merges: set.merges.len() }))
+}

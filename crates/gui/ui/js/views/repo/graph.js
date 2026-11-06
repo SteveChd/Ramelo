@@ -95,6 +95,8 @@ function commitMenu(event, row, headOid) {
       { label: t('rewrite.squashManyMenu', { n: marked.length }), icon: 'squash', run: () => repoStore.squashCommits(marked) },
       { label: t('rewrite.fixupManyMenu', { n: marked.length }), run: () => repoStore.squashCommits(marked, { fixup: true }) },
       '-',
+      { label: t('patch.exportMany', { n: marked.length }), icon: 'export', run: () => repoStore.exportPatches(marked) },
+      '-',
       { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
     ]);
     return;
@@ -111,6 +113,8 @@ function commitMenu(event, row, headOid) {
     { label: t('rewrite.fixupMenu'), disabled: row.parents.length !== 1, run: () => repoStore.squashCommit(row.oid, { fixup: true }) },
     { label: t('rewrite.moveUpMenu'), icon: 'arrowUp', hint: shortcut('commit.moveUp'), disabled: row.oid === headOid, run: () => repoStore.moveCommit(row.oid, 'up') },
     { label: t('rewrite.moveDownMenu'), icon: 'arrowDown', hint: shortcut('commit.moveDown'), disabled: row.parents.length !== 1, run: () => repoStore.moveCommit(row.oid, 'down') },
+    '-',
+    { label: t('patch.export'), icon: 'export', disabled: row.parents.length > 1, run: () => repoStore.exportPatches([row.oid]) },
     '-',
     { label: t('graph.copySha'), icon: 'tag', run: () => copy(row.oid) },
     { label: t('graph.copySummary'), run: () => copy(row.summary) },

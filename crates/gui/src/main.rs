@@ -75,6 +75,7 @@ fn main() {
             commands::repo::reword_commit,
             commands::repo::squash_commit,
             commands::repo::squash_commits,
+            commands::repo::export_patches,
             commands::repo::move_commit,
             commands::repo::continue_operation,
             commands::repo::skip_commit,

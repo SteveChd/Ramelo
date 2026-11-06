@@ -736,6 +736,20 @@ export const repoStore = {
    * Combines commits that follow one another into the oldest of them: a squash asks for the message
    * (all of theirs to start with), a fixup keeps the one of the oldest.
    */
+  /**
+   * Writes the patches of `oids` into one .patch file the user chooses, the oldest first (the order
+   * `git am` applies them in). Merges are left out: they have no single change to write.
+   */
+  async exportPatches(oids) {
+    const order = (state.history?.rows ?? []).filter((r) => oids.includes(r.oid)).reverse();
+    if (order.length === 0) return;
+    const summary = order.length === 1 ? order[0].summary : null;
+    const result = await run(() => backend.exportPatches(state.path, order.map((r) => r.oid), summary));
+    if (!result) return;
+    const done = tn('patch.done', result.count, { file: result.file });
+    store.notify(result.merges ? `${done} ${tn('patch.mergesLeft', result.merges)}` : done);
+  },
+
   async squashCommits(oids, { fixup = false } = {}) {
     // Newest first, as the graph shows them; each one's only parent must be the next.
     const order = (state.history?.rows ?? []).filter((r) => oids.includes(r.oid));
