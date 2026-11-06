@@ -115,6 +115,7 @@ export const resolveConflict = (path, file, content) => invoke('resolve_conflict
 export const takeConflictSide = (path, file, theirs) => invoke('take_conflict_side', { path, file, theirs });
 export const squashCommit = (path, oid, message) => invoke('squash_commit', { path, oid, message });
 export const moveCommit = (path, oid, direction) => invoke('move_commit', { path, oid, direction });
+export const applyPatches = (path) => invoke('apply_patches', { path });
 export const exportPatches = (path, oids, summary) => invoke('export_patches', { path, oids, summary });
 export const squashCommits = (path, oids, message) => invoke('squash_commits', { path, oids, message });
 export const commitFileDiff = (path, oid, file) => invoke('commit_file_diff', { path, oid, file });

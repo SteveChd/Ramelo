@@ -1,4 +1,4 @@
-//! Operations that stop on conflicts (merge, rebase, cherry-pick, revert): continuing, skipping the
+//! Operations that stop on conflicts (merge, rebase, cherry-pick, revert, am): continuing, skipping the
 //! current commit or aborting them, and resolving each conflicted file from its three versions.
 
 use std::fs;
@@ -28,6 +28,7 @@ pub fn continue_operation(git: &Git, root: &Path) -> Result<Progress, GitError> 
         return Err(GitError::ConflictsRemain(remaining));
     }
     let args: &[&str] = match operation {
+        Operation::Am => &["am", "--continue"],
         Operation::Rebase => &["rebase", "--continue"],
         Operation::Merge => &["merge", "--continue"],
         Operation::CherryPick => &["cherry-pick", "--continue"],
@@ -40,6 +41,7 @@ pub fn continue_operation(git: &Git, root: &Path) -> Result<Progress, GitError> 
 /// Leaves out the commit being applied (rebase, cherry-pick) and goes on with the next one.
 pub fn skip_commit(git: &Git, root: &Path) -> Result<Progress, GitError> {
     let args: &[&str] = match current(git, root)? {
+        Operation::Am => &["am", "--skip"],
         Operation::Rebase => &["rebase", "--skip"],
         Operation::CherryPick => &["cherry-pick", "--skip"],
         Operation::Revert => &["revert", "--skip"],
@@ -53,6 +55,7 @@ pub fn skip_commit(git: &Git, root: &Path) -> Result<Progress, GitError> {
 /// Gives up the operation in progress: the branch is back where it was before it started.
 pub fn abort_operation(git: &Git, root: &Path) -> Result<(), GitError> {
     let args: &[&str] = match current(git, root)? {
+        Operation::Am => &["am", "--abort"],
         Operation::Rebase => &["rebase", "--abort"],
         Operation::Merge => &["merge", "--abort"],
         Operation::CherryPick => &["cherry-pick", "--abort"],
@@ -278,6 +281,11 @@ fn sides(git: &Git, root: &Path) -> Result<Sides, GitError> {
             (side(head_oid, head_branch), side(theirs, name))
         }
         Some(Operation::CherryPick) => (side(head_oid, head_branch), side(read("CHERRY_PICK_HEAD"), None)),
+        // The patch being applied: its subject is all there is, it is not a commit here yet.
+        Some(Operation::Am) => {
+            let subject = read("rebase-apply/final-commit").and_then(|m| m.lines().next().map(str::to_owned));
+            (side(head_oid, head_branch), Side { name: None, oid: None, summary: subject })
+        }
         Some(Operation::Revert) => (side(head_oid, head_branch), side(read("REVERT_HEAD"), None)),
         // Changes re-applied from a stash, or nothing known.
         _ => (side(head_oid, head_branch), side(None, None)),

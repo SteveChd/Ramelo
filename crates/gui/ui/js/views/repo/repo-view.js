@@ -111,7 +111,7 @@ function renderBanner(repo) {
   const actions = operation === 'bisect'
     ? [button(t('conflict.abort.bisect'), () => repoStore.abortOperation())]
     : [
-      ['rebase', 'cherryPick', 'revert'].includes(operation) && button(t('conflict.skip'), () => repoStore.skipCommit(), { title: t('conflict.skipHint') }),
+      ['am', 'rebase', 'cherryPick', 'revert'].includes(operation) && button(t('conflict.skip'), () => repoStore.skipCommit(), { title: t('conflict.skipHint') }),
       button(t(`conflict.abort.${operation}`), () => repoStore.abortOperation(), { kind: ' danger' }),
       button(t('conflict.continue'), () => repoStore.continueOperation(), {
         kind: ' primary',

@@ -28,6 +28,8 @@ impl RepoLocation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Operation {
+    /// Patches being applied with `git am`.
+    Am,
     Rebase,
     Merge,
     CherryPick,
@@ -39,7 +41,10 @@ impl Operation {
     /// Detected from the marker files git leaves in its folder.
     pub fn detect(git_dir: &Path) -> Option<Self> {
         let has = |name: &str| git_dir.join(name).exists();
-        if has("rebase-merge") || has("rebase-apply") {
+        // `git am` works in « rebase-apply » too, and leaves « applying » there.
+        if has("rebase-apply/applying") {
+            Some(Self::Am)
+        } else if has("rebase-merge") || has("rebase-apply") {
             Some(Self::Rebase)
         } else if has("MERGE_HEAD") {
             Some(Self::Merge)

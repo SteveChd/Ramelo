@@ -452,3 +452,30 @@ pub async fn export_patches(state: State<'_, AppState>, path: String, oids: Vec<
         .map_err(|e| CommandError::new("write_failed", Some(file.display().to_string()), e.to_string()))?;
     Ok(Some(PatchExport { file: file.display().to_string(), count: set.count, merges: set.merges.len() }))
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchImport {
+    pub applied: core::Applied,
+    pub snapshot: Snapshot,
+}
+
+/// Lets the user choose patch files and applies them, in the order of their names (0001-, 0002-…):
+/// patches of commits become commits (`git am`), plain diffs go into the working copy. `None` when
+/// the dialog is cancelled.
+#[tauri::command]
+pub async fn apply_patches(state: State<'_, AppState>, path: String) -> CommandResult<Option<PatchImport>> {
+    let root = PathBuf::from(&path);
+    let fr = state.language() == "fr";
+    let files = rfd::FileDialog::new()
+        .set_title(if fr { "Appliquer des patchs" } else { "Apply patches" })
+        .add_filter("Patch", &["patch", "diff", "mbox", "eml"])
+        .add_filter(if fr { "Tous les fichiers" } else { "All files" }, &["*"])
+        .pick_files();
+    let Some(mut files) = files else { return Ok(None) };
+    files.sort();
+    let applied = core::apply_patches(&state.git, &root, &files);
+    // Applied or stopped half way, the repository may have changed: it is read again either way.
+    let snapshot = changed(&state, root);
+    Ok(Some(PatchImport { applied: applied?, snapshot }))
+}

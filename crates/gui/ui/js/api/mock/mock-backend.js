@@ -586,6 +586,12 @@ export async function moveCommit(path, oid, direction) {
   return { head: oid, commit: oid, snapshot: snapshot() };
 }
 
+export async function applyPatches() {
+  await delay(300);
+  const applied = globalThis.mockApplied ?? { kind: 'commits', count: 2 };
+  return { applied, snapshot: snapshot() };
+}
+
 export async function exportPatches(path, oids, summary) {
   await delay(200);
   globalThis.mockPatches = { oids, summary };

@@ -32,7 +32,7 @@ pub use error::GitError;
 pub use git::Git;
 pub use graph::{layout, Edge, GraphRow};
 pub use log::{log, log_of, Commit, RefKind, RefLabel};
-pub use patch::{format_patches, patch_file_name, PatchSet};
+pub use patch::{apply_patches, format_patches, patch_file_name, Applied, PatchSet};
 pub use range::{fetch_commit, range_changes, range_file_diff, remote_urls, RangeChanges, RangeCommit};
 pub use remote::{fetch, pull, push, PullMode, PullOutcome, PushOutcome};
 pub use repo::{open, summary, CommitInfo, Operation, RepoLocation, RepoSummary};

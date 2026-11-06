@@ -737,6 +737,20 @@ export const repoStore = {
    * (all of theirs to start with), a fixup keeps the one of the oldest.
    */
   /**
+   * Applies patch files the user chooses: patches of commits become commits of the current branch,
+   * plain diffs go into the working copy. Conflicts stop it like a rebase, to resolve then continue.
+   */
+  async applyPatches() {
+    const result = await run(() => backend.applyPatches(state.path), 'operation');
+    if (!result) return;
+    const { applied } = result;
+    if (applied.kind === 'commits') store.notify(tn('patch.applied.commits', applied.count));
+    else if (applied.kind === 'changes') store.notify(tn('patch.applied.changes', applied.files));
+    else store.notify(t('patch.applied.conflicts'), true);
+    await afterChange(result.snapshot);
+  },
+
+  /**
    * Writes the patches of `oids` into one .patch file the user chooses, the oldest first (the order
    * `git am` applies them in). Merges are left out: they have no single change to write.
    */

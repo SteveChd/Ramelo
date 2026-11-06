@@ -11,7 +11,7 @@ import { repoStore } from '../../state/repo-store.js';
 const FOLD_LINES = 8;
 const EDGE_LINES = 3;
 
-const kindOf = (operation) => (['merge', 'rebase', 'cherryPick', 'revert'].includes(operation) ? operation : 'other');
+const kindOf = (operation) => (['am', 'merge', 'rebase', 'cherryPick', 'revert'].includes(operation) ? operation : 'other');
 
 function sideHead(which, sides) {
   const side = sides[which];

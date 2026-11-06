@@ -70,6 +70,7 @@ export const {
   squashCommit,
   squashCommits,
   exportPatches,
+  applyPatches,
   moveCommit,
   continueOperation,
   skipCommit,
