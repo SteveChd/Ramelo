@@ -78,6 +78,21 @@ function installFocusRefresh() {
   });
 }
 
+/**
+ * The menu of the web view (Back, Reload, Save as, Print…) means nothing in an application: it is
+ * kept only where text can be typed or is selected, for Cut, Copy and Paste. The menus of the
+ * application call preventDefault themselves and are left alone.
+ */
+function installNativeMenuGuard() {
+  window.addEventListener('contextmenu', (event) => {
+    if (event.defaultPrevented) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const editable = target?.closest('input, textarea, [contenteditable=""], [contenteditable="true"]');
+    const selected = String(window.getSelection() ?? '').trim() !== '';
+    if (!editable && !selected) event.preventDefault();
+  });
+}
+
 async function start() {
   splashStep(t('splash.engine'), 0.15);
   initTheme();
@@ -91,6 +106,7 @@ async function start() {
 
   splashStep(t('splash.ui'), 0.35);
   installKeyboard();
+  installNativeMenuGuard();
   installDrop();
   installFocusRefresh();
   installPullIndicators();
