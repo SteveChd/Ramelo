@@ -117,6 +117,11 @@ exactly like the user's own git: same configuration, credentials, hooks and work
 never open a console window on Windows, never wait for a prompt, and never take the index lock when
 they only read.
 
+## Download
+
+Installers for Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`, `.rpm`) are attached to each
+[release](https://github.com/SteveChd/Ramelo/releases).
+
 ## Build and run
 
 Requirements:
@@ -136,3 +141,11 @@ sample repositories takes over (`ui/js/api/mock`).
 
 On some Linux machines (virtual machines, some GPU drivers) WebKitGTK shows a blank window; starting
 the application with `WEBKIT_DISABLE_DMABUF_RENDERER=1` fixes it.
+
+## Releasing
+
+1. Set the new version in `Cargo.toml` (`[workspace.package]`) and `crates/gui/tauri.conf.json`,
+   commit and push.
+2. Tag that commit and push the tag: `git tag v1.1.0 && git push origin v1.1.0`.
+3. The Release workflow builds the installers and attaches them to a draft release of that name;
+   publish it from the Releases page of GitHub once it looks right.

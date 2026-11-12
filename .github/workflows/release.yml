@@ -1,0 +1,71 @@
+name: Release
+
+# A tag « vX.Y.Z » builds the installers on Windows and Linux and attaches them to a draft release
+# of that name, to be reviewed and published from GitHub. The tag must match the version of the
+# application (crates/gui/tauri.conf.json and the workspace Cargo.toml).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build (for example v1.0.0)
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    name: Installers (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ubuntu 22.04: the AppImage and the .deb then run on older distributions too.
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: The tag matches the version
+        shell: bash
+        run: |
+          app=$(node -p "require('./crates/gui/tauri.conf.json').version")
+          cargo=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version *= *"\(.*\)"/\1/p' Cargo.toml)
+          echo "tag $TAG, application $app, workspace $cargo"
+          test "$TAG" = "v$app" && test "$app" = "$cargo"
+
+      - name: Linux prerequisites of Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libayatana-appindicator3-dev patchelf
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tauri command line
+        run: npm install -g @tauri-apps/cli@2
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: crates/gui
+          tauriScript: tauri
+          tagName: ${{ env.TAG }}
+          releaseName: Ramelo ${{ env.TAG }}
+          releaseBody: Installers for Windows (.exe, .msi) and Linux (.AppImage, .deb, .rpm).
+          releaseDraft: true
+          prerelease: false
