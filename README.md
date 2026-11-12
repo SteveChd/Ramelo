@@ -149,3 +149,7 @@ the application with `WEBKIT_DISABLE_DMABUF_RENDERER=1` fixes it.
 2. Tag that commit and push the tag: `git tag v1.1.0 && git push origin v1.1.0`.
 3. The Release workflow builds the installers and attaches them to a draft release of that name;
    publish it from the Releases page of GitHub once it looks right.
+
+## License
+
+Ramelo is released under the [MIT License](LICENSE).
