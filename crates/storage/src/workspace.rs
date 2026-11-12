@@ -153,6 +153,26 @@ impl Workspace {
         }
     }
 
+    /// The tab of `from` shows `to` instead (another worktree of the same repository): it keeps its
+    /// place, colour, pin and section. When `to` already had an entry of its own, that one goes, so
+    /// that a folder is never listed twice. Returns false when `from` is not in the workspace.
+    pub fn retarget(&mut self, from: &Path, to: PathBuf) -> bool {
+        if from == to {
+            return self.contains(from);
+        }
+        if !self.contains(from) {
+            return false;
+        }
+        self.repositories.retain(|r| r.path != to);
+        let entry = self.repositories.iter_mut().find(|r| r.path == from).expect("checked above");
+        entry.path = to.clone();
+        entry.closed = false;
+        if self.active.as_deref() == Some(from) {
+            self.active = Some(to);
+        }
+        true
+    }
+
     /// Sets the colour of a repository (`None`: back to the automatic one).
     pub fn set_color(&mut self, path: &Path, color: Option<String>) {
         if let Some(entry) = self.repositories.iter_mut().find(|r| r.path == path) {
@@ -428,5 +448,21 @@ mod tests {
         assert_eq!(names(&w), ["/b", "/c", "/a"]);
         w.reorder(Path::new("/a"), 0);
         assert_eq!(names(&w), ["/a", "/b", "/c"]);
+    }
+
+    #[test]
+    fn a_tab_follows_another_worktree() {
+        let mut w = workspace(&["/a", "/b", "/a-wt"]);
+        w.set_color(Path::new("/a"), Some("#123456".into()));
+        w.active = Some(PathBuf::from("/a"));
+        // The worktree had a tab of its own: it goes, the tab of /a takes its folder.
+        assert!(w.retarget(Path::new("/a"), PathBuf::from("/a-wt")));
+        assert_eq!(names(&w), ["/a-wt", "/b"]);
+        assert_eq!(w.repositories[0].color.as_deref(), Some("#123456"));
+        assert_eq!(w.active.as_deref(), Some(Path::new("/a-wt")));
+        // Back to the main folder, which was in no tab.
+        assert!(w.retarget(Path::new("/a-wt"), PathBuf::from("/a")));
+        assert_eq!(names(&w), ["/a", "/b"]);
+        assert!(!w.retarget(Path::new("/nowhere"), PathBuf::from("/x")));
     }
 }

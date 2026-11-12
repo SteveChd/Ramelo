@@ -67,6 +67,8 @@ pub enum GitError {
     MoveConflict(String),
     #[error("the branch is already checked out in the worktree « {0} »")]
     BranchInWorktree(String),
+    #[error("the worktree « {0} » has changes that are not committed")]
+    WorktreeDirty(String),
     #[error("{0} files still have conflicts")]
     ConflictsRemain(usize),
     #[error("no merge, rebase or other operation is in progress")]
@@ -113,6 +115,7 @@ impl GitError {
             Self::CannotMove(_) => "cannot_move",
             Self::MoveConflict(_) => "move_conflict",
             Self::BranchInWorktree(_) => "branch_in_worktree",
+            Self::WorktreeDirty(_) => "worktree_dirty",
             Self::ConflictsRemain(_) => "conflicts_remain",
             Self::NoOperation => "no_operation",
             Self::EmptyAfterResolution => "empty_after_resolution",
@@ -128,7 +131,7 @@ impl GitError {
             Self::GitNotFound | Self::IdentityMissing | Self::Diverged | Self::NothingToCommit | Self::NoRemote | Self::Conflicts | Self::OperationInProgress => None,
             Self::LocalChanges(detail) | Self::PushRejected(detail) | Self::AuthFailed(detail) | Self::HostUnknown(detail) => Some(detail.clone()),
             Self::BranchNotMerged(name) | Self::InvalidBranchName(name) | Self::NoUpstream(name) | Self::InvalidPattern(name) => Some(name.clone()),
-            Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) => Some(name.clone()),
+            Self::NotInHistory(name) | Self::RewriteConflict(name) | Self::CannotSquash(name) | Self::BranchInWorktree(name) | Self::WorktreeDirty(name) => Some(name.clone()),
             Self::CannotMove(name) | Self::MoveConflict(name) => Some(name.clone()),
             Self::DetachedHead | Self::NoOperation | Self::EmptyAfterResolution | Self::Cancelled => None,
             Self::InvalidUrl(url) => Some(url.clone()),
@@ -168,6 +171,8 @@ pub(crate) fn classify(command: String, message: String, output: &str) -> GitErr
         GitError::AuthFailed(cause.map_or(message, |l| l.trim_start_matches("fatal: ").to_owned()))
     } else if let Some(path) = ["is already used by worktree at '", "is already checked out at '"].iter().find_map(|n| output.split(n).nth(1)) {
         GitError::BranchInWorktree(path.split('\'').next().unwrap_or_default().to_owned())
+    } else if let Some(path) = output.split("fatal: '").nth(1).filter(|_| output.contains("contains modified or untracked files")) {
+        GitError::WorktreeDirty(path.split('\'').next().unwrap_or_default().to_owned())
     } else if let Some(name) = output.split("branch '").nth(1).filter(|_| output.contains("is not fully merged")) {
         GitError::BranchNotMerged(name.split('\'').next().unwrap_or_default().to_owned())
     } else {

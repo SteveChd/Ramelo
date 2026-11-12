@@ -119,7 +119,7 @@ fn last_commit(git: &Git, root: &Path) -> Result<CommitInfo, GitError> {
 
 /// Git prints « C:/Users/… » on Windows: the path is turned into the native form, so that the same
 /// repository is always recorded under the same path.
-fn normalize(path: &str) -> PathBuf {
+pub(crate) fn normalize(path: &str) -> PathBuf {
     let path = PathBuf::from(path);
     dunce::canonicalize(&path).unwrap_or(path)
 }

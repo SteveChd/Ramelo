@@ -22,6 +22,8 @@ mod search;
 mod ssh;
 mod status;
 mod worktree;
+/// Worktrees: `worktrees::list`, `worktrees::add`, `worktrees::remove`.
+pub mod worktrees;
 
 pub use branches::{Branch, Carried, RefList, Tag};
 pub use clone::{clone, clone_name, CloneOptions, CloneProgress};
@@ -42,6 +44,8 @@ pub use search::{search, SearchQuery, SearchResult, SearchScope};
 pub use ssh::{scan_host_keys, ssh_host, trust_host, HostKey};
 pub use status::{parse_status, ChangeKind, FileChange, Head, RepoStatus};
 pub use worktree::{apply_hunk, commit, discard, last_message, stage, stage_all, unstage, unstage_all, HunkAction};
+
+pub use worktrees::{WorktreeInfo, WorktreeTarget};
 
 /// Branches and tags: `refs::list`, `refs::switch`…
 pub mod refs {

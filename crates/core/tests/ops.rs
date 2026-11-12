@@ -650,3 +650,48 @@ fn fetches_a_pull_request_and_reads_its_changes() {
     let one = ramelo_core::range_file_diff(&Git::default(), &clone, &changes.base, &head, "a.txt").unwrap().unwrap();
     assert_eq!(one.additions, 1);
 }
+
+#[test]
+fn lists_creates_and_removes_worktrees() {
+    let dir = tempfile::tempdir().unwrap();
+    let main = new_repo(&dir.path().join("main"));
+    commit_file(&main, "a", "1\n", "one");
+    let g = Git::default();
+    git(&main, &["branch", "side"]);
+
+    let only = worktrees::list(&g, &main).unwrap();
+    assert_eq!(only.len(), 1);
+    assert!(only[0].main && only[0].current);
+
+    // A new branch, and an existing one.
+    let fresh = worktrees::add(&g, &main, &dir.path().join("wt-new"), &WorktreeTarget::New { branch: "feature".into(), start: "HEAD".into() }).unwrap();
+    let side = worktrees::add(&g, &main, &dir.path().join("wt-side"), &WorktreeTarget::Existing { branch: "side".into() }).unwrap();
+    let all = worktrees::list(&g, &main).unwrap();
+    assert_eq!(all.iter().map(|w| w.branch.clone().unwrap()).collect::<Vec<_>>(), ["main", "feature", "side"]);
+    assert_eq!(all[1].path, fresh);
+    // Read from a linked worktree: that one is the current one, the main one is still first.
+    let from_side = worktrees::list(&g, &side).unwrap();
+    assert!(from_side[0].main && !from_side[0].current && from_side[2].current);
+    // A branch checked out elsewhere cannot be taken again; a folder in use is refused.
+    assert!(matches!(
+        worktrees::add(&g, &main, &dir.path().join("again"), &WorktreeTarget::Existing { branch: "side".into() }),
+        Err(GitError::BranchInWorktree(_))
+    ));
+    assert!(matches!(
+        worktrees::add(&g, &main, &main, &WorktreeTarget::New { branch: "x".into(), start: "HEAD".into() }),
+        Err(GitError::TargetExists(_))
+    ));
+
+    // Changes not committed: refused, unless forced. The branch stays.
+    fs::write(fresh.join("wip.txt"), "work").unwrap();
+    assert!(matches!(worktrees::remove(&g, &main, &fresh, false), Err(GitError::WorktreeDirty(_))));
+    worktrees::remove(&g, &main, &fresh, true).unwrap();
+    assert!(!fresh.exists());
+    assert!(git(&main, &["branch", "--list", "feature"]).contains("feature"));
+    // A folder deleted by hand is only forgotten; the main worktree cannot be removed.
+    fs::remove_dir_all(&side).unwrap();
+    assert!(worktrees::list(&g, &main).unwrap()[1].missing);
+    worktrees::remove(&g, &main, &side, false).unwrap();
+    assert_eq!(worktrees::list(&g, &main).unwrap().len(), 1);
+    assert!(worktrees::remove(&g, &main, &main, true).is_err());
+}

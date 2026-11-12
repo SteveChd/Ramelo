@@ -819,3 +819,60 @@ export async function takeConflictSide(path, file) {
   await delay(150);
   return resolved(path, file);
 }
+
+// ---------- Worktrees ----------
+
+/** Worktrees of each repository (by the path of its main folder), besides the main one. */
+const linked = new Map();
+
+function familyOf(path) {
+  for (const [main, list] of linked) {
+    if (main === path || list.some((w) => w.path === path)) return main;
+  }
+  return path;
+}
+
+function worktreeList(path) {
+  const main = familyOf(path);
+  if (!linked.has(main) && nameOf(main) === 'waypoint') {
+    linked.set(main, [{ path: main.replace(/waypoint$/, 'waypoint.worktrees\\old-experiment'), branch: 'old-experiment' }]);
+  }
+  const mainBranch = find(main)?.summary?.head.branch ?? 'main';
+  return [{ path: main, branch: mainBranch }, ...(linked.get(main) ?? [])].map((w, i) => ({
+    path: w.path, head: '55aa66bb00000000000000000000000000000000', branch: w.branch, main: i === 0, current: w.path === path, locked: false, missing: false,
+  }));
+}
+
+export async function worktrees(path) {
+  await delay(40);
+  return worktreeList(path);
+}
+
+export async function switchWorktree(path, folder) {
+  await delay(150);
+  const entry = find(path);
+  const target = worktreeList(path).find((w) => w.path === folder);
+  if (!entry || !target) throw { code: 'not_in_workspace', subject: path, message: 'not in the workspace' };
+  repositories = repositories.filter((r) => r.path !== folder);
+  const summary = structuredClone(entry.summary ?? null);
+  if (summary) summary.head.branch = target.branch;
+  Object.assign(entry, { path: folder, summary, closed: false });
+  if (active === path) active = folder;
+  return snapshot();
+}
+
+export async function addWorktree(path, folder, target, open) {
+  await delay(300);
+  const main = familyOf(path);
+  worktreeList(path);
+  linked.set(main, [...(linked.get(main) ?? []), { path: folder, branch: target.branch }]);
+  return open ? switchWorktree(path, folder) : snapshot();
+}
+
+export async function removeWorktree(path, folder, force) {
+  await delay(200);
+  if (!force && folder.endsWith('old-experiment')) throw { code: 'worktree_dirty', subject: folder, message: 'dirty' };
+  const main = familyOf(path);
+  linked.set(main, (linked.get(main) ?? []).filter((w) => w.path !== folder));
+  return snapshot();
+}

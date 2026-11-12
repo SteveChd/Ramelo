@@ -7,6 +7,7 @@
 import * as backend from '../api/backend.js';
 import { describeError } from '../app/errors.js';
 import { choose, confirm, editText, prompt } from '../components/dialog.js';
+import { openWorktreeDialog } from '../components/worktree-dialog.js';
 import { withHostTrust } from '../components/host-trust.js';
 import { t, tn } from '../i18n/i18n.js';
 import { defaultMode, fileKind } from '../lib/file-kinds.js';
@@ -22,6 +23,8 @@ const state = {
   history: null,
   limit: PAGE,
   refs: null,
+  /** The worktrees of the repository ([{ path, head, branch, main, current, locked, missing }]), the main one first. */
+  worktrees: null,
   /** 'wip' for the working copy, otherwise the oid of the selected commit. */
   selection: 'wip',
   /** Commits marked together (Ctrl+click, Shift+click), to be combined; empty: none. */
@@ -138,9 +141,11 @@ async function loadHistory() {
 
 async function loadRefs() {
   const path = state.path;
-  const refs = await run(() => backend.branches(path));
+  // A repository whose worktrees cannot be listed still shows its branches.
+  const [refs, worktrees] = await Promise.all([run(() => backend.branches(path)), backend.worktrees(path).catch(() => null)]);
   if (path !== state.path || !refs) return;
   state.refs = refs;
+  state.worktrees = worktrees;
   emit('refs');
 }
 
@@ -340,7 +345,7 @@ export const repoStore = {
   /** The tab shows another repository: everything is read for it. */
   open(path) {
     const filter = readFilters()[path];
-    Object.assign(state, { path, history: null, limit: PAGE, refs: null, selection: 'wip', marked: [], details: null, diff: null, running: null, filter: Array.isArray(filter) && filter.length ? filter : null });
+    Object.assign(state, { path, history: null, limit: PAGE, refs: null, worktrees: null, selection: 'wip', marked: [], details: null, diff: null, running: null, filter: Array.isArray(filter) && filter.length ? filter : null });
     state.loadedFor = fingerprint(repo());
     emit('selection');
     loadHistory();
@@ -918,8 +923,8 @@ export const repoStore = {
   // ---------- Branches ----------
 
   /**
-   * A branch checked out in another worktree cannot be checked out here: offers to open that
-   * worktree in its own tab, or to check out the branch's commit here, detached.
+   * A branch checked out in another worktree cannot be checked out here: offers to show that
+   * worktree in this tab, or to check out the branch's commit here, detached.
    */
   async branchInWorktree(name, folder) {
     const branch = state.refs?.local.find((b) => b.name === name);
@@ -927,12 +932,60 @@ export const repoStore = {
       title: t('worktree.title', { name }),
       message: t('worktree.message', { name, folder }),
       choices: [
-        { value: 'open', label: t('worktree.open'), hint: folder, primary: true },
+        { value: 'switch', label: t('worktree.switchHere'), hint: folder, primary: true },
         branch && { value: 'detach', label: t('worktree.detach'), hint: t('worktree.detachHint', { oid: branch.oid.slice(0, 7) }) },
       ].filter(Boolean),
     });
-    if (answer === 'open') await store.add([folder], { quiet: true });
+    if (answer === 'switch') await repoStore.switchWorktree(folder);
     if (answer === 'detach') await repoStore.switchTo(branch.oid);
+  },
+
+  // ---------- Worktrees ----------
+
+  /** This tab shows the worktree of `folder` from now on (the same tab, another folder). */
+  async switchWorktree(folder) {
+    if (!state.path || folder === state.path) return;
+    const snapshot = await run(() => backend.switchWorktree(state.path, folder), 'worktree');
+    if (snapshot) store.applySnapshot(snapshot);
+  },
+
+  /** Creates a worktree; `preset`: { branch } (an existing local branch) or { start } (a new branch from there). */
+  async addWorktree(preset = {}) {
+    if (!state.refs) return;
+    const main = state.worktrees?.find((w) => w.main)?.path ?? state.path;
+    const snapshot = await openWorktreeDialog({ path: state.path, main, refs: state.refs, preset });
+    if (!snapshot) return;
+    store.notify(t('wt.created'));
+    // Shown in this tab: the repository view follows the new folder. Otherwise the list is read again.
+    if (snapshot.active !== state.path) store.applySnapshot(snapshot);
+    else await afterChange(snapshot);
+  },
+
+  /** Removes a linked worktree (its folder; the branch stays). Asks first, and again when it has changes. */
+  async removeWorktree(worktree) {
+    const label = worktree.branch ?? worktree.head?.slice(0, 7) ?? '';
+    const ok = await confirm({
+      title: t('wt.removeTitle'),
+      message: worktree.missing ? t('wt.removeMissing', { folder: worktree.path }) : t('wt.remove', { folder: worktree.path, branch: label }),
+      confirmLabel: t('wt.removeConfirm'),
+      danger: true,
+    });
+    if (!ok) return;
+    const first = await attemptRunning(() => backend.removeWorktree(state.path, worktree.path, false), 'worktree');
+    if (first.error?.code === 'worktree_dirty') {
+      const force = await confirm({ title: t('wt.removeTitle'), message: t('wt.dirty', { folder: worktree.path }), confirmLabel: t('wt.removeAnyway'), danger: true });
+      if (!force) return;
+      const snapshot = await run(() => backend.removeWorktree(state.path, worktree.path, true), 'worktree');
+      if (snapshot) store.notify(t('wt.removed'));
+      await afterChange(snapshot);
+      return;
+    }
+    if (first.error) {
+      store.notify(describeError(first.error), true);
+      return;
+    }
+    store.notify(t('wt.removed'));
+    await afterChange(first.value);
   },
 
   /** Switches to `target`. When local changes are in the way, offers to bring them along. */

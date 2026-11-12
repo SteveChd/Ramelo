@@ -76,6 +76,12 @@ Steps 1 and 2 of the roadmap are in place: the multi-repository workspace and th
   when the branch has diverged; push sets the upstream on the first push and offers to pull first or
   force with lease when it is rejected. Local changes are stashed and restored automatically.
 - Every repository is read again when the window regains focus, in parallel.
+- The remotes of every repository are fetched in the background (every 10 minutes by default, set in
+  Settings), one repository at a time; such a fetch never asks for a password and stays silent when
+  it fails.
+- Worktrees: the sidebar lists them, creates one (on a new or an existing branch, next to the
+  repository by default) and removes one (asking again when it has changes). A tab shows one
+  worktree at a time: switching to another one keeps the same tab.
 - The first connection to an ssh server (clone, fetch, pull, push) shows the server's keys and
   fingerprints and asks whether to trust it, as ssh would in a terminal; trusted keys go to
   `~/.ssh/known_hosts` and the command runs again. A server whose key changed is never trusted this way.

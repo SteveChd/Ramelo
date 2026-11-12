@@ -59,6 +59,8 @@
 
 /* Cloning a repository. */
 .field .with-button { display: flex; gap: 8px; }
+.worktree-dialog .wt-modes { display: flex; gap: 18px; margin-bottom: 4px; }
+.worktree-dialog .wt-fields[hidden] { display: none; }
 .field .with-button input { flex: 1 1 auto; min-width: 0; }
 .field .with-button .btn { height: 34px; flex: 0 0 auto; }
 .clone-options { font-size: 13px; color: var(--ink2); display: flex; flex-direction: column; gap: 10px; }

@@ -110,6 +110,11 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .sb-item .track .up { color: var(--ok); } .sb-item .track .down { color: var(--accent); }
 .sb-item .gone { font-size: 11px; color: var(--err); }
 .sb-item .wt { flex: 0 0 auto; display: inline-flex; color: var(--muted); }
+.sb-item.wt-item svg { flex: 0 0 auto; color: var(--muted); }
+.sb-item.wt-item .lbl { flex: 0 1 auto; }
+.sb-item .wt-branch { flex: 1 1 auto; min-width: 0; font-size: 11px; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-item.wt-item:hover .wt-branch { display: none; }
+.sb-item.wt-item.missing { opacity: 0.55; text-decoration: line-through; }
 .sb-item .acts { display: none; gap: 0; }
 .sb-item:hover .acts { display: inline-flex; }
 .sb-item:hover .track { display: none; }

@@ -1,6 +1,7 @@
 // The open pull requests of the repository, when one of its remotes is on an account, then its
-// branches: local ones (with what they have to push or pull), remote ones grouped by remote, and
-// tags. A double click switches to a branch; a click shows its commit in the graph.
+// branches: local ones (with what they have to push or pull), its worktrees, remote branches grouped
+// by remote, and tags. A double click switches to a branch or a worktree (in the same tab); a click
+// shows its commit in the graph.
 
 import * as backend from '../../api/backend.js';
 import { describeError } from '../../app/errors.js';
@@ -64,8 +65,9 @@ function localItem(branch) {
     title: branch.upstream ? t('badge.tracking', { upstream: branch.upstream }) : branch.summary,
     onclick: () => repoStore.selectCommit(branch.oid),
     oncontextmenu: (event) => graphMenu(event, { kind: 'local', name: branch.name }, [
-      !branch.isHead && { label: t('branch.switch'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
+      !branch.isHead && { label: branch.worktree ? t('worktree.switchHere') : t('branch.switch'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
       { label: t('branch.newHere'), icon: 'plus', run: () => repoStore.createBranch(branch.oid) },
+      !branch.isHead && !branch.worktree && { label: t('wt.fromBranch'), icon: 'folder', run: () => repoStore.addWorktree({ branch: branch.name }) },
       !branch.isHead && { label: t('branch.deleteTitle'), icon: 'remove', danger: true, run: () => repoStore.deleteBranch(branch.name) },
     ].filter(Boolean)),
     ondblclick: () => { if (!branch.isHead) repoStore.switchTo(branch.name); },
@@ -87,12 +89,45 @@ function remoteItem(branch) {
     onclick: () => repoStore.selectCommit(branch.oid),
     oncontextmenu: (event) => graphMenu(event, { kind: 'remote', name: branch.name }, [
       { label: t('branch.checkoutRemote'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
+      { label: t('wt.fromRemote'), icon: 'folder', run: () => repoStore.addWorktree({ start: branch.name }) },
     ]),
     ondblclick: () => repoStore.switchTo(branch.name),
   },
   h('span', { class: 'lbl' }, rest.join('/')),
   h('span', { class: 'acts' },
     h('button', { type: 'button', class: 'icon-btn', title: t('branch.checkoutRemote'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name); } }, icon('swap', 14))));
+}
+
+const folderName = (path) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+
+function worktreeItem(wt) {
+  const what = wt.branch ?? (wt.head ? t('wt.detached', { oid: wt.head.slice(0, 7) }) : '');
+  const removable = !wt.main && !wt.current;
+  return h('div', {
+    class: `sb-item wt-item${wt.current ? ' head' : ''}${wt.missing ? ' missing' : ''}`,
+    title: `${wt.path}${wt.missing ? `\n${t('wt.missing')}` : ''}${wt.locked ? `\n${t('wt.locked')}` : ''}`,
+    onclick: () => { if (wt.head) repoStore.selectCommit(wt.head); },
+    ondblclick: () => { if (!wt.current && !wt.missing) repoStore.switchWorktree(wt.path); },
+    oncontextmenu: (event) => openContextMenu(event, [
+      !wt.current && !wt.missing && { label: t('worktree.switchHere'), icon: 'swap', run: () => repoStore.switchWorktree(wt.path) },
+      !wt.missing && { label: t('wt.openFolder'), icon: 'folder', run: () => backend.openFolder(wt.path).catch(() => {}) },
+      removable && '-',
+      removable && { label: t('wt.removeTitle'), icon: 'remove', danger: true, run: () => repoStore.removeWorktree(wt) },
+    ].filter(Boolean)),
+  },
+  icon('folder', 13),
+  h('span', { class: 'lbl' }, folderName(wt.path)),
+  h('span', { class: 'wt-branch' }, wt.main ? `${what} · ${t('wt.main')}` : what),
+  h('span', { class: 'acts' },
+    !wt.current && !wt.missing && h('button', { type: 'button', class: 'icon-btn', title: t('worktree.switchHere'), onclick: (e) => { e.stopPropagation(); repoStore.switchWorktree(wt.path); } }, icon('swap', 14)),
+    removable && h('button', { type: 'button', class: 'icon-btn', title: t('wt.removeTitle'), onclick: (e) => { e.stopPropagation(); repoStore.removeWorktree(wt); } }, icon('remove', 14))));
+}
+
+function worktreeSection() {
+  const list = repoStore.state.worktrees;
+  if (!list) return null;
+  return section('worktrees', t('wt.section'), list.length, list.map(worktreeItem),
+    h('button', { type: 'button', class: 'icon-btn small', title: t('wt.newTitle'), onclick: () => repoStore.addWorktree() }, icon('plus', 14)));
 }
 
 function pullItem(pull, path) {
@@ -165,6 +200,7 @@ export function renderSidebar(container) {
     section('local', t('branch.local'), local.length,
       local.length ? local.map(localItem) : h('div', { class: 'sb-empty' }, t('branch.noLocal')),
       h('button', { type: 'button', class: 'icon-btn small', title: t('repo.newBranch'), onclick: () => repoStore.createBranch() }, icon('plus', 14))),
+    worktreeSection(),
     section('remote', t('branch.remote'), refs.remote.length,
       refs.remote.length
         ? sortedRemotes.map(([remote, branches]) => [

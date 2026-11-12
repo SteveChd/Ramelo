@@ -6,3 +6,4 @@ pub mod repo;
 pub mod settings;
 pub mod ssh;
 pub mod workspace;
+pub mod worktrees;

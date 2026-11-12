@@ -145,6 +145,13 @@ export const switchBranch = (path, target, carryChanges) => invoke('switch_branc
 export const createBranch = (path, name, start, checkout) => invoke('create_branch', { path, name, start, checkout });
 export const deleteBranch = (path, name, force) => invoke('delete_branch', { path, name, force });
 export const fetch = (path) => invoke('fetch', { path });
+/** [{ path, head, branch, main, current, locked, missing }], the main worktree first. */
+export const worktrees = (path) => invoke('worktrees', { path });
+/** The tab of `path` shows the worktree of `folder`; returns the snapshot. */
+export const switchWorktree = (path, folder) => invoke('switch_worktree', { path, folder });
+/** `target`: { kind: 'new', branch, start } | { kind: 'existing', branch }; `open`: shown in the tab at once. */
+export const addWorktree = (path, folder, target, open) => invoke('add_worktree', { path, folder, target, open });
+export const removeWorktree = (path, folder, force) => invoke('remove_worktree', { path, folder, force });
 /** Fetch of the periodic refresh: never asks anything. Returns { moved, snapshot } (null when nothing moved). */
 export const backgroundFetch = (path) => invoke('background_fetch', { path });
 /** `mode`: 'auto' | 'rebase' | 'merge'. Returns { snapshot, outcome: { kind, commits } }. */
