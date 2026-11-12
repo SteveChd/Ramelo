@@ -35,6 +35,10 @@ fn commit_file(root: &Path, name: &str, content: &str, message: &str) {
     git(root, &["commit", "-q", "-m", message]);
 }
 
+/// A file name that a pathspec would read as a pattern: git must take it as it is. (« * » is not
+/// allowed in a file name on Windows; « [x] » is a pattern too.)
+const SPECIAL: &str = if cfg!(windows) { "a [x].txt" } else { "a *.txt" };
+
 #[test]
 fn stages_unstages_discards_and_commits() {
     let dir = tempfile::tempdir().unwrap();
@@ -42,10 +46,10 @@ fn stages_unstages_discards_and_commits() {
     let g = Git::default();
 
     // Before the first commit, unstaging still works.
-    fs::write(root.join("a *.txt"), "one\n").unwrap();
-    stage(&g, &root, &["a *.txt".into()]).unwrap();
+    fs::write(root.join(SPECIAL), "one\n").unwrap();
+    stage(&g, &root, &[SPECIAL.into()]).unwrap();
     assert_eq!(status(&root).staged(), 1);
-    unstage(&g, &root, &["a *.txt".into()]).unwrap();
+    unstage(&g, &root, &[SPECIAL.into()]).unwrap();
     assert_eq!((status(&root).staged(), status(&root).untracked()), (0, 1));
 
     assert!(matches!(commit(&g, &root, "Empty", false), Err(GitError::NothingToCommit)));
@@ -53,11 +57,11 @@ fn stages_unstages_discards_and_commits() {
     let first = commit(&g, &root, "First\n\nWith a body.", false).unwrap();
     assert_eq!(last_message(&g, &root).unwrap().as_deref(), Some("First\n\nWith a body."));
 
-    fs::write(root.join("a *.txt"), "two\n").unwrap();
+    fs::write(root.join(SPECIAL), "two\n").unwrap();
     fs::write(root.join("junk.tmp"), "x").unwrap();
-    discard(&g, &root, &["a *.txt".into()], &["junk.tmp".into()]).unwrap();
+    discard(&g, &root, &[SPECIAL.into()], &["junk.tmp".into()]).unwrap();
     assert!(status(&root).is_clean());
-    assert_eq!(fs::read_to_string(root.join("a *.txt")).unwrap(), "one\n");
+    assert_eq!(fs::read_to_string(root.join(SPECIAL)).unwrap(), "one\n");
 
     fs::write(root.join("b.txt"), "b\n").unwrap();
     stage(&g, &root, &["b.txt".into()]).unwrap();
@@ -600,7 +604,9 @@ fn clones_with_progress_and_cleans_up_after_a_failure() {
     let source = new_repo(&dir.path().join("source"));
     commit_file(&source, "a.txt", "a\n", "First");
     git(&source, &["branch", "other"]);
-    let url = source.display().to_string();
+    // Through the file:// transport, which reports its progress like a server (a plain path is
+    // copied locally, and git on Windows then reports nothing).
+    let url = format!("file:///{}", source.display().to_string().replace('\\', "/").trim_start_matches('/'));
     let g = Git::default();
 
     let mut phases = Vec::new();
