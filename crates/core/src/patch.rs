@@ -233,7 +233,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (other, file, _) = exported(dir.path());
         commit(&other, "a.txt", "ONE\n2\n3\n", "Same line here");
-        let applied = apply_patches(&Git::default(), &other, &[file.clone()]).unwrap();
+        let applied = apply_patches(&Git::default(), &other, std::slice::from_ref(&file)).unwrap();
         assert_eq!(applied, Applied::Conflicts);
         let dir_git = run(&other, &["rev-parse", "--absolute-git-dir"]);
         assert_eq!(Operation::detect(Path::new(&dir_git)), Some(Operation::Am));
@@ -244,7 +244,7 @@ mod tests {
         assert_eq!(run(&other, &["log", "-1", "--format=%s"]), "First line");
         // Another one cannot start while one is in progress.
         commit(&other, "a.txt", "x\n2\n3\n", "Again");
-        assert_eq!(apply_patches(&Git::default(), &other, &[file.clone()]).unwrap(), Applied::Conflicts);
+        assert_eq!(apply_patches(&Git::default(), &other, std::slice::from_ref(&file)).unwrap(), Applied::Conflicts);
         assert!(matches!(apply_patches(&Git::default(), &other, &[file]), Err(GitError::OperationInProgress)));
     }
 
