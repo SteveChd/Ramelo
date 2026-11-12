@@ -184,9 +184,11 @@ impl Git {
         command.envs(env.iter().copied());
         // Without a terminal, ssh and editors fail at once instead of waiting for an answer.
         command.stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() });
+        // A missing working folder is not reported the same way everywhere (« not found » on Linux,
+        // « invalid directory name » on Windows): it is checked first.
         let spawn_error = |source: std::io::Error| match source.kind() {
-            ErrorKind::NotFound if dir.exists() => GitError::GitNotFound,
-            ErrorKind::NotFound => GitError::PathMissing(dir.to_path_buf()),
+            _ if !dir.exists() => GitError::PathMissing(dir.to_path_buf()),
+            ErrorKind::NotFound => GitError::GitNotFound,
             _ => GitError::Io { path: dir.to_path_buf(), source },
         };
         let mut child = command.spawn().map_err(spawn_error)?;
