@@ -104,9 +104,11 @@ function commitMenu(event, row, headOid) {
   repoStore.selectCommit(row.oid);
   const current = store.activeRepo?.summary?.head.branch;
   const branches = row.refs.filter((r) => r.kind === 'branch' && r.name !== current);
+  const remotes = row.refs.filter((r) => r.kind === 'remote' && !r.name.endsWith('/HEAD'));
   openContextMenu(event, [
     { label: t('graph.branchHere'), icon: 'newBranch', run: () => repoStore.createBranch(row.oid) },
     branches.map((b) => ({ label: t('graph.switchTo', { name: b.name }), icon: 'swap', run: () => repoStore.switchTo(b.name) })),
+    remotes.map((b) => ({ label: t('graph.detachOn', { name: b.name }), icon: 'swap', run: () => repoStore.switchTo(b.name, false, { detach: true }) })),
     { label: t('graph.checkoutCommit'), icon: 'commit', disabled: row.oid === headOid && !current, run: () => repoStore.switchTo(row.oid) },
     { label: t('rewrite.rewordMenu'), icon: 'edit', run: () => repoStore.rewordCommit(row.oid) },
     { label: t('rewrite.squashMenu'), icon: 'squash', disabled: row.parents.length !== 1, run: () => repoStore.squashCommit(row.oid) },

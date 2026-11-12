@@ -140,7 +140,8 @@ export const lastMessage = (path) => invoke('last_message', { path });
 /** { local: [Branch], remote: [Branch], tags: [{ name, oid }] }. */
 export const branches = (path) => invoke('branches', { path });
 /** Returns { snapshot, carried: 'nothing' | 'reapplied' | 'conflicted' }. */
-export const switchBranch = (path, target, carryChanges) => invoke('switch_branch', { path, target, carryChanges });
+/** `detach`: HEAD detached on the commit of `target`, even a branch (a remote branch looked at). */
+export const switchBranch = (path, target, carryChanges, detach = false) => invoke('switch_branch', { path, target, carryChanges, detach });
 /** Returns { snapshot, carried }: the local changes follow when switching to the new branch. */
 export const createBranch = (path, name, start, checkout) => invoke('create_branch', { path, name, start, checkout });
 export const deleteBranch = (path, name, force) => invoke('delete_branch', { path, name, force });

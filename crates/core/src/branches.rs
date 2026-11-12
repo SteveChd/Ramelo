@@ -120,10 +120,14 @@ pub enum Carried {
 
 /// Switches to `target`: a local branch, a remote branch (« origin/x », which becomes a local
 /// branch « x » tracking it, or the existing local « x »), or a commit (detached HEAD).
-/// With `carry_changes`, local changes are stashed first and re-applied on the other side.
-pub fn switch(git: &Git, root: &Path, target: &str, carry_changes: bool) -> Result<Carried, GitError> {
+/// With `detach`, a branch is not checked out: HEAD is detached on its commit (a remote branch looked
+/// at without a local branch for it). With `carry_changes`, local changes are stashed first and
+/// re-applied on the other side.
+pub fn switch(git: &Git, root: &Path, target: &str, detach: bool, carry_changes: bool) -> Result<Carried, GitError> {
     let refs = list(git, root)?;
-    let args: Vec<String> = if refs.local.iter().any(|b| b.name == target) {
+    let args: Vec<String> = if detach {
+        vec!["switch".into(), "--detach".into(), target.into()]
+    } else if refs.local.iter().any(|b| b.name == target) {
         vec!["switch".into(), target.into()]
     } else if let Some(remote) = refs.remote.iter().find(|b| b.name == target) {
         let local = remote.name.split_once('/').map_or(remote.name.as_str(), |(_, rest)| rest);
@@ -137,7 +141,7 @@ pub fn switch(git: &Git, root: &Path, target: &str, carry_changes: bool) -> Resu
     };
 
     // Git checks a branch out in one worktree only: say where, before putting any change aside.
-    let local = args.iter().skip(1).find(|a| !a.starts_with("--"));
+    let local = args.iter().skip(1).find(|a| !a.starts_with("--")).filter(|_| !detach);
     if let Some(path) = local.and_then(|name| refs.local.iter().find(|b| &b.name == name)).and_then(|b| b.worktree.clone()) {
         return Err(GitError::BranchInWorktree(path));
     }

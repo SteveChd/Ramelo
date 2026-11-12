@@ -148,12 +148,12 @@ fn switches_branches_carrying_local_changes() {
     git(&root, &["switch", "-q", "main"]);
 
     fs::write(root.join("a"), "local\n").unwrap();
-    assert!(matches!(refs::switch(&g, &root, "other", false), Err(GitError::LocalChanges(_))));
-    assert_eq!(refs::switch(&g, &root, "other", true).unwrap(), Carried::Conflicted);
+    assert!(matches!(refs::switch(&g, &root, "other", false, false), Err(GitError::LocalChanges(_))));
+    assert_eq!(refs::switch(&g, &root, "other", false, true).unwrap(), Carried::Conflicted);
     assert_eq!(status(&root).head.branch.as_deref(), Some("other"));
     git(&root, &["reset", "-q", "--hard"]);
     fs::write(root.join("new.txt"), "x").unwrap();
-    assert_eq!(refs::switch(&g, &root, "main", true).unwrap(), Carried::Reapplied);
+    assert_eq!(refs::switch(&g, &root, "main", false, true).unwrap(), Carried::Reapplied);
     assert!(root.join("new.txt").exists());
     assert!(matches!(refs::delete(&g, &root, "other", false), Err(GitError::BranchNotMerged(name)) if name == "other"));
     refs::delete(&g, &root, "other", true).unwrap();
@@ -283,6 +283,13 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     git(&other, &["push", "-q"]);
     assert!(ramelo_core::fetch_in_background(&g, &me).unwrap());
     assert!(!ramelo_core::fetch_in_background(&g, &me).unwrap());
+    // A remote branch looked at without its local branch: HEAD detached on it, « main » untouched.
+    let before = git(&me, &["rev-parse", "main"]);
+    refs::switch(&g, &me, "origin/main", true, false).unwrap();
+    assert_eq!(git(&me, &["rev-parse", "HEAD"]), git(&me, &["rev-parse", "origin/main"]));
+    assert!(status(&me).head.branch.is_none());
+    assert_eq!(git(&me, &["rev-parse", "main"]), before);
+    refs::switch(&g, &me, "main", false, false).unwrap();
     assert_eq!(git(&me, &["log", "-1", "--format=%s", "@{u}"]).trim(), "five");
 }
 
@@ -498,7 +505,7 @@ fn tells_where_a_branch_is_checked_out_in_another_worktree() {
 
     let other = refs::list(&g, &root).unwrap().local.into_iter().find(|b| b.name == "other").unwrap();
     assert!(other.worktree.as_deref().is_some_and(|p| p.ends_with("wt")), "{other:?}");
-    let err = refs::switch(&g, &root, "other", false).unwrap_err();
+    let err = refs::switch(&g, &root, "other", false, false).unwrap_err();
     assert!(matches!(err, GitError::BranchInWorktree(ref p) if p.ends_with("wt")), "{err:?}");
 }
 

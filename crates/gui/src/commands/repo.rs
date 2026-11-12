@@ -351,9 +351,9 @@ pub struct SwitchResult {
 
 /// Switches to a branch, a remote branch or a commit; `carry_changes` brings the local changes along.
 #[tauri::command]
-pub async fn switch_branch(state: State<'_, AppState>, path: String, target: String, carry_changes: bool) -> CommandResult<SwitchResult> {
+pub async fn switch_branch(state: State<'_, AppState>, path: String, target: String, detach: Option<bool>, carry_changes: bool) -> CommandResult<SwitchResult> {
     let root = PathBuf::from(path);
-    let result = refs::switch(&state.git, &root, &target, carry_changes);
+    let result = refs::switch(&state.git, &root, &target, detach.unwrap_or(false), carry_changes);
     let snapshot = changed(&state, root);
     Ok(SwitchResult { carried: result?, snapshot })
 }

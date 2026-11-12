@@ -88,14 +88,16 @@ function remoteItem(branch) {
     title: branch.summary,
     onclick: () => repoStore.selectCommit(branch.oid),
     oncontextmenu: (event) => graphMenu(event, { kind: 'remote', name: branch.name }, [
-      { label: t('branch.checkoutRemote'), icon: 'swap', run: () => repoStore.switchTo(branch.name) },
+      { label: t('branch.detachRemote'), icon: 'swap', run: () => repoStore.switchTo(branch.name, false, { detach: true }) },
+      { label: t('branch.checkoutRemote'), icon: 'newBranch', run: () => repoStore.switchTo(branch.name) },
       { label: t('wt.fromRemote'), icon: 'folder', run: () => repoStore.addWorktree({ start: branch.name }) },
     ]),
-    ondblclick: () => repoStore.switchTo(branch.name),
+    ondblclick: () => repoStore.switchTo(branch.name, false, { detach: true }),
   },
   h('span', { class: 'lbl' }, rest.join('/')),
   h('span', { class: 'acts' },
-    h('button', { type: 'button', class: 'icon-btn', title: t('branch.checkoutRemote'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name); } }, icon('swap', 14))));
+    h('button', { type: 'button', class: 'icon-btn', title: t('branch.detachRemote'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name, false, { detach: true }); } }, icon('swap', 14)),
+    h('button', { type: 'button', class: 'icon-btn', title: t('branch.checkoutRemote'), onclick: (e) => { e.stopPropagation(); repoStore.switchTo(branch.name); } }, icon('newBranch', 14))));
 }
 
 const folderName = (path) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;

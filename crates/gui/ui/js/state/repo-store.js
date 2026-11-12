@@ -988,14 +988,17 @@ export const repoStore = {
     await afterChange(first.value);
   },
 
-  /** Switches to `target`. When local changes are in the way, offers to bring them along. */
-  async switchTo(target, carry = false) {
-    const held = state.refs?.local.find((b) => b.name === target && b.worktree);
+  /**
+   * Switches to `target`. When local changes are in the way, offers to bring them along. `detach`:
+   * HEAD goes on the commit of `target` without checking out a branch (a remote branch looked at).
+   */
+  async switchTo(target, carry = false, { detach = false } = {}) {
+    const held = !detach && state.refs?.local.find((b) => b.name === target && b.worktree);
     if (held) {
       await repoStore.branchInWorktree(target, held.worktree);
       return;
     }
-    const first = await attemptRunning(() => backend.switchBranch(state.path, target, carry), 'switch');
+    const first = await attemptRunning(() => backend.switchBranch(state.path, target, carry, detach), 'switch');
     let result = first.value;
     if (first.error?.code === 'branch_in_worktree') {
       const local = state.refs?.local.some((b) => b.name === target) ? target : target.split('/').slice(1).join('/');
@@ -1009,7 +1012,7 @@ export const repoStore = {
         choices: [{ value: 'carry', label: t('switch.carry'), hint: t('switch.carryHint'), primary: true }],
       });
       if (answer !== 'carry') return;
-      result = await run(() => backend.switchBranch(state.path, target, true), 'switch');
+      result = await run(() => backend.switchBranch(state.path, target, true, detach), 'switch');
     } else if (first.error) {
       store.notify(describeError(first.error), true);
       return;
