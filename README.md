@@ -7,6 +7,15 @@ understands workspaces managed by Google's `repo` tool (git-repo).
 
 Ramelo runs on Windows and Linux (macOS later), in English or French, with a light or dark theme.
 
+![The repository view: pull requests, branches and worktrees on the left, the commit graph, and the working copy on the right](docs/screenshots/repository.png)
+
+<details>
+<summary>The overview of every repository</summary>
+
+![The overview: one card per repository with its branch, what it has to push or pull, its changes and its state](docs/screenshots/overview.png)
+
+</details>
+
 ## Features
 
 ### Workspace
