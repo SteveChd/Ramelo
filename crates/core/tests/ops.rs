@@ -249,6 +249,7 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     let me = new_repo(&dir.path().join("me"));
     let g = Git::default();
     assert!(matches!(fetch(&g, &me), Err(GitError::NoRemote)));
+    assert!(matches!(ramelo_core::fetch_in_background(&g, &me), Err(GitError::NoRemote)));
     git(&me, &["remote", "add", "origin", remote.to_str().unwrap()]);
     commit_file(&me, "a", "1\n", "one");
 
@@ -276,6 +277,13 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     assert!(me.join("wip.txt").exists());
     assert!(!push(&g, &me, false).unwrap().upstream_set);
     fetch(&g, &me).unwrap();
+    // Another clone pushes: the background fetch brings its commit in, without asking anything.
+    git(&other, &["pull", "-q", "--rebase"]);
+    commit_file(&other, "e", "5\n", "five");
+    git(&other, &["push", "-q"]);
+    assert!(ramelo_core::fetch_in_background(&g, &me).unwrap());
+    assert!(!ramelo_core::fetch_in_background(&g, &me).unwrap());
+    assert_eq!(git(&me, &["log", "-1", "--format=%s", "@{u}"]).trim(), "five");
 }
 
 fn messages(root: &Path) -> Vec<String> {

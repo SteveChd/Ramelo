@@ -34,7 +34,7 @@ pub use graph::{layout, Edge, GraphRow};
 pub use log::{log, log_of, Commit, RefKind, RefLabel};
 pub use patch::{apply_patches, format_patches, patch_file_name, Applied, PatchSet};
 pub use range::{fetch_commit, range_changes, range_file_diff, remote_urls, RangeChanges, RangeCommit};
-pub use remote::{fetch, pull, push, PullMode, PullOutcome, PushOutcome};
+pub use remote::{fetch, fetch_in_background, pull, push, PullMode, PullOutcome, PushOutcome};
 pub use repo::{open, summary, CommitInfo, Operation, RepoLocation, RepoSummary};
 pub use rewrite::{edit_file, move_commit, reword, rewrite_info, squash, squash_many, Direction, RewriteInfo, Rewritten, SquashInfo};
 pub use scan::{scan, ScanLimits};

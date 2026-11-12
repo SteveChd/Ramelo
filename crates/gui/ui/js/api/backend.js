@@ -94,6 +94,7 @@ export const {
   createBranch,
   deleteBranch,
   fetch,
+  backgroundFetch,
   pull,
   push,
   setLanguage,

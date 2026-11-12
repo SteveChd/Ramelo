@@ -145,6 +145,8 @@ export const switchBranch = (path, target, carryChanges) => invoke('switch_branc
 export const createBranch = (path, name, start, checkout) => invoke('create_branch', { path, name, start, checkout });
 export const deleteBranch = (path, name, force) => invoke('delete_branch', { path, name, force });
 export const fetch = (path) => invoke('fetch', { path });
+/** Fetch of the periodic refresh: never asks anything. Returns { moved, snapshot } (null when nothing moved). */
+export const backgroundFetch = (path) => invoke('background_fetch', { path });
 /** `mode`: 'auto' | 'rebase' | 'merge'. Returns { snapshot, outcome: { kind, commits } }. */
 export const pull = (path, mode) => invoke('pull', { path, mode });
 /** Returns { snapshot, outcome: { remote, branch, upstreamSet } }. */

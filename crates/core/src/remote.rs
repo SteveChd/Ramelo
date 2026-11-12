@@ -17,6 +17,28 @@ pub fn fetch(git: &Git, root: &Path) -> Result<(), GitError> {
     git.output(root, ["fetch", "--all", "--prune"]).map(drop)
 }
 
+/// Same as [`fetch`], started by the application rather than by the user: nothing may ask anything
+/// (no window of a credential manager, no passphrase of an ssh key), and a connection that stalls
+/// gives up instead of holding the next repositories back. Returns whether a remote branch or a tag
+/// moved, appeared or went away.
+pub fn fetch_in_background(git: &Git, root: &Path) -> Result<bool, GitError> {
+    if remotes(git, root)?.is_empty() {
+        return Err(GitError::NoRemote);
+    }
+    let args = [
+        "-c", "credential.interactive=false",
+        "-c", "http.lowSpeedLimit=1000",
+        "-c", "http.lowSpeedTime=60",
+        "fetch", "--all", "--prune", "--quiet",
+    ];
+    let never = std::ffi::OsStr::new("never");
+    let env = [("GCM_INTERACTIVE", never), ("SSH_ASKPASS_REQUIRE", never)];
+    let refs = || git.output(root, ["for-each-ref", "--format=%(refname) %(objectname)", "refs/remotes", "refs/tags"]);
+    let before = refs()?;
+    git.output_with_env(root, &args, &env)?;
+    Ok(refs()? != before)
+}
+
 fn remotes(git: &Git, root: &Path) -> Result<Vec<String>, GitError> {
     Ok(git.text(root, ["remote"])?.lines().map(str::to_owned).collect())
 }

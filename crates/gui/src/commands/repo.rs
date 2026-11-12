@@ -384,6 +384,23 @@ pub async fn fetch(state: State<'_, AppState>, path: String) -> CommandResult<Sn
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BackgroundFetch {
+    /// Whether a remote branch or a tag changed; when not, the snapshot is null (nothing to read again).
+    pub moved: bool,
+    pub snapshot: Option<Snapshot>,
+}
+
+/// A fetch started by the periodic refresh: it never asks anything, and a failure (offline, server
+/// not trusted yet, credentials missing) is left to the next manual fetch to explain.
+#[tauri::command]
+pub async fn background_fetch(state: State<'_, AppState>, path: String) -> CommandResult<BackgroundFetch> {
+    let root = PathBuf::from(path);
+    let moved = core::fetch_in_background(&state.git, &root).map_err(|e| name_host(&state, e, &root))?;
+    Ok(BackgroundFetch { moved, snapshot: moved.then(|| changed(&state, root)) })
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PullResult {
     pub snapshot: Snapshot,
     pub outcome: PullOutcome,

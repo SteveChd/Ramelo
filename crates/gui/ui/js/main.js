@@ -10,6 +10,7 @@ import { initTheme, onThemeChange } from './components/theme.js';
 import { toast } from './components/toast.js';
 import { language, onLanguageChange, t } from './i18n/i18n.js';
 import { h } from './lib/dom.js';
+import './state/auto-fetch.js';
 import { pulls } from './state/pulls.js';
 import { store } from './state/store.js';
 import { renderHome } from './views/home/home-view.js';

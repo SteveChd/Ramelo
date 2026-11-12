@@ -103,6 +103,7 @@ fn main() {
             commands::repo::create_branch,
             commands::repo::delete_branch,
             commands::repo::fetch,
+            commands::repo::background_fetch,
             commands::repo::pull,
             commands::repo::push,
             commands::settings::set_language,

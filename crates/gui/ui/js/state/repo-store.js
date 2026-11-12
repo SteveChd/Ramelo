@@ -347,6 +347,16 @@ export const repoStore = {
     loadRefs();
   },
 
+  /**
+   * A fetch in the background brought something for `path`. When it is the repository shown, its
+   * branches and history are read again as after a manual fetch (a new remote branch does not change
+   * the summary); otherwise the snapshot is only applied.
+   */
+  async backgroundFetched(path, snapshot) {
+    if (path === state.path) await afterChange(snapshot);
+    else store.applySnapshot(snapshot);
+  },
+
   /** The workspace was refreshed (focus, F5…): the history is read again if the repository moved. */
   workspaceChanged() {
     if (!state.path || applying) return;

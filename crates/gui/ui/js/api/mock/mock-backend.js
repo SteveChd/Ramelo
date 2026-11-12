@@ -725,6 +725,11 @@ export async function fetch(path) {
   return snapshot();
 }
 
+export async function backgroundFetch(path) {
+  await delay(600);
+  return { moved: false, snapshot: null };
+}
+
 export async function pull(path, mode) {
   await delay(600);
   const s = find(path)?.summary;

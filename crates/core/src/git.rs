@@ -75,6 +75,11 @@ impl Git {
         self.run_with(dir, args, env, input)
     }
 
+    /// Like [`Git::output`], with variables added to git's environment.
+    pub fn output_with_env<S: AsRef<OsStr>>(&self, dir: &Path, args: &[S], env: &[(&str, &OsStr)]) -> Result<Vec<u8>, GitError> {
+        checked(args, self.run_with(dir, args, env, None)?)
+    }
+
     /// Runs git, handing each line of its error output to `on_line` as it comes (progress lines
     /// end with « \r » and are handed one by one). `cancelled` is asked a few times a second; when
     /// it answers true, git is stopped and [`GitError::Cancelled`] returned.
