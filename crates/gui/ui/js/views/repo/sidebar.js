@@ -32,7 +32,7 @@ function section(key, title, count, content, extra = null) {
         },
       }, icon('chevron', 13, 2.2), title, h('span', { class: 'n' }, count)),
       extra),
-    open && content);
+    open && h('div', { class: 'sb-body', 'data-key': key }, content));
 }
 
 function trackInfo(branch) {
@@ -197,6 +197,9 @@ export function renderSidebar(container) {
   // Local branches by name, the current one first.
   const local = [...refs.local].sort((a, b) => Number(b.isHead) - Number(a.isHead) || a.name.localeCompare(b.name));
   const sortedRemotes = [...byRemote.entries()].sort(([a], [b]) => a.localeCompare(b));
+  // Each section scrolls on its own, so that every title stays in view; a new render keeps where
+  // each one was scrolled to.
+  const scrolled = new Map([...container.querySelectorAll('.sb-body')].map((body) => [body.dataset.key, body.scrollTop]));
   mount(container,
     pullSection(repoStore.state.path),
     section('local', t('branch.local'), local.length,
@@ -219,4 +222,12 @@ export function renderSidebar(container) {
         }, icon('tag', 13), h('span', { class: 'lbl' }, tag.name)))
         : h('div', { class: 'sb-empty' }, t('branch.noTags'))),
   );
+  for (const body of container.querySelectorAll('.sb-body')) {
+    // The long sections give up their height first, and none goes below two rows. Rows are counted
+    // rather than measured, as the sidebar may not be on screen yet.
+    const rows = body.childElementCount;
+    body.parentElement.style.minHeight = `${30 + Math.min(rows, 2) * 28}px`;
+    body.parentElement.style.flexShrink = String(rows * rows);
+    body.scrollTop = scrolled.get(body.dataset.key) ?? 0;
+  }
 }

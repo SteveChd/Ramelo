@@ -85,8 +85,12 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; user-select:
 .diff-panel.collapsed { border-top: 1px solid var(--border); }
 
 /* ---------- Branches ---------- */
-.sidebar { overflow: auto; padding: 8px 0 16px; }
-.sb-section { margin-bottom: 6px; }
+/* Every section title stays in view: the open sections share the height and each scrolls on its own. */
+.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 8px 0 8px; }
+.sb-section { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; margin-bottom: 6px; }
+.sb-section > .sb-title { flex: 0 0 auto; }
+.sb-body { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.sidebar > .loading { flex: 1 1 auto; }
 .sb-head {
   display: flex; align-items: center; gap: 6px; width: 100%; height: 30px; padding: 0 8px 0 12px; border: 0; background: transparent;
   font-size: 11.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: left;
