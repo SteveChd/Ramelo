@@ -2,7 +2,7 @@
 // commands. The graph is laid out with the same rules as `crates/core/src/graph.rs`.
 
 const now = () => Math.floor(Date.now() / 1000);
-const AUTHORS = [['Steve Chadaud', 'steve@example.com'], ['Alex Martin', 'alex@example.com'], ['Sam Leroy', 'sam@example.com']];
+const AUTHORS = [['Sam Taylor', 'sam@example.com'], ['Alex Martin', 'alex@example.com'], ['Sam Leroy', 'sam@example.com']];
 const SUMMARIES = [
   'Export the Gantt chart with one column per day', 'Fix the week numbers around New Year', 'Show the team load per sprint',
   'Add the French holidays', 'Speed up the layout of large graphs', 'Keep the zoom between sessions', 'Rename Planificator to Waypoint',
@@ -151,7 +151,7 @@ export function branches(path) {
     local: [
       branch('main', { isHead: true, upstream: 'origin/main' }),
       branch('feature/capacity', { upstream: 'origin/feature/capacity', ahead: 1 }),
-      branch('old-experiment', { gone: true, upstream: 'origin/old-experiment', worktree: 'C:/Users/steve/dev/waypoint.worktrees/old-experiment' }),
+      branch('old-experiment', { gone: true, upstream: 'origin/old-experiment', worktree: 'C:/Users/sam/dev/waypoint.worktrees/old-experiment' }),
     ],
     remote: [branch('origin/main'), branch('origin/feature/capacity'), branch('origin/release/0.3')],
     tags: [{ name: 'v0.3.0', oid: tip('v0.3.0') }],

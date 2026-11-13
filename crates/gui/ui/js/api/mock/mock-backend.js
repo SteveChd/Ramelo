@@ -32,7 +32,7 @@ function snapshot() {
 
 const DEFAULT_URLS = { github: 'https://github.com', gitlab: 'https://gitlab.com', bitbucket: 'https://bitbucket.org' };
 let accounts = [
-  { id: 'steve@https://github.com', provider: 'github', url: 'https://github.com', username: 'steve-c', name: 'Steve Chadaud' },
+  { id: 'sam@https://github.com', provider: 'github', url: 'https://github.com', username: 'sam-t', name: 'Sam Taylor' },
 ];
 
 /** A token containing « bad » is refused, as a service would. */
@@ -44,9 +44,9 @@ export async function addAccount(provider, url, login, token) {
   if (provider === 'bitbucket' && !login?.trim()) throw { code: 'login_missing', subject: null, message: 'e-mail missing' };
   if (provider === 'bitbucket' && (!login.includes('@') || login.includes('/'))) throw { code: 'login_not_email', subject: login.trim(), message: 'not an e-mail' };
   if (token.includes('bad')) throw { code: provider === 'bitbucket' ? 'bitbucket_unauthorized' : 'hosting_unauthorized', subject: null, message: 'the service refused the token' };
-  const username = provider === 'bitbucket' ? login.split('@')[0] : 'steve';
+  const username = provider === 'bitbucket' ? login.split('@')[0] : 'sam';
   const id = `${username}@${address}`;
-  accounts = accounts.filter((a) => a.id !== id).concat({ id, provider, url: provider === 'bitbucket' ? DEFAULT_URLS.bitbucket : address, username, name: 'Steve Chadaud', login: login?.trim() || null });
+  accounts = accounts.filter((a) => a.id !== id).concat({ id, provider, url: provider === 'bitbucket' ? DEFAULT_URLS.bitbucket : address, username, name: 'Sam Taylor', login: login?.trim() || null });
   return structuredClone(accounts);
 }
 
@@ -73,8 +73,8 @@ export async function openUrl(url) {
 }
 
 const REMOTE_REPOS = [
-  ['steve-c/ramelo', 'Desktop git client for people who juggle many repositories', 'Rust', 12, false],
-  ['steve-c/dotfiles', 'Shell, editor and terminal settings', 'Shell', 0, false],
+  ['sam-t/ramelo', 'Desktop git client for people who juggle many repositories', 'Rust', 12, false],
+  ['sam-t/dotfiles', 'Shell, editor and terminal settings', 'Shell', 0, false],
   ['acme/device-ui', 'User interface of the device', 'TypeScript', 0, true],
   ['acme/firmware-tools', 'Tools to flash and inspect the firmware', 'Python', 2, true],
   ['acme/pipeline', null, 'Kotlin', 0, true],
@@ -117,24 +117,24 @@ function pullsOf(path) {
     const name = nameOf(path);
     const make = (number, title, author, source, extra = {}) => ({
       number, title, author, state: 'open', draft: false, sourceBranch: source, targetBranch: 'main', sourceRepo: null, sourceCloneUrl: null,
-      headOid: null, created: hoursAgo(number * 7), updated: hoursAgo(number), webUrl: `https://github.com/steve-c/${name}/pull/${number}`,
+      headOid: null, created: hoursAgo(number * 7), updated: hoursAgo(number), webUrl: `https://github.com/sam-t/${name}/pull/${number}`,
       comments: 5, reviewers: [], reviewRequested: false, ...extra,
       body: `## What\n\n${title}.\n\n## Why\n\nThe old way was slow on large projects.\n\n- [x] Tests\n- [ ] Documentation`,
       thread: [
         { id: `${number}-1`, author: 'anna', body: 'Nice! Could you add a test for the **empty** case?', created: hoursAgo(number * 5), path: null, line: null },
-        { id: `${number}-2`, author: 'steve-c', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14, oldSide: false, outdated: false },
+        { id: `${number}-2`, author: 'sam-t', body: 'Done in the last commit.', created: hoursAgo(number * 3), path: 'crates/export/src/gantt.rs', line: 14, oldSide: false, outdated: false },
         { id: `${number}-3`, author: 'anna', body: 'How about here? No need for a lock?', created: hoursAgo(number * 2.5), path: 'crates/export/src/gantt.rs', line: 40, oldSide: false, outdated: false },
-        { id: `${number}-4`, author: 'steve-c', body: 'Good catch, I will add one.', created: hoursAgo(number * 2), path: null, line: null, parent: `${number}-3` },
+        { id: `${number}-4`, author: 'sam-t', body: 'Good catch, I will add one.', created: hoursAgo(number * 2), path: null, line: null, parent: `${number}-3` },
         { id: `${number}-5`, author: 'marc', body: 'This name is misleading.', created: hoursAgo(number * 4), path: 'crates/export/src/gantt.rs', line: 9, oldSide: false, outdated: true },
       ],
     });
     const list = name === 'waypoint'
       ? [
-        make(42, 'Export the Gantt chart with one column per day', 'steve-c', 'feature/gantt-export'),
-        make(41, 'Shade the weekends in the calendar', 'anna', 'calendar-weekends', { reviewers: ['steve-c'], reviewRequested: true }),
+        make(42, 'Export the Gantt chart with one column per day', 'sam-t', 'feature/gantt-export'),
+        make(41, 'Shade the weekends in the calendar', 'anna', 'calendar-weekends', { reviewers: ['sam-t'], reviewRequested: true }),
         make(38, 'Draft: try a new layout engine', 'marc', 'layout-engine', { draft: true, sourceRepo: 'marc/waypoint' }),
       ]
-      : name === 'spektra' ? [make(7, 'Faster spectrum smoothing', 'anna', 'smoothing', { reviewers: ['steve-c'], reviewRequested: true })] : [];
+      : name === 'spektra' ? [make(7, 'Faster spectrum smoothing', 'anna', 'smoothing', { reviewers: ['sam-t'], reviewRequested: true })] : [];
     PULLS.set(path, list);
   }
   return PULLS.get(path);
@@ -199,7 +199,7 @@ export async function repositoryHosting(path) {
   const repo = repositories.find((r) => r.path === path);
   if (!repo?.summary?.remotes.length) return null;
   const name = nameOf(path);
-  return { accountId: accounts[0]?.id, provider: 'github', key: `steve-c/${name}`, webUrl: `https://github.com/steve-c/${name}`, remote: 'origin', user: accounts[0]?.username ?? 'steve-c' };
+  return { accountId: accounts[0]?.id, provider: 'github', key: `sam-t/${name}`, webUrl: `https://github.com/sam-t/${name}`, remote: 'origin', user: accounts[0]?.username ?? 'sam-t' };
 }
 
 export async function pullRequests(path, openOnly = true) {
@@ -291,7 +291,7 @@ export async function createPullRequest(path, pull) {
   const created = {
     number, title: pull.title, author: accounts[0]?.username ?? 'me', state: 'open', draft: pull.draft, sourceBranch: pull.sourceBranch,
     targetBranch: pull.targetBranch, sourceRepo: null, sourceCloneUrl: null, headOid: null, created: Math.floor(Date.now() / 1000),
-    updated: Math.floor(Date.now() / 1000), webUrl: `https://github.com/steve-c/${nameOf(path)}/pull/${number}`, comments: 0, reviewers: [],
+    updated: Math.floor(Date.now() / 1000), webUrl: `https://github.com/sam-t/${nameOf(path)}/pull/${number}`, comments: 0, reviewers: [],
     reviewRequested: false, body: pull.body, thread: [],
   };
   list.unshift(created);
@@ -328,7 +328,7 @@ export async function refresh(path) {
 /** The preview has no folder chooser: each call « finds » a new sample repository. */
 export async function pickFolder() {
   added += 1;
-  return [`C:\\Users\\steve\\dev\\new-repo-${added}`];
+  return [`C:\\Users\\sam\\dev\\new-repo-${added}`];
 }
 
 export async function addRepositories(paths) {
@@ -372,7 +372,7 @@ export async function closeRepository(path) {
 }
 
 export async function pickCloneFolder(start) {
-  return start || 'C:\\Users\\steve\\dev';
+  return start || 'C:\\Users\\sam\\dev';
 }
 
 let cloneStopped = false;
@@ -520,7 +520,7 @@ export async function about() {
   await delay(80);
   return {
     version: '1.0.0', authors: 'Steve Chadaud', license: 'MIT', git: '2.47.1', webview: '130.0.2849.80', tauri: '2.1.1',
-    os: 'linux', arch: 'x86_64', dataDir: '/home/steve/.local/share/dev.ramelo.app',
+    os: 'linux', arch: 'x86_64', dataDir: '/home/sam/.local/share/dev.ramelo.app',
   };
 }
 
@@ -679,7 +679,7 @@ export async function commit(path, message, amend, all) {
     if (all) s.files.forEach((f) => Object.assign(f, { index: stagedKind(f), worktree: 'unmodified' }));
     s.files = s.files.filter((f) => f.worktree !== 'unmodified');
     s.ahead += amend ? 0 : 1;
-    s.lastCommit = { oid: commitOid, summary: message.split('\n')[0], author: 'Steve Chadaud', time: Math.floor(Date.now() / 1000) };
+    s.lastCommit = { oid: commitOid, summary: message.split('\n')[0], author: 'Sam Taylor', time: Math.floor(Date.now() / 1000) };
     s.head.oid = commitOid;
   });
   return { snapshot: snapshot(), oid: r ? commitOid : '' };

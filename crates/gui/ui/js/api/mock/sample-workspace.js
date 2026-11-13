@@ -16,7 +16,7 @@ function summary(overrides) {
     stashes: 0,
     operation: null,
     remotes: ['origin'],
-    lastCommit: { oid: '3f9a1c2d', summary: 'Initial commit', author: 'Steve Chadaud', time: now() - 5 * hour },
+    lastCommit: { oid: '3f9a1c2d', summary: 'Initial commit', author: 'Sam Taylor', time: now() - 5 * hour },
     ...overrides,
     files,
     fileCount: files.length,
@@ -28,7 +28,7 @@ function summary(overrides) {
 }
 
 export function sampleWorkspace() {
-  const root = 'C:\\Users\\steve\\dev';
+  const root = 'C:\\Users\\sam\\dev';
   return [
     {
       path: `${root}\\waypoint`,
@@ -38,7 +38,7 @@ export function sampleWorkspace() {
         ahead: 2,
         behind: 1,
         stashes: 1,
-        lastCommit: { oid: 'a1b2c3d4', summary: 'Export the Gantt chart with one column per day', author: 'Steve Chadaud', time: now() - 2 * hour },
+        lastCommit: { oid: 'a1b2c3d4', summary: 'Export the Gantt chart with one column per day', author: 'Sam Taylor', time: now() - 2 * hour },
         files: [
           file('crates/export/src/gantt.rs', 'modified', 'unmodified'),
           file('crates/export/src/style.rs', 'added', 'unmodified'),
@@ -52,7 +52,7 @@ export function sampleWorkspace() {
     {
       path: `${root}\\spektra`,
       summary: summary({
-        lastCommit: { oid: '9e8d7c6b', summary: 'Smooth the curves of the line charts', author: 'Steve Chadaud', time: now() - 26 * hour },
+        lastCommit: { oid: '9e8d7c6b', summary: 'Smooth the curves of the line charts', author: 'Sam Taylor', time: now() - 26 * hour },
       }),
     },
     {
@@ -60,7 +60,7 @@ export function sampleWorkspace() {
       summary: summary({
         head: { branch: 'main', oid: '55aa66b' },
         operation: 'rebase',
-        lastCommit: { oid: '55aa66bb', summary: 'Poll the network counters every second', author: 'Steve Chadaud', time: now() - 50 * hour },
+        lastCommit: { oid: '55aa66bb', summary: 'Poll the network counters every second', author: 'Sam Taylor', time: now() - 50 * hour },
         files: [
           file('core/src/watch.rs', 'conflicted', 'conflicted'),
           file('core/src/lines.rs', 'modified', 'unmodified'),
