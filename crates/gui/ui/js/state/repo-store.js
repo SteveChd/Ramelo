@@ -1114,9 +1114,12 @@ export const repoStore = {
     await afterChange(value.snapshot);
   },
 
-  /** Pushes; when the remote has new commits, offers to pull first or to force (safely). */
-  async push(force = false) {
-    let { value, error } = await attemptRunning(() => backend.push(state.path, force), 'push');
+  /**
+   * Pushes; when the remote has new commits, offers to pull first or to force (safely). `upto`:
+   * push the commits of the branch only up to this one, the later ones staying local.
+   */
+  async push(force = false, upto = null) {
+    let { value, error } = await attemptRunning(() => backend.push(state.path, force, upto), 'push');
     if (error?.code === 'push_rejected' && !force) {
       const choice = await choose({
         title: t('push.rejectedTitle'),
@@ -1128,11 +1131,11 @@ export const repoStore = {
       });
       if (choice === 'pull') {
         await this.pull('auto');
-        if (repo()?.summary?.behind === 0) await this.push(false);
+        if (repo()?.summary?.behind === 0) await this.push(false, upto);
         return;
       }
       if (choice !== 'force') return;
-      value = await run(() => backend.push(state.path, true), 'push');
+      value = await run(() => backend.push(state.path, true, upto), 'push');
     } else if (error) {
       store.notify(describeError(error), true);
       return;

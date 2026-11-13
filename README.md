@@ -53,7 +53,8 @@ Ramelo runs on Windows and Linux (macOS later), in English or French, with a lig
   tab shows one worktree at a time, and switching to another keeps the same tab.
 - Fetch, pull and push in one click. Pull fast-forwards when it can and otherwise asks between
   rebase and merge; push sets the upstream on the first push and offers to pull first or to force
-  with lease when it is rejected.
+  with lease when it is rejected. From the menu of a commit, a branch is pushed only up to that
+  commit, the later ones staying local.
 - Commits are exported as `.patch` files, and patches applied back (`git am` or `git apply`).
 
 ### Rewriting history without an interactive rebase

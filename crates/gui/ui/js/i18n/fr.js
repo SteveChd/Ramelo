@@ -595,6 +595,7 @@ export default {
   'graph.detachOn': 'Extraire {name} (HEAD détachée)',
   'graph.switchTo': 'Passer sur {name}',
   'graph.checkoutCommit': 'Extraire ce commit (HEAD détachée)',
+  'graph.pushUpTo': 'Pousser {name} jusqu\'à ce commit',
   'graph.copySha': 'Copier l\'identifiant du commit',
   'patch.export': 'Exporter en .patch…',
   'patch.exportMany': 'Exporter les {n} commits sélectionnés en .patch…',

@@ -424,9 +424,10 @@ pub struct PushResult {
 }
 
 #[tauri::command]
-pub async fn push(state: State<'_, AppState>, path: String, force: bool) -> CommandResult<PushResult> {
+/// `upto`: push the commits of the branch only up to this one.
+pub async fn push(state: State<'_, AppState>, path: String, force: bool, upto: Option<String>) -> CommandResult<PushResult> {
     let root = PathBuf::from(path);
-    let outcome = core::push(&state.git, &root, force).map_err(|e| name_host(&state, e, &root))?;
+    let outcome = core::push(&state.git, &root, force, upto.as_deref()).map_err(|e| name_host(&state, e, &root))?;
     Ok(PushResult { outcome, snapshot: changed(&state, root) })
 }
 

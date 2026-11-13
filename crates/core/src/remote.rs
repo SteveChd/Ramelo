@@ -103,9 +103,23 @@ pub struct PushOutcome {
 /// Pushes the current branch to the branch it tracks. A branch that tracks nothing yet is pushed
 /// to « origin » (or the only remote) under the same name, and set to track it. `force` replaces the
 /// remote branch, but only if nobody pushed to it since the last fetch (`--force-with-lease`).
-pub fn push(git: &Git, root: &Path, force: bool) -> Result<PushOutcome, GitError> {
+/// `upto`: push only the commits of the branch up to this one (included), the later ones staying
+/// local; it must be in the history of the branch.
+pub fn push(git: &Git, root: &Path, force: bool, upto: Option<&str>) -> Result<PushOutcome, GitError> {
     let status = parse_status(&git.output(root, STATUS_ARGS)?)?;
     let branch = status.head.branch.clone().ok_or(GitError::DetachedHead)?;
+    let source = match upto {
+        Some(commit) => {
+            let oid = git.text(root, ["rev-parse", "--verify", "--quiet", &format!("{commit}^{{commit}}")])
+                .map(|o| o.trim().to_owned())
+                .map_err(|_| GitError::NotInHistory(commit.to_owned()))?;
+            if git.output(root, ["merge-base", "--is-ancestor", &oid, "HEAD"]).is_err() {
+                return Err(GitError::NotInHistory(commit.to_owned()));
+            }
+            oid
+        }
+        None => "HEAD".to_owned(),
+    };
     let config = |key: &str| {
         git.text(root, ["config", "--get", &format!("branch.{branch}.{key}")]).ok().map(|v| v.trim().to_owned()).filter(|v| !v.is_empty())
     };
@@ -117,15 +131,20 @@ pub fn push(git: &Git, root: &Path, force: bool) -> Result<PushOutcome, GitError
             (remote, format!("refs/heads/{branch}"), true)
         }
     };
-    let refspec = format!("HEAD:{target}");
+    let refspec = format!("{source}:{target}");
     let mut args = vec!["push", "--porcelain"];
     if force {
         args.push("--force-with-lease");
     }
-    if upstream_set {
+    // git sets the upstream only when it pushes a branch, not a commit: that case is done below.
+    if upstream_set && upto.is_none() {
         args.push("--set-upstream");
     }
     args.extend([remote.as_str(), refspec.as_str()]);
     git.output(root, &args)?;
+    if upstream_set && upto.is_some() {
+        git.output(root, ["config", &format!("branch.{branch}.remote"), &remote])?;
+        git.output(root, ["config", &format!("branch.{branch}.merge"), &target])?;
+    }
     Ok(PushOutcome { remote, branch: target.trim_start_matches("refs/heads/").to_owned(), upstream_set })
 }

@@ -158,7 +158,7 @@ export const backgroundFetch = (path) => invoke('background_fetch', { path });
 /** `mode`: 'auto' | 'rebase' | 'merge'. Returns { snapshot, outcome: { kind, commits } }. */
 export const pull = (path, mode) => invoke('pull', { path, mode });
 /** Returns { snapshot, outcome: { remote, branch, upstreamSet } }. */
-export const push = (path, force) => invoke('push', { path, force });
+export const push = (path, force, upto = null) => invoke('push', { path, force, upto });
 
 // ---------- Window and settings ----------
 export const setLanguage = (language) => invoke('set_language', { language });

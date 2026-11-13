@@ -258,7 +258,7 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     commit_file(&me, "a", "1\n", "one");
 
     // First push: the upstream is set automatically.
-    let pushed = push(&g, &me, false).unwrap();
+    let pushed = push(&g, &me, false, None).unwrap();
     assert!(pushed.upstream_set);
     assert_eq!(status(&me).upstream.as_deref(), Some("origin/main"));
     assert_eq!(pull(&g, &me, PullMode::Auto).unwrap(), PullOutcome::UpToDate);
@@ -274,12 +274,12 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     commit_file(&other, "c", "3\n", "three");
     git(&other, &["push", "-q"]);
     commit_file(&me, "d", "4\n", "four");
-    assert!(matches!(push(&g, &me, false), Err(GitError::PushRejected(_))));
+    assert!(matches!(push(&g, &me, false, None), Err(GitError::PushRejected(_))));
     assert!(matches!(pull(&g, &me, PullMode::Auto), Err(GitError::Diverged)));
     fs::write(me.join("wip.txt"), "local work").unwrap();
     assert_eq!(pull(&g, &me, PullMode::Rebase).unwrap(), PullOutcome::Rebased { commits: 1 });
     assert!(me.join("wip.txt").exists());
-    assert!(!push(&g, &me, false).unwrap().upstream_set);
+    assert!(!push(&g, &me, false, None).unwrap().upstream_set);
     fetch(&g, &me).unwrap();
     // Another clone pushes: the background fetch brings its commit in, without asking anything.
     git(&other, &["pull", "-q", "--rebase"]);
@@ -295,6 +295,38 @@ fn pushes_with_upstream_and_pulls_with_the_chosen_strategy() {
     assert_eq!(git(&me, &["rev-parse", "main"]), before);
     refs::switch(&g, &me, "main", false, false).unwrap();
     assert_eq!(git(&me, &["log", "-1", "--format=%s", "@{u}"]).trim(), "five");
+}
+
+#[test]
+fn pushes_up_to_a_chosen_commit() {
+    let dir = tempfile::tempdir().unwrap();
+    let remote = dir.path().join("remote.git");
+    git(dir.path(), &["init", "-q", "--bare", "-b", "main", remote.to_str().unwrap()]);
+    let me = new_repo(&dir.path().join("me"));
+    let g = Git::default();
+    git(&me, &["remote", "add", "origin", remote.to_str().unwrap()]);
+    commit_file(&me, "a", "1\n", "one");
+    commit_file(&me, "b", "2\n", "two");
+    commit_file(&me, "c", "3\n", "three");
+    let one = git(&me, &["rev-parse", "HEAD~2"]).trim().to_owned();
+    // First push, of the oldest commit only: the upstream is set all the same.
+    let pushed = push(&g, &me, false, Some(&one)).unwrap();
+    assert!(pushed.upstream_set);
+    assert_eq!(status(&me).upstream.as_deref(), Some("origin/main"));
+    assert_eq!(git(&me, &["rev-parse", "origin/main"]).trim(), one);
+    assert_eq!(status(&me).ahead, 2);
+    // Then one more: the last commit stays local.
+    let two = git(&me, &["rev-parse", "HEAD~1"]).trim().to_owned();
+    assert!(!push(&g, &me, false, Some(&two)).unwrap().upstream_set);
+    assert_eq!(git(&me, &["rev-parse", "origin/main"]).trim(), two);
+    assert_eq!(status(&me).ahead, 1);
+    // A commit outside the branch is refused.
+    git(&me, &["checkout", "-q", "-b", "side", &one]);
+    commit_file(&me, "d", "4\n", "four");
+    let side = git(&me, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(&me, &["checkout", "-q", "main"]);
+    assert!(matches!(push(&g, &me, false, Some(&side)), Err(GitError::NotInHistory(_))));
+    assert!(matches!(push(&g, &me, false, Some("nope")), Err(GitError::NotInHistory(_))));
 }
 
 fn messages(root: &Path) -> Vec<String> {
