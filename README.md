@@ -1,4 +1,6 @@
-# Ramelo
+<p align="center"><img src="docs/logo.svg" alt="" width="96"></p>
+
+<h1 align="center">Ramelo</h1>
 
 Ramelo is a desktop git client for people who work with many repositories at once. It automates
 the tedious parts of git so that everyday work stays fast: rewording, reordering, squashing or
@@ -9,12 +11,7 @@ Ramelo runs on Windows and Linux (macOS later), in English or French, with a lig
 
 ![The repository view: pull requests, branches and worktrees on the left, the commit graph, and the working copy on the right](docs/screenshots/repository.png)
 
-<details>
-<summary>The overview of every repository</summary>
-
 ![The overview: one card per repository with its branch, what it has to push or pull, its changes and its state](docs/screenshots/overview.png)
-
-</details>
 
 ## Features
 
