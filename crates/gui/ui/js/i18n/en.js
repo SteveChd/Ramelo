@@ -450,6 +450,7 @@ export default {
   'branch.noLocal': 'No branch yet',
   'branch.noRemote': 'No remote branch',
   'branch.noTags': 'No tag',
+  'branch.resizeSections': 'Drag to resize the sections; a double click gives them back the height of their content',
   'branch.gone': 'gone',
   'branch.goneHint': 'The remote branch it tracked was deleted',
   'branch.switch': 'Switch to this branch',

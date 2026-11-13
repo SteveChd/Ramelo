@@ -450,6 +450,7 @@ export default {
   'branch.noLocal': 'Aucune branche',
   'branch.noRemote': 'Aucune branche distante',
   'branch.noTags': 'Aucun tag',
+  'branch.resizeSections': 'Faire glisser pour redimensionner les sections ; un double clic leur rend la hauteur de leur contenu',
   'branch.gone': 'supprimée',
   'branch.goneHint': 'La branche distante suivie a été supprimée',
   'branch.switch': 'Basculer sur cette branche',

@@ -18,9 +18,95 @@ import { repoStore } from '../../state/repo-store.js';
 /** Sections folded by the user, remembered while the application runs. */
 const folded = new Set(['tags']);
 
+// Heights given to the sections by dragging the bar under one of them, remembered between
+// sessions. A section without one takes the height of its content, the long ones giving way first.
+const SIZES_KEY = 'ramelo.sidebarSections';
+const ROW = 28;
+const TITLE = 30;
+let sizes = {};
+try { sizes = JSON.parse(localStorage.getItem(SIZES_KEY) ?? '{}') ?? {}; } catch { /* sizes not remembered */ }
+
+function saveSizes() {
+  try { localStorage.setItem(SIZES_KEY, JSON.stringify(sizes)); } catch { /* sizes not remembered */ }
+}
+
+/** Smallest height of an open section: its title and two rows (fewer when it has fewer). */
+function rowCount(body) {
+  return body ? body.querySelectorAll('.sb-item, .sb-group, .sb-empty').length : 0;
+}
+
+function minHeight(sectionEl) {
+  const rows = rowCount(sectionEl.querySelector(':scope > .sb-body'));
+  return TITLE + Math.min(rows, 2) * ROW;
+}
+
+/** Sizes the open sections, from the heights given by hand or else from their content. */
+function layoutSections(container) {
+  const open = [...container.querySelectorAll(':scope > .sb-section')].filter((el) => el.querySelector(':scope > .sb-body'));
+  for (const el of container.querySelectorAll(':scope > .sb-section')) {
+    const body = el.querySelector(':scope > .sb-body');
+    if (!body) { el.style.flex = ''; el.style.minHeight = ''; continue; }
+    // No bar under the last open section: there is nothing below to take its height.
+    el.querySelector(':scope > .sb-sash').hidden = el === open.at(-1);
+    const rows = rowCount(body);
+    el.style.minHeight = `${minHeight(el)}px`;
+    const size = sizes[el.dataset.key];
+    // Rows are counted rather than measured, as the sidebar may not be on screen yet.
+    el.style.flex = size ? `1 1 ${size}px` : `0 ${rows * rows} auto`;
+  }
+}
+
+/** The bar under an open section: dragging it moves height between that section and the next open one. */
+function sash(key) {
+  const bar = h('div', { class: 'sb-sash', role: 'separator', 'aria-orientation': 'horizontal', title: t('branch.resizeSections') });
+  bar.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    const container = bar.closest('.sidebar');
+    const open = [...container.querySelectorAll(':scope > .sb-section')].filter((el) => el.querySelector(':scope > .sb-body'));
+    const above = open.find((el) => el.dataset.key === key);
+    const below = open[open.indexOf(above) + 1];
+    if (!above || !below) return;
+    event.preventDefault();
+    // Every open section keeps the height it has now, so that only these two change.
+    for (const el of open) {
+      sizes[el.dataset.key] = Math.round(el.getBoundingClientRect().height);
+    }
+    layoutSections(container);
+    const start = event.clientY;
+    const total = sizes[above.dataset.key] + sizes[below.dataset.key];
+    const first = sizes[above.dataset.key];
+    const [minAbove, minBelow] = [minHeight(above), minHeight(below)];
+    bar.setPointerCapture(event.pointerId);
+    bar.classList.add('active');
+    document.body.classList.add('resizing-y');
+    const move = (e) => {
+      const height = Math.max(minAbove, Math.min(total - minBelow, first + e.clientY - start));
+      sizes[above.dataset.key] = height;
+      sizes[below.dataset.key] = total - height;
+      layoutSections(container);
+    };
+    const end = () => {
+      bar.removeEventListener('pointermove', move);
+      bar.classList.remove('active');
+      document.body.classList.remove('resizing-y');
+      saveSizes();
+    };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', end, { once: true });
+    bar.addEventListener('pointercancel', end, { once: true });
+  });
+  // A double click gives every section back the height of its content.
+  bar.addEventListener('dblclick', () => {
+    sizes = {};
+    saveSizes();
+    layoutSections(bar.closest('.sidebar'));
+  });
+  return bar;
+}
+
 function section(key, title, count, content, extra = null) {
   const open = !folded.has(key);
-  return h('div', { class: 'sb-section' },
+  return h('div', { class: 'sb-section', 'data-key': key },
     h('div', { class: 'sb-title' },
       h('button', {
         type: 'button',
@@ -32,7 +118,8 @@ function section(key, title, count, content, extra = null) {
         },
       }, icon('chevron', 13, 2.2), title, h('span', { class: 'n' }, count)),
       extra),
-    open && h('div', { class: 'sb-body', 'data-key': key }, content));
+    open && h('div', { class: 'sb-body', 'data-key': key }, content),
+    open && sash(key));
 }
 
 function trackInfo(branch) {
@@ -208,10 +295,9 @@ export function renderSidebar(container) {
     worktreeSection(),
     section('remote', t('branch.remote'), refs.remote.length,
       refs.remote.length
-        ? sortedRemotes.map(([remote, branches]) => [
+        ? sortedRemotes.map(([remote, branches]) => h('div', { class: 'sb-remote' },
           h('div', { class: 'sb-group' }, icon('cloud', 13), remote),
-          branches.sort((a, b) => a.name.localeCompare(b.name)).map(remoteItem),
-        ])
+          branches.sort((a, b) => a.name.localeCompare(b.name)).map(remoteItem)))
         : h('div', { class: 'sb-empty' }, t('branch.noRemote'))),
     section('tags', t('branch.tags'), refs.tags.length,
       refs.tags.length
@@ -222,12 +308,6 @@ export function renderSidebar(container) {
         }, icon('tag', 13), h('span', { class: 'lbl' }, tag.name)))
         : h('div', { class: 'sb-empty' }, t('branch.noTags'))),
   );
-  for (const body of container.querySelectorAll('.sb-body')) {
-    // The long sections give up their height first, and none goes below two rows. Rows are counted
-    // rather than measured, as the sidebar may not be on screen yet.
-    const rows = body.childElementCount;
-    body.parentElement.style.minHeight = `${30 + Math.min(rows, 2) * 28}px`;
-    body.parentElement.style.flexShrink = String(rows * rows);
-    body.scrollTop = scrolled.get(body.dataset.key) ?? 0;
-  }
+  layoutSections(container);
+  for (const body of container.querySelectorAll('.sb-body')) body.scrollTop = scrolled.get(body.dataset.key) ?? 0;
 }
