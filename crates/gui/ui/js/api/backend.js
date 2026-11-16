@@ -101,6 +101,8 @@ export const {
   removeWorktree,
   pull,
   push,
+  checkUpdate,
+  installUpdate,
   setLanguage,
   showWindow,
   onFoldersDropped,

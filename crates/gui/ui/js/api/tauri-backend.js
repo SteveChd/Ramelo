@@ -58,6 +58,17 @@ export function cloneRepository(url, folder, options, onProgress) {
   return invoke('clone_repository', { url, folder, options, progress });
 }
 export const cancelClone = () => invoke('cancel_clone');
+/** A newer version of Ramelo ({ version, current, notes, date, canInstall, page }), or null. */
+export const checkUpdate = () => invoke('check_update');
+/**
+ * Downloads and installs the version found by `checkUpdate`, then restarts the application;
+ * `onProgress({ downloaded, total, installing })` follows the download.
+ */
+export function installUpdate(onProgress) {
+  const progress = new tauri.core.Channel();
+  progress.onmessage = onProgress;
+  return invoke('install_update', { progress });
+}
 /** The keys of an ssh server: [{ kind, fingerprint }]. */
 export const sshHostKeys = (host) => invoke('ssh_host_keys', { host });
 /** Adds the keys of `host` with these fingerprints to the known hosts. */

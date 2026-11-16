@@ -26,6 +26,11 @@ export function fullDate(seconds) {
   return new Date(seconds * 1000).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** Day only, for « published on 16 Nov 2026 ». */
+export function day(seconds) {
+  return new Date(seconds * 1000).toLocaleDateString(locale(), { dateStyle: 'long' });
+}
+
 /** Clock time, for « refreshed at 14:32 ». */
 export function clock(date) {
   return date.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });

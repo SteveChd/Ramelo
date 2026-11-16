@@ -203,3 +203,9 @@
 .about-facts dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 12px; }
 .about-facts .link-btn.path { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
 .about-facts .link-btn.path:hover { text-decoration: underline; }
+
+/* New version: its notes, and the choice to install it. */
+.update-notes { max-height: 260px; overflow: auto; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--soft); font-size: 13px; }
+.update-notes .markdown > :first-child { margin-top: 0; }
+.update-notes .markdown > :last-child { margin-bottom: 0; }
+.dialog-foot .foot-gap { flex: 1 1 auto; }

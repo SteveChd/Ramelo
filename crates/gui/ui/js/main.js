@@ -13,6 +13,7 @@ import { h } from './lib/dom.js';
 import './state/auto-fetch.js';
 import { pulls } from './state/pulls.js';
 import { store } from './state/store.js';
+import { startUpdateChecks } from './state/updates.js';
 import { renderHome } from './views/home/home-view.js';
 import { renderRepo } from './views/repo/repo-view.js';
 
@@ -132,6 +133,7 @@ async function start() {
   await store.readAll((done, total) => splashStep(t('splash.reading', { done, n: total }), 0.45 + (0.5 * done) / total));
   splashStep(t('splash.render', { n: snapshot.repositories.length }), 0.97);
   await hideSplash(t('splash.ready'));
+  startUpdateChecks();
 }
 
 start();

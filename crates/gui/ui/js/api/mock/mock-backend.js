@@ -748,6 +748,23 @@ export async function push(path) {
   change(path, (summary) => { summary.ahead = 0; summary.upstream ??= `origin/${summary.head.branch}`; });
   return { snapshot: snapshot(), outcome: { remote: 'origin', branch: s?.head.branch ?? 'main', upstreamSet } };
 }
+export async function checkUpdate() {
+  await delay(400);
+  return {
+    version: '1.1.0', current: '1.0.0', date: Math.floor(Date.now() / 1000) - 86400, canInstall: true,
+    page: 'https://github.com/SteveChd/Ramelo/releases/latest',
+    notes: '## What is new\n\n- Resize the sections of the sidebar\n- Push a branch up to a chosen commit',
+  };
+}
+export async function installUpdate(onProgress) {
+  const total = 9.4 * 1024 * 1024;
+  for (let downloaded = 0; downloaded < total; downloaded += total / 12) {
+    onProgress({ downloaded, total, installing: false });
+    await delay(150);
+  }
+  onProgress({ downloaded: total, total: null, installing: true });
+  await delay(800);
+}
 export async function setLanguage() {}
 export async function showWindow() {}
 export function onFoldersDropped() {}

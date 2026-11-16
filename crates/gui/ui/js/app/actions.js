@@ -13,6 +13,7 @@ import { pulls } from '../state/pulls.js';
 import { repoStore } from '../state/repo-store.js';
 import { search } from '../state/search.js';
 import { store } from '../state/store.js';
+import { checkForUpdates } from '../state/updates.js';
 
 const hasActive = () => store.activeRepo !== null;
 const hasRepos = () => store.repositories.length > 0;
@@ -37,6 +38,7 @@ const ACTIONS = {
   'app.accounts': { key: 'Ctrl+,', run: () => openAccountsDialog() },
   'app.settings': { run: () => openSettingsDialog() },
   'app.about': { run: () => openAboutDialog() },
+  'app.checkUpdates': { run: () => checkForUpdates() },
   'view.onlyCurrentBranch': { key: 'Ctrl+Shift+B', enabled: hasActive, run: () => repoStore.soloCurrent() },
   'view.allBranches': { enabled: () => hasActive() && Boolean(repoStore.state.filter), run: () => repoStore.setFilter(null) },
   'repo.add': { key: 'Ctrl+O', run: () => store.add() },

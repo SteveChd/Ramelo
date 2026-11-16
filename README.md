@@ -120,6 +120,10 @@ they only read.
 Installers for Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`, `.rpm`) are attached to each
 [release](https://github.com/SteveChd/Ramelo/releases).
 
+Ramelo then looks for new versions by itself (Settings, or Help > Check for updates) and, with your
+approval, downloads and installs them and restarts. On Linux this works for the AppImage; a `.deb` or
+`.rpm` installation shows the download page instead.
+
 ## Build and run
 
 Requirements:
@@ -147,6 +151,11 @@ the application with `WEBKIT_DISABLE_DMABUF_RENDERER=1` fixes it.
 2. Tag that commit and push the tag: `git tag v1.1.0 && git push origin v1.1.0`.
 3. The Release workflow builds the installers and attaches them to a draft release of that name;
    publish it from the Releases page of GitHub once it looks right.
+
+The installers are signed for the updater with a private key kept in two secrets of the repository,
+`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; the public key is in
+`crates/gui/tauri.conf.json`. Once a release is published, its `latest.json` makes the installed
+copies offer the update. Without the same private key, no later version can be offered to them.
 
 ## License
 

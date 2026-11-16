@@ -58,9 +58,13 @@ jobs:
       - name: Tauri command line
         run: npm install -g @tauri-apps/cli@2
 
+      # The installers are signed with the key of the updater (secrets of the repository), and a
+      # latest.json lists them: once the release is published, Ramelo offers it to its users.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: crates/gui
           tauriScript: tauri
@@ -69,3 +73,4 @@ jobs:
           releaseBody: Installers for Windows (.exe, .msi) and Linux (.AppImage, .deb, .rpm).
           releaseDraft: true
           prerelease: false
+          updaterJsonPreferNsis: true
